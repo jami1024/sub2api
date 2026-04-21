@@ -139,10 +139,9 @@ describe('HomeView', () => {
   it('renders the AigoHub landing page when home_content is empty', () => {
     const wrapper = mountView()
 
-    expect(wrapper.text()).toContain('稳定使用，省心接入。')
     expect(wrapper.text()).toContain('为什么选 AigoHub')
     expect(wrapper.text()).toContain('联系微信，快速咨询')
-    expect(wrapper.get('[data-testid="wechat-id"]').text()).toContain('G000000000g1e')
+    expect(wrapper.get('[data-testid="wechat-cta"]').text()).toContain('立即加微信')
   })
 
   it('copies the WeChat id when the primary CTA is clicked', async () => {

@@ -84,14 +84,11 @@
           <div class="inline-flex items-center rounded-full border border-slate-300/80 bg-white/80 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-500 shadow-sm dark:border-white/10 dark:bg-white/5 dark:text-slate-300">
             {{ t('home.landing.domainBadge') }}
           </div>
-          <h1 class="mt-6 max-w-[11ch] text-5xl font-black leading-[0.96] text-slate-950 dark:text-white md:text-6xl xl:text-7xl">
-            {{ t('home.landing.title') }}
-          </h1>
-          <p class="mt-6 max-w-[34rem] text-[15px] leading-8 text-slate-600 dark:text-slate-300 md:text-lg">
+          <p class="mt-8 max-w-[34rem] text-[15px] leading-8 text-slate-600 dark:text-slate-300 md:text-lg">
             {{ t('home.landing.description') }}
           </p>
 
-          <div class="mt-10 flex flex-col gap-4 sm:flex-row sm:items-stretch sm:gap-3">
+          <div class="mt-10">
             <button
               data-testid="wechat-cta"
               type="button"
@@ -100,10 +97,6 @@
             >
               {{ t('home.landing.primaryCta') }}
             </button>
-            <div class="flex min-h-12 items-center rounded-full border border-slate-300 bg-white/85 px-5 text-sm text-slate-600 shadow-sm dark:border-white/10 dark:bg-white/5 dark:text-slate-300">
-              <span class="mr-2 text-[11px] uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">{{ t('home.landing.wechatLabel') }}</span>
-              <span data-testid="wechat-id" class="font-semibold text-slate-950 dark:text-white">{{ WECHAT_ID }}</span>
-            </div>
           </div>
         </div>
 
@@ -168,14 +161,6 @@
           >
             {{ t('home.docs') }}
           </a>
-          <a
-            :href="githubUrl"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="transition hover:text-slate-800 dark:hover:text-white"
-          >
-            GitHub
-          </a>
         </div>
       </div>
     </footer>
@@ -210,7 +195,6 @@ const isHomeContentUrl = computed(() => {
 })
 
 const isDark = ref(document.documentElement.classList.contains('dark'))
-const githubUrl = 'https://github.com/Wei-Shaw/sub2api'
 const isAuthenticated = computed(() => authStore.isAuthenticated)
 const isAdmin = computed(() => authStore.isAdmin)
 const dashboardPath = computed(() => (isAdmin.value ? '/admin/dashboard' : '/dashboard'))
