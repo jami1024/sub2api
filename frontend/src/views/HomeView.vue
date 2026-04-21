@@ -17,15 +17,15 @@
     v-else
     class="min-h-screen bg-gradient-to-b from-slate-50 via-white to-slate-100 text-slate-900 dark:from-slate-950 dark:via-slate-950 dark:to-slate-900 dark:text-slate-100"
   >
-    <header class="border-b border-slate-200/80 dark:border-white/10">
-      <nav class="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
+    <header class="border-b border-slate-200/70 dark:border-white/10">
+      <nav class="mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
         <div class="flex items-center gap-3">
-          <div class="h-10 w-10 overflow-hidden rounded-xl bg-slate-900/5 p-1 dark:bg-white/5">
+          <div class="h-10 w-10 overflow-hidden rounded-2xl bg-slate-900/5 p-1 dark:bg-white/5">
             <img :src="siteLogo || '/logo.png'" alt="Logo" class="h-full w-full object-contain" />
           </div>
           <div>
-            <p class="text-sm font-semibold text-slate-900 dark:text-white">{{ siteName }}</p>
-            <p class="text-xs uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
+            <p class="text-sm font-semibold tracking-[0.01em] text-slate-900 dark:text-white">{{ siteName }}</p>
+            <p class="text-[11px] uppercase tracking-[0.28em] text-slate-500 dark:text-slate-400">
               {{ t('home.landing.domainBadge') }}
             </p>
           </div>
@@ -78,29 +78,32 @@
       </nav>
     </header>
 
-    <main class="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-16 px-6 py-12">
-      <section class="grid gap-10 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
-        <div>
-          <h1 class="text-4xl font-black leading-tight text-slate-900 dark:text-white md:text-5xl">
+    <main class="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-20 px-6 py-16 lg:py-20">
+      <section class="grid gap-14 lg:grid-cols-[1.15fr_0.85fr] lg:items-center">
+        <div class="max-w-2xl">
+          <div class="inline-flex items-center rounded-full border border-slate-300/80 bg-white/80 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-500 shadow-sm dark:border-white/10 dark:bg-white/5 dark:text-slate-300">
+            {{ t('home.landing.domainBadge') }}
+          </div>
+          <h1 class="mt-6 max-w-[11ch] text-5xl font-black leading-[0.96] text-slate-950 dark:text-white md:text-6xl xl:text-7xl">
             {{ t('home.landing.title') }}
           </h1>
-          <p class="mt-4 max-w-xl text-base leading-7 text-slate-600 dark:text-slate-300">
+          <p class="mt-6 max-w-[34rem] text-[15px] leading-8 text-slate-600 dark:text-slate-300 md:text-lg">
             {{ t('home.landing.description') }}
           </p>
 
-          <div class="mt-8 flex flex-col gap-4 sm:flex-row sm:items-center">
+          <div class="mt-10 flex flex-col gap-4 sm:flex-row sm:items-stretch sm:gap-3">
             <button
               data-testid="wechat-cta"
               type="button"
               @click="handleWechatClick"
-              class="inline-flex items-center justify-center rounded-full bg-primary-500 px-6 py-3 text-sm font-semibold text-white transition hover:bg-primary-400"
+              class="inline-flex min-h-12 items-center justify-center rounded-full bg-slate-950 px-7 py-3 text-sm font-semibold text-white shadow-[0_16px_40px_rgba(15,23,42,0.18)] transition hover:-translate-y-0.5 hover:bg-slate-800 dark:bg-primary-500 dark:shadow-[0_18px_40px_rgba(59,130,246,0.28)] dark:hover:bg-primary-400"
             >
               {{ t('home.landing.primaryCta') }}
             </button>
-            <p class="text-sm text-slate-600 dark:text-slate-300">
-              {{ t('home.landing.wechatLabel') }}：
-              <span data-testid="wechat-id" class="font-semibold text-slate-900 dark:text-white">{{ WECHAT_ID }}</span>
-            </p>
+            <div class="flex min-h-12 items-center rounded-full border border-slate-300 bg-white/85 px-5 text-sm text-slate-600 shadow-sm dark:border-white/10 dark:bg-white/5 dark:text-slate-300">
+              <span class="mr-2 text-[11px] uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">{{ t('home.landing.wechatLabel') }}</span>
+              <span data-testid="wechat-id" class="font-semibold text-slate-950 dark:text-white">{{ WECHAT_ID }}</span>
+            </div>
           </div>
         </div>
 
