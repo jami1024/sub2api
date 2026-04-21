@@ -13,16 +13,19 @@
   </div>
 
   <!-- Default Home Page -->
-  <div v-else class="min-h-screen bg-slate-950 text-slate-100">
-    <header class="border-b border-white/10">
+  <div
+    v-else
+    class="min-h-screen bg-gradient-to-b from-slate-50 via-white to-slate-100 text-slate-900 dark:from-slate-950 dark:via-slate-950 dark:to-slate-900 dark:text-slate-100"
+  >
+    <header class="border-b border-slate-200/80 dark:border-white/10">
       <nav class="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
         <div class="flex items-center gap-3">
-          <div class="h-10 w-10 overflow-hidden rounded-xl bg-white/5 p-1">
+          <div class="h-10 w-10 overflow-hidden rounded-xl bg-slate-900/5 p-1 dark:bg-white/5">
             <img :src="siteLogo || '/logo.png'" alt="Logo" class="h-full w-full object-contain" />
           </div>
           <div>
-            <p class="text-sm font-semibold text-white">{{ siteName }}</p>
-            <p class="text-xs uppercase tracking-[0.2em] text-slate-400">
+            <p class="text-sm font-semibold text-slate-900 dark:text-white">{{ siteName }}</p>
+            <p class="text-xs uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
               {{ t('home.landing.domainBadge') }}
             </p>
           </div>
@@ -36,7 +39,7 @@
             :href="docUrl"
             target="_blank"
             rel="noopener noreferrer"
-            class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-white/10 text-slate-300 transition hover:border-white/25 hover:text-white"
+            class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-300 text-slate-600 transition hover:border-slate-400 hover:text-slate-900 dark:border-white/10 dark:text-slate-300 dark:hover:border-white/25 dark:hover:text-white"
             :title="t('home.viewDocs')"
           >
             <Icon name="book" size="md" />
@@ -45,7 +48,7 @@
           <button
             type="button"
             @click="toggleTheme"
-            class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-white/10 text-slate-300 transition hover:border-white/25 hover:text-white"
+            class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-300 text-slate-600 transition hover:border-slate-400 hover:text-slate-900 dark:border-white/10 dark:text-slate-300 dark:hover:border-white/25 dark:hover:text-white"
             :title="isDark ? t('home.switchToLight') : t('home.switchToDark')"
           >
             <Icon v-if="isDark" name="sun" size="md" />
@@ -55,7 +58,7 @@
           <router-link
             v-if="isAuthenticated"
             :to="dashboardPath"
-            class="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/15"
+            class="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-800 shadow-sm transition hover:bg-slate-50 dark:border-white/20 dark:bg-white/10 dark:text-white dark:hover:bg-white/15"
           >
             <span
               class="flex h-6 w-6 items-center justify-center rounded-full bg-primary-500/90 text-xs font-semibold text-white"
@@ -67,7 +70,7 @@
           <router-link
             v-else
             to="/login"
-            class="inline-flex items-center rounded-full border border-white/20 bg-white/10 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/15"
+            class="inline-flex items-center rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-800 shadow-sm transition hover:bg-slate-50 dark:border-white/20 dark:bg-white/10 dark:text-white dark:hover:bg-white/15"
           >
             {{ t('home.login') }}
           </router-link>
@@ -78,10 +81,10 @@
     <main class="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-16 px-6 py-12">
       <section class="grid gap-10 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
         <div>
-          <h1 class="text-4xl font-black leading-tight text-white md:text-5xl">
+          <h1 class="text-4xl font-black leading-tight text-slate-900 dark:text-white md:text-5xl">
             {{ t('home.landing.title') }}
           </h1>
-          <p class="mt-4 max-w-xl text-base leading-7 text-slate-300">
+          <p class="mt-4 max-w-xl text-base leading-7 text-slate-600 dark:text-slate-300">
             {{ t('home.landing.description') }}
           </p>
 
@@ -94,9 +97,9 @@
             >
               {{ t('home.landing.primaryCta') }}
             </button>
-            <p class="text-sm text-slate-300">
+            <p class="text-sm text-slate-600 dark:text-slate-300">
               {{ t('home.landing.wechatLabel') }}：
-              <span data-testid="wechat-id" class="font-semibold text-white">{{ WECHAT_ID }}</span>
+              <span data-testid="wechat-id" class="font-semibold text-slate-900 dark:text-white">{{ WECHAT_ID }}</span>
             </p>
           </div>
         </div>
@@ -105,26 +108,26 @@
       </section>
 
       <section>
-        <h2 class="text-2xl font-bold text-white">{{ t('home.landing.whyTitle') }}</h2>
+        <h2 class="text-2xl font-bold text-slate-900 dark:text-white">{{ t('home.landing.whyTitle') }}</h2>
         <div class="mt-6 grid gap-4 md:grid-cols-3">
           <article
             v-for="item in whyItems"
             :key="item.title"
-            class="rounded-2xl border border-white/10 bg-white/5 p-5"
+            class="rounded-2xl border border-slate-200 bg-white/70 p-5 shadow-sm dark:border-white/10 dark:bg-white/5 dark:shadow-none"
           >
-            <h3 class="text-lg font-semibold text-white">{{ item.title }}</h3>
-            <p class="mt-2 text-sm leading-6 text-slate-300">{{ item.description }}</p>
+            <h3 class="text-lg font-semibold text-slate-900 dark:text-white">{{ item.title }}</h3>
+            <p class="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">{{ item.description }}</p>
           </article>
         </div>
       </section>
 
-      <section class="rounded-3xl border border-white/10 bg-white/5 p-6">
-        <h2 class="text-2xl font-bold text-white">{{ t('home.landing.audienceTitle') }}</h2>
+      <section class="rounded-3xl border border-slate-200 bg-white/70 p-6 shadow-sm dark:border-white/10 dark:bg-white/5 dark:shadow-none">
+        <h2 class="text-2xl font-bold text-slate-900 dark:text-white">{{ t('home.landing.audienceTitle') }}</h2>
         <ul class="mt-4 space-y-3">
           <li
             v-for="item in audienceItems"
             :key="item"
-            class="rounded-xl border border-white/10 bg-slate-900/70 px-4 py-3 text-sm text-slate-200"
+            class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 dark:border-white/10 dark:bg-slate-900/70 dark:text-slate-200"
           >
             {{ item }}
           </li>
@@ -132,8 +135,8 @@
       </section>
 
       <section class="rounded-3xl border border-primary-400/30 bg-primary-500/10 p-6 text-center">
-        <h2 class="text-2xl font-bold text-white">{{ t('home.landing.contactTitle') }}</h2>
-        <p class="mx-auto mt-3 max-w-2xl text-sm leading-6 text-slate-200">
+        <h2 class="text-2xl font-bold text-slate-900 dark:text-white">{{ t('home.landing.contactTitle') }}</h2>
+        <p class="mx-auto mt-3 max-w-2xl text-sm leading-6 text-slate-700 dark:text-slate-200">
           {{ t('home.landing.contactDescription') }}
         </p>
         <button
@@ -146,8 +149,8 @@
       </section>
     </main>
 
-    <footer class="border-t border-white/10">
-      <div class="mx-auto flex max-w-6xl flex-col items-center justify-between gap-3 px-6 py-8 text-center text-sm text-slate-400 sm:flex-row sm:text-left">
+    <footer class="border-t border-slate-200/80 dark:border-white/10">
+      <div class="mx-auto flex max-w-6xl flex-col items-center justify-between gap-3 px-6 py-8 text-center text-sm text-slate-500 dark:text-slate-400 sm:flex-row sm:text-left">
         <div>
           <p>{{ t('home.landing.footerTagline') }}</p>
           <p class="mt-1">&copy; {{ currentYear }} {{ siteName }}. {{ t('home.footer.allRightsReserved') }}</p>
@@ -158,7 +161,7 @@
             :href="docUrl"
             target="_blank"
             rel="noopener noreferrer"
-            class="transition hover:text-white"
+            class="transition hover:text-slate-800 dark:hover:text-white"
           >
             {{ t('home.docs') }}
           </a>
@@ -166,7 +169,7 @@
             :href="githubUrl"
             target="_blank"
             rel="noopener noreferrer"
-            class="transition hover:text-white"
+            class="transition hover:text-slate-800 dark:hover:text-white"
           >
             GitHub
           </a>
@@ -193,7 +196,7 @@ const authStore = useAuthStore()
 const appStore = useAppStore()
 const { copyToClipboard } = useClipboard()
 
-const siteName = computed(() => appStore.cachedPublicSettings?.site_name || appStore.siteName || 'AigoHub')
+const siteName = computed(() => appStore.cachedPublicSettings?.site_name || appStore.siteName || 'Sub2API')
 const siteLogo = computed(() => appStore.cachedPublicSettings?.site_logo || appStore.siteLogo || '')
 const docUrl = computed(() => appStore.cachedPublicSettings?.doc_url || appStore.docUrl || '')
 const homeContent = computed(() => appStore.cachedPublicSettings?.home_content || '')
