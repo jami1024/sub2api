@@ -135,3 +135,5 @@ frontend/coverage/
 aicodex
 output/
 .worktrees/
+.pnpm-store/
+.superpowers/
