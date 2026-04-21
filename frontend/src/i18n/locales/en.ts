@@ -15,8 +15,13 @@ export default {
       title: 'Stable to use. Simple to access.',
       description: 'AigoHub gives buyers a steadier AI service entry point with less friction and more peace of mind.',
       primaryCta: 'Add on WeChat',
+      successCta: 'Copied, now open WeChat',
       wechatLabel: 'WeChat',
       copySuccess: 'WeChat ID copied. Open WeChat to add it.',
+      easterEgg: 'You found it. Come say hi.',
+      delightPills: {
+        quickConsult: 'Ask quickly'
+      },
       whyTitle: 'Why AigoHub',
       whyItems: {
         stableUse: {

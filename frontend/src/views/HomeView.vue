@@ -81,26 +81,85 @@
     <main class="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-20 px-6 py-16 lg:py-20">
       <section class="grid gap-14 lg:grid-cols-[1.15fr_0.85fr] lg:items-center">
         <div class="max-w-2xl">
-          <div class="inline-flex items-center rounded-full border border-slate-300/80 bg-white/80 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-500 shadow-sm dark:border-white/10 dark:bg-white/5 dark:text-slate-300">
+          <button
+            data-testid="home-domain-badge"
+            type="button"
+            @click="handleBadgeClick"
+            class="inline-flex items-center rounded-full border border-slate-300/80 bg-white/80 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-500 shadow-sm transition duration-300 hover:-translate-y-0.5 hover:border-slate-400 hover:text-slate-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/60 dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:border-white/20 dark:hover:text-white"
+          >
             {{ t('home.landing.domainBadge') }}
-          </div>
+          </button>
           <p class="mt-8 max-w-[34rem] text-[15px] leading-8 text-slate-600 dark:text-slate-300 md:text-lg">
             {{ t('home.landing.description') }}
           </p>
 
-          <div class="mt-10">
+          <div class="relative mt-10 max-w-xl">
+            <div
+              class="pointer-events-none absolute inset-x-6 -top-5 bottom-0 rounded-full bg-primary-400/20 blur-3xl transition duration-300 dark:bg-primary-500/20"
+              :class="isCtaHighlighted ? 'scale-100 opacity-100' : 'scale-95 opacity-0'"
+            />
+            <div class="relative z-10 mb-4 flex flex-wrap gap-3">
+              <span
+                v-for="(pill, index) in delightPills"
+                :key="pill.key"
+                :data-testid="`hero-delight-pill-${pill.key}`"
+                class="rounded-full border border-slate-200 bg-white/80 px-3 py-2 text-xs font-medium text-slate-600 shadow-sm transition duration-300 dark:border-white/10 dark:bg-white/5 dark:text-slate-200"
+                :class="[
+                  isCtaHighlighted ? 'translate-y-0 scale-100 border-primary-300/60 dark:border-primary-400/40' : 'translate-y-0',
+                  prefersReducedMotion ? '' : 'home-delight-pill'
+                ]"
+                :style="prefersReducedMotion ? undefined : { animationDelay: `${index * 160}ms` }"
+              >
+                {{ pill.label }}
+              </span>
+            </div>
             <button
               data-testid="wechat-cta"
               type="button"
               @click="handleWechatClick"
-              class="inline-flex min-h-12 items-center justify-center rounded-full bg-slate-950 px-7 py-3 text-sm font-semibold text-white shadow-[0_16px_40px_rgba(15,23,42,0.18)] transition hover:-translate-y-0.5 hover:bg-slate-800 dark:bg-primary-500 dark:shadow-[0_18px_40px_rgba(59,130,246,0.28)] dark:hover:bg-primary-400"
+              @mouseenter="isCtaHovered = true"
+              @mouseleave="isCtaHovered = false"
+              @focus="isCtaHovered = true"
+              @blur="isCtaHovered = false"
+              class="group relative inline-flex min-h-12 items-center justify-center overflow-hidden rounded-full px-7 py-3 text-sm font-semibold text-white transition duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/60"
+              :class="
+                isWechatCopied
+                  ? 'bg-emerald-500 shadow-[0_18px_40px_rgba(16,185,129,0.28)]'
+                  : 'bg-slate-950 shadow-[0_16px_40px_rgba(15,23,42,0.18)] hover:-translate-y-0.5 hover:bg-slate-800 dark:bg-primary-500 dark:shadow-[0_18px_40px_rgba(59,130,246,0.28)] dark:hover:bg-primary-400'
+              "
             >
-              {{ t('home.landing.primaryCta') }}
+              <span class="pointer-events-none absolute inset-0 rounded-full border border-white/15"></span>
+              <span
+                class="pointer-events-none absolute inset-0 rounded-full border border-white/30 transition duration-500"
+                :class="isWechatCopied ? 'scale-[1.08] opacity-100' : 'scale-100 opacity-0'"
+              ></span>
+              <span
+                class="home-cta-sheen pointer-events-none absolute inset-y-0 left-[-35%] w-24 -skew-x-12 bg-white/20 blur-xl transition duration-700"
+                :class="isCtaHighlighted ? 'translate-x-[260%] opacity-100' : 'translate-x-0 opacity-0'"
+              ></span>
+              <span class="relative z-10 flex items-center gap-2">
+                <span>{{ ctaLabel }}</span>
+                <span
+                  v-if="isWechatCopied"
+                  class="inline-flex h-5 w-5 items-center justify-center rounded-full bg-white/20 text-xs font-bold"
+                  aria-hidden="true"
+                >
+                  ✓
+                </span>
+              </span>
             </button>
+
+            <p
+              v-if="easterEggVisible"
+              data-testid="home-easter-egg"
+              class="mt-3 text-sm text-slate-500 transition duration-300 dark:text-slate-300"
+            >
+              {{ easterEggMessage }}
+            </p>
           </div>
         </div>
 
-        <AigoHubHeroPanel />
+        <AigoHubHeroPanel :reduced-motion="prefersReducedMotion" />
       </section>
 
       <section>
@@ -168,7 +227,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import { useAuthStore, useAppStore } from '@/stores'
@@ -178,6 +237,9 @@ import AigoHubHeroPanel from '@/components/home/AigoHubHeroPanel.vue'
 import Icon from '@/components/icons/Icon.vue'
 
 const WECHAT_ID = 'G000000000g1e'
+const CTA_SUCCESS_RESET_MS = 2200
+const EASTER_EGG_TRIGGER_COUNT = 5
+const EASTER_EGG_RESET_MS = 3200
 
 const { t } = useI18n()
 const authStore = useAuthStore()
@@ -199,11 +261,27 @@ const isHomeContentUrl = computed(() => {
 })
 
 const isDark = ref(document.documentElement.classList.contains('dark'))
+const isCtaHovered = ref(false)
+const isWechatCopied = ref(false)
+const easterEggClicks = ref(0)
+const easterEggVisible = ref(false)
+const prefersReducedMotion = ref(false)
 const isAuthenticated = computed(() => authStore.isAuthenticated)
 const isAdmin = computed(() => authStore.isAdmin)
 const dashboardPath = computed(() => (isAdmin.value ? '/admin/dashboard' : '/dashboard'))
 const userInitial = computed(() => authStore.user?.email?.charAt(0).toUpperCase() || '')
 const currentYear = computed(() => new Date().getFullYear())
+const ctaLabel = computed(() => (isWechatCopied.value ? t('home.landing.successCta') : t('home.landing.primaryCta')))
+const easterEggMessage = computed(() => t('home.landing.easterEgg'))
+const isCtaHighlighted = computed(() => isCtaHovered.value || isWechatCopied.value)
+const delightPills = computed(() => [
+  { key: 'stable', label: t('home.landing.whyItems.stableUse.title') },
+  { key: 'easy', label: t('home.landing.whyItems.easyAccess.title') },
+  { key: 'fast', label: t('home.landing.delightPills.quickConsult') }
+])
+
+let ctaResetTimer: number | null = null
+let easterEggTimer: number | null = null
 
 const whyItems = computed(() => [
   {
@@ -226,8 +304,47 @@ const audienceItems = computed(() => [
   t('home.landing.audienceItems.longTerm')
 ])
 
+function clearCtaResetTimer() {
+  if (!ctaResetTimer) return
+  window.clearTimeout(ctaResetTimer)
+  ctaResetTimer = null
+}
+
+function clearEasterEggTimer() {
+  if (!easterEggTimer) return
+  window.clearTimeout(easterEggTimer)
+  easterEggTimer = null
+}
+
+function scheduleCtaReset() {
+  clearCtaResetTimer()
+  ctaResetTimer = window.setTimeout(() => {
+    isWechatCopied.value = false
+    ctaResetTimer = null
+  }, CTA_SUCCESS_RESET_MS)
+}
+
+function scheduleEasterEggHide() {
+  clearEasterEggTimer()
+  easterEggTimer = window.setTimeout(() => {
+    easterEggVisible.value = false
+    easterEggClicks.value = 0
+    easterEggTimer = null
+  }, EASTER_EGG_RESET_MS)
+}
+
 async function handleWechatClick() {
   await copyToClipboard(WECHAT_ID, t('home.landing.copySuccess'))
+  isWechatCopied.value = true
+  scheduleCtaReset()
+}
+
+function handleBadgeClick() {
+  easterEggClicks.value += 1
+  if (easterEggClicks.value < EASTER_EGG_TRIGGER_COUNT) return
+
+  easterEggVisible.value = true
+  scheduleEasterEggHide()
 }
 
 function toggleTheme() {
@@ -245,10 +362,38 @@ function initTheme() {
 }
 
 onMounted(() => {
+  prefersReducedMotion.value = window.matchMedia('(prefers-reduced-motion: reduce)').matches
   initTheme()
   authStore.checkAuth()
   if (!appStore.publicSettingsLoaded) {
     appStore.fetchPublicSettings()
   }
 })
+
+onBeforeUnmount(() => {
+  clearCtaResetTimer()
+  clearEasterEggTimer()
+})
 </script>
+
+<style scoped>
+.home-delight-pill {
+  animation: home-delight-pill-float 6.4s ease-in-out infinite;
+}
+
+@keyframes home-delight-pill-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-delight-pill {
+    animation: none;
+  }
+}
+</style>
