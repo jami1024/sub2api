@@ -22,6 +22,14 @@ const publicSettings = ref({
   home_content: ''
 })
 
+const appState = {
+  publicSettingsLoaded: true,
+  siteName: 'AigoHub',
+  siteLogo: '',
+  docUrl: '',
+  cachedPublicSettings: publicSettings.value as typeof publicSettings.value | null
+}
+
 const messages: Record<string, string> = {
   'home.viewDocs': '查看文档',
   'home.switchToLight': '切换到浅色模式',
@@ -66,11 +74,21 @@ vi.mock('@/stores', () => ({
     checkAuth
   }),
   useAppStore: () => ({
-    cachedPublicSettings: publicSettings.value,
-    siteName: publicSettings.value.site_name,
-    siteLogo: publicSettings.value.site_logo,
-    docUrl: publicSettings.value.doc_url,
-    publicSettingsLoaded: true,
+    get cachedPublicSettings() {
+      return appState.cachedPublicSettings
+    },
+    get siteName() {
+      return appState.siteName
+    },
+    get siteLogo() {
+      return appState.siteLogo
+    },
+    get docUrl() {
+      return appState.docUrl
+    },
+    get publicSettingsLoaded() {
+      return appState.publicSettingsLoaded
+    },
     fetchPublicSettings
   })
 }))
@@ -134,6 +152,11 @@ describe('HomeView', () => {
       doc_url: '',
       home_content: ''
     }
+    appState.cachedPublicSettings = publicSettings.value
+    appState.publicSettingsLoaded = true
+    appState.siteName = 'AigoHub'
+    appState.siteLogo = ''
+    appState.docUrl = ''
   })
 
   it('renders the AigoHub landing page when home_content is empty', () => {
@@ -177,5 +200,15 @@ describe('HomeView', () => {
 
     expect(wrapper.text()).toContain('控制台')
     expect(wrapper.text()).not.toContain('登录')
+  })
+
+  it('does not flash the Sub2API fallback brand before public settings load', () => {
+    appState.cachedPublicSettings = null
+    appState.publicSettingsLoaded = false
+    appState.siteName = 'Sub2API'
+
+    const wrapper = mountView()
+
+    expect(wrapper.text()).not.toContain('Sub2API')
   })
 })
