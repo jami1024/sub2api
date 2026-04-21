@@ -15,8 +15,13 @@ export default {
       title: '稳定使用，省心接入。',
       description: 'AigoHub 为购买用户提供更稳定的 AI 服务入口，少一点折腾，多一点省心。',
       primaryCta: '立即加微信',
+      successCta: '已复制，去微信添加',
       wechatLabel: '微信号',
       copySuccess: '微信号已复制，请前往微信添加',
+      easterEgg: '被你发现了，欢迎来聊聊。',
+      delightPills: {
+        quickConsult: '快速咨询'
+      },
       whyTitle: '为什么选 AigoHub',
       whyItems: {
         stableUse: {

@@ -42,8 +42,11 @@ const messages: Record<string, string> = {
   'home.landing.title': '稳定使用，省心接入。',
   'home.landing.description': 'AigoHub 为购买用户提供更稳定的 AI 服务入口，少一点折腾，多一点省心。',
   'home.landing.primaryCta': '立即加微信',
+  'home.landing.successCta': '已复制，去微信添加',
   'home.landing.wechatLabel': '微信号',
   'home.landing.copySuccess': '微信号已复制，请前往微信添加',
+  'home.landing.easterEgg': '被你发现了，欢迎来聊聊。',
+  'home.landing.delightPills.quickConsult': '快速咨询',
   'home.landing.whyTitle': '为什么选 AigoHub',
   'home.landing.whyItems.stableUse.title': '稳定使用',
   'home.landing.whyItems.stableUse.description': '减少中断感，日常使用更放心',
@@ -173,6 +176,49 @@ describe('HomeView', () => {
     await wrapper.get('[data-testid="wechat-cta"]').trigger('click')
 
     expect(copyToClipboard).toHaveBeenCalledWith('G000000000g1e', '微信号已复制，请前往微信添加')
+  })
+
+  it('切换为复制成功状态并在定时后恢复默认文案', async () => {
+    vi.useFakeTimers()
+    const wrapper = mountView()
+
+    await wrapper.get('[data-testid="wechat-cta"]').trigger('click')
+    await Promise.resolve()
+
+    expect(wrapper.get('[data-testid="wechat-cta"]').text()).toContain('已复制，去微信添加')
+
+    await vi.advanceTimersByTimeAsync(2200)
+    expect(wrapper.get('[data-testid="wechat-cta"]').text()).toContain('立即加微信')
+
+    vi.useRealTimers()
+  })
+
+  it('连续点击 domain badge 后显示隐藏彩蛋', async () => {
+    const wrapper = mountView()
+    const badge = wrapper.get('[data-testid="home-domain-badge"]')
+
+    await badge.trigger('click')
+    await badge.trigger('click')
+    await badge.trigger('click')
+    await badge.trigger('click')
+    await badge.trigger('click')
+
+    expect(wrapper.text()).toContain('被你发现了，欢迎来聊聊。')
+  })
+
+  it('渲染 CTA 周边 delight 提示词', () => {
+    const wrapper = mountView()
+
+    expect(wrapper.get('[data-testid="hero-delight-pill-stable"]').text()).toContain('稳定使用')
+    expect(wrapper.get('[data-testid="hero-delight-pill-easy"]').text()).toContain('省心接入')
+    expect(wrapper.get('[data-testid="hero-delight-pill-fast"]').text()).toContain('快速咨询')
+  })
+
+  it('渲染带有生命感标记的 HeroPanel', () => {
+    const wrapper = mountView()
+
+    expect(wrapper.get('[data-testid="home-hero-panel"]').exists()).toBe(true)
+    expect(wrapper.get('[data-testid="home-hero-panel-glow"]').exists()).toBe(true)
   })
 
   it('renders the iframe override when home_content is an external URL', () => {
