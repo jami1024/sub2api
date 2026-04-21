@@ -50,22 +50,24 @@ describe('ModelDistributionChart', () => {
       output_tokens: 50,
       cache_creation_tokens: 0,
       cache_read_tokens: 0,
-      total_tokens: 1000,
-      cost: 1.5,
-      actual_cost: 0.2,
-    },
-    {
+    total_tokens: 1000,
+    cost: 1.5,
+    actual_cost: 0.2,
+    account_cost: 0.8,
+  },
+  {
       model: 'model-b',
       requests: 3,
       input_tokens: 40,
       output_tokens: 20,
       cache_creation_tokens: 0,
       cache_read_tokens: 0,
-      total_tokens: 500,
-      cost: 0.5,
-      actual_cost: 1.4,
-    },
-  ]
+    total_tokens: 500,
+    cost: 0.5,
+    actual_cost: 1.4,
+    account_cost: 0.6,
+  },
+]
 
   it('uses total_tokens and token ordering by default', () => {
     const wrapper = mount(ModelDistributionChart, {
