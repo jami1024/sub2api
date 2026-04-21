@@ -10,6 +10,38 @@ export default {
     login: '登录',
     getStarted: '立即开始',
     goToDashboard: '进入控制台',
+    landing: {
+      domainBadge: 'AIGO.RUN',
+      title: '稳定使用，省心接入。',
+      description: 'AigoHub 为购买用户提供更稳定的 AI 服务入口，少一点折腾，多一点省心。',
+      primaryCta: '立即加微信',
+      wechatLabel: '微信号',
+      copySuccess: '微信号已复制，请前往微信添加',
+      whyTitle: '为什么选 AigoHub',
+      whyItems: {
+        stableUse: {
+          title: '稳定使用',
+          description: '减少中断感，日常使用更放心'
+        },
+        easyAccess: {
+          title: '省心接入',
+          description: '不把精力花在反复折腾上'
+        },
+        longTerm: {
+          title: '长期可用',
+          description: '更适合希望长期稳定使用的用户'
+        }
+      },
+      audienceTitle: '适合什么人',
+      audienceItems: {
+        buyers: '想找稳定 AI 服务入口的人',
+        simpleAccess: '不想频繁折腾接入流程的人',
+        longTerm: '更在意长期体验和省心程度的人'
+      },
+      contactTitle: '联系微信，快速咨询',
+      contactDescription: '添加微信后可进一步了解服务内容',
+      footerTagline: 'AigoHub，给你更放心的 AI 服务入口。'
+    },
     // 新增：面向用户的价值主张
     heroSubtitle: '一个密钥，畅用多个 AI 模型',
     heroDescription: '无需管理多个订阅账号，一站式接入 Claude、GPT、Gemini 等主流 AI 服务',

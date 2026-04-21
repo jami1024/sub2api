@@ -10,6 +10,38 @@ export default {
     login: 'Login',
     getStarted: 'Get Started',
     goToDashboard: 'Go to Dashboard',
+    landing: {
+      domainBadge: 'AIGO.RUN',
+      title: 'Stable to use. Simple to access.',
+      description: 'AigoHub gives buyers a steadier AI service entry point with less friction and more peace of mind.',
+      primaryCta: 'Add on WeChat',
+      wechatLabel: 'WeChat',
+      copySuccess: 'WeChat ID copied. Open WeChat to add it.',
+      whyTitle: 'Why AigoHub',
+      whyItems: {
+        stableUse: {
+          title: 'Stable to use',
+          description: 'Fewer interruptions and a calmer day-to-day experience.'
+        },
+        easyAccess: {
+          title: 'Simple to access',
+          description: 'Spend less time troubleshooting and more time using it.'
+        },
+        longTerm: {
+          title: 'Built for long-term use',
+          description: 'A better fit for buyers who care about ongoing reliability.'
+        }
+      },
+      audienceTitle: 'Who it fits',
+      audienceItems: {
+        buyers: 'People looking for a steady AI service entry point',
+        simpleAccess: 'People who do not want to keep reworking access details',
+        longTerm: 'People who care more about long-term peace of mind'
+      },
+      contactTitle: 'Add WeChat to ask first',
+      contactDescription: 'Reach out on WeChat to learn the service details before buying.',
+      footerTagline: 'AigoHub gives you a steadier place to start with AI services.'
+    },
     // User-focused value proposition
     heroSubtitle: 'One Key, All AI Models',
     heroDescription: 'No need to manage multiple subscriptions. Access Claude, GPT, Gemini and more with a single API key',
