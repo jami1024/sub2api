@@ -221,6 +221,28 @@ describe('HomeView', () => {
     expect(wrapper.get('[data-testid="home-hero-panel-glow"]').exists()).toBe(true)
   })
 
+  it('renders the codex package section with GPT-5.4 estimates and Claude teaser', () => {
+    const wrapper = mountView()
+
+    expect(wrapper.text()).toContain('Codex 额度包')
+    expect(wrapper.text()).toContain('¥15 / $50 额度包')
+    expect(wrapper.text()).toContain('¥30 / $120 额度包')
+    expect(wrapper.text()).toContain('¥100 / $400 额度包')
+    expect(wrapper.text()).toContain('按 GPT-5.4 约可使用 1000 万 tokens')
+    expect(wrapper.text()).toContain('按输入:输出 = 4:1 估算')
+    expect(wrapper.text()).toContain('Claude 额度包')
+    expect(wrapper.text()).toContain('敬请期待')
+  })
+
+  it('renders three codex package cards and one claude teaser card', () => {
+    const wrapper = mountView()
+    const cards = wrapper.findAll('[data-testid="home-package-card"]')
+
+    expect(cards).toHaveLength(4)
+    expect(wrapper.get('[data-testid="home-package-section"]').text()).toContain('当前仅支持 Codex')
+    expect(cards[3].attributes('data-package-kind')).toBe('claude-teaser')
+  })
+
   it('renders the iframe override when home_content is an external URL', () => {
     publicSettings.value.home_content = 'https://example.com/landing'
 

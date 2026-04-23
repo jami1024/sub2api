@@ -162,6 +162,8 @@
         <AigoHubHeroPanel :reduced-motion="prefersReducedMotion" />
       </section>
 
+      <HomePackageSection />
+
       <section>
         <h2 class="text-2xl font-bold text-slate-900 dark:text-white">{{ t('home.landing.whyTitle') }}</h2>
         <div class="mt-6 grid gap-4 md:grid-cols-3">
@@ -234,6 +236,7 @@ import { useAuthStore, useAppStore } from '@/stores'
 import { useClipboard } from '@/composables/useClipboard'
 import LocaleSwitcher from '@/components/common/LocaleSwitcher.vue'
 import AigoHubHeroPanel from '@/components/home/AigoHubHeroPanel.vue'
+import HomePackageSection from '@/components/home/HomePackageSection.vue'
 import Icon from '@/components/icons/Icon.vue'
 
 const WECHAT_ID = 'G000000000g1e'
