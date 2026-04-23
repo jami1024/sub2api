@@ -26,7 +26,7 @@ services:
   sub2api:
     image: sub2api:local
     pull_policy: never
-    container_name: sub2api
+    container_name: sub2api-personal
     restart: unless-stopped
     ulimits:
       nofile:
@@ -166,7 +166,7 @@ services:
   # ===========================================================================
   postgres:
     image: postgres:18-alpine
-    container_name: sub2api-postgres
+    container_name: sub2api-postgres-personal
     restart: unless-stopped
     ulimits:
       nofile:
@@ -197,7 +197,7 @@ services:
   # ===========================================================================
   redis:
     image: redis:8-alpine
-    container_name: sub2api-redis
+    container_name: sub2api-redis-personal
     restart: unless-stopped
     ulimits:
       nofile:

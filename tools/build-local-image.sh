@@ -102,7 +102,31 @@ awk -v image="${IMAGE_NAME}" '
       exit 2
     }
   }
-' "${SOURCE_COMPOSE}" > "${OUTPUT_PATH}"
+' "${SOURCE_COMPOSE}" | awk '
+  /^    container_name: sub2api$/ {
+    print "    container_name: sub2api-personal"
+    next
+  }
+
+  /^    container_name: sub2api-postgres$/ {
+    print "    container_name: sub2api-postgres-personal"
+    next
+  }
+
+  /^    container_name: sub2api-redis$/ {
+    print "    container_name: sub2api-redis-personal"
+    next
+  }
+
+  /^      - "\\$\\{BIND_HOST:-0\\.0\\.0\\.0\\}:\\$\\{SERVER_PORT:-8080\\}:8080"$/ {
+    print "      - \"${BIND_HOST:-0.0.0.0}:${SERVER_PORT:-18080}:8080\""
+    next
+  }
+
+  {
+    print
+  }
+' > "${OUTPUT_PATH}"
 
 echo "Generated ${OUTPUT_PATH}"
 echo "Image: ${IMAGE_NAME}"
