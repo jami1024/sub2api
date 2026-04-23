@@ -54,10 +54,10 @@
                 </p>
                 <h3 class="mt-2.5 text-[1.95rem] font-semibold leading-none text-slate-900 dark:text-white sm:text-[2.05rem]">
                   <span class="sr-only">{{ card.name }}</span>
-                  <span class="inline-grid grid-cols-[minmax(0,4.4ch)_auto_minmax(0,5.4ch)] items-baseline gap-x-2.5 tabular-nums">
-                    <span class="text-right">{{ card.priceLabel }}</span>
-                    <span class="text-slate-400 dark:text-slate-500">/</span>
-                    <span class="text-left">{{ card.creditLabel }}</span>
+                  <span class="inline-grid grid-cols-[5rem_1.1rem_5.9rem] items-baseline tabular-nums sm:grid-cols-[5.4rem_1.2rem_6.4rem]">
+                    <span class="block text-right">{{ card.priceLabel }}</span>
+                    <span class="block text-center text-slate-400 dark:text-slate-500">/</span>
+                    <span class="block text-left">{{ card.creditLabel }}</span>
                   </span>
                 </h3>
               </div>
