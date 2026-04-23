@@ -225,9 +225,9 @@ describe('HomeView', () => {
     const wrapper = mountView()
 
     expect(wrapper.text()).toContain('Codex 额度包')
-    expect(wrapper.text()).toContain('¥15 / $50 额度包')
-    expect(wrapper.text()).toContain('¥30 / $120 额度包')
-    expect(wrapper.text()).toContain('¥100 / $400 额度包')
+    expect(wrapper.text()).toContain('¥15 / $50')
+    expect(wrapper.text()).toContain('¥30 / $120')
+    expect(wrapper.text()).toContain('¥100 / $400')
     expect(wrapper.text()).toContain('按 GPT-5.4 约可使用 1000 万 tokens')
     expect(wrapper.text()).toContain('按输入:输出 = 4:1 估算')
     expect(wrapper.text()).toContain('Claude 额度包')

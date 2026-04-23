@@ -33,16 +33,16 @@
         </div>
       </div>
 
-      <div class="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-[repeat(3,minmax(0,1fr))_0.9fr]">
+      <div class="mt-7 grid gap-3 md:grid-cols-2 xl:grid-cols-[repeat(3,minmax(0,1fr))_0.84fr]">
         <article
           v-for="card in packageCards"
           :key="card.name"
           data-testid="home-package-card"
           :data-package-kind="card.kind"
-          class="group flex h-full flex-col overflow-hidden rounded-[1.8rem] border p-5 transition duration-300 sm:p-6"
+          class="group flex h-full flex-col overflow-hidden rounded-[1.65rem] border p-4 transition duration-300 sm:p-5"
           :class="
             card.kind === 'codex'
-              ? 'border-slate-200/80 bg-slate-50/92 shadow-[0_18px_50px_rgba(15,23,42,0.06)] hover:-translate-y-1 hover:border-slate-300 dark:border-white/10 dark:bg-slate-950/72 dark:hover:border-white/20'
+              ? 'border-slate-200/80 bg-slate-50/92 shadow-[0_14px_40px_rgba(15,23,42,0.05)] hover:-translate-y-1 hover:border-slate-300 dark:border-white/10 dark:bg-slate-950/72 dark:hover:border-white/20'
               : 'border-slate-200/70 bg-white/70 shadow-[0_14px_36px_rgba(15,23,42,0.04)] dark:border-white/10 dark:bg-white/5'
           "
         >
@@ -52,38 +52,43 @@
                 <p class="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400 dark:text-slate-500">
                   Codex Package
                 </p>
-                <h3 class="mt-3 text-xl font-semibold text-slate-900 dark:text-white">
-                  {{ card.name }}
+                <h3 class="mt-2.5 text-[1.95rem] font-semibold leading-none text-slate-900 dark:text-white sm:text-[2.05rem]">
+                  <span class="sr-only">{{ card.name }}</span>
+                  <span class="inline-grid grid-cols-[minmax(0,4.4ch)_auto_minmax(0,5.4ch)] items-baseline gap-x-2.5 tabular-nums">
+                    <span class="text-right">{{ card.priceLabel }}</span>
+                    <span class="text-slate-400 dark:text-slate-500">/</span>
+                    <span class="text-left">{{ card.creditLabel }}</span>
+                  </span>
                 </h3>
               </div>
               <span
-                class="inline-flex rounded-full border border-sky-200/80 bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-700 dark:border-sky-400/20 dark:bg-sky-400/10 dark:text-sky-200"
+                class="inline-flex rounded-full border border-sky-200/80 bg-sky-50 px-2.5 py-1 text-xs font-semibold text-sky-700 dark:border-sky-400/20 dark:bg-sky-400/10 dark:text-sky-200"
               >
                 {{ card.multiplier }}
               </span>
             </div>
 
-            <div class="mt-7 rounded-[1.5rem] bg-slate-950 px-4 py-4 text-white dark:bg-white dark:text-slate-950">
+            <div class="mt-5 rounded-[1.35rem] bg-slate-950 px-4 py-3.5 text-white dark:bg-white dark:text-slate-950">
               <p class="text-xs font-medium uppercase tracking-[0.2em] text-white/60 dark:text-slate-500">按 GPT-5.4 约可使用</p>
-              <p class="mt-3 text-2xl font-semibold leading-tight sm:text-[2rem]">{{ card.estimateValue }}</p>
+              <p class="mt-2.5 text-[2.1rem] font-semibold leading-none sm:text-[2.35rem]">{{ card.estimateValue }}</p>
               <p class="mt-2 text-sm text-white/70 dark:text-slate-500">tokens</p>
             </div>
 
-            <div class="mt-6 grid gap-3 text-sm text-slate-600 dark:text-slate-300">
-              <div class="flex items-center justify-between gap-3 rounded-2xl bg-white/80 px-4 py-3 dark:bg-white/5">
+            <div class="mt-5 grid gap-2.5 text-sm text-slate-600 dark:text-slate-300">
+              <div class="flex items-center justify-between gap-3 rounded-[1.1rem] bg-white/80 px-3.5 py-2.5 dark:bg-white/5">
                 <span>价格</span>
                 <span class="text-base font-semibold text-slate-900 dark:text-white">{{ card.priceLabel }}</span>
               </div>
-              <div class="flex items-center justify-between gap-3 rounded-2xl bg-white/80 px-4 py-3 dark:bg-white/5">
+              <div class="flex items-center justify-between gap-3 rounded-[1.1rem] bg-white/80 px-3.5 py-2.5 dark:bg-white/5">
                 <span>额度</span>
                 <span class="text-base font-semibold text-slate-900 dark:text-white">{{ card.creditLabel }}</span>
               </div>
             </div>
 
-            <p class="mt-5 text-sm leading-6 text-slate-500 dark:text-slate-400">
+            <p class="mt-4 text-sm leading-6 text-slate-500 dark:text-slate-400">
               {{ card.estimateLabel }}
             </p>
-            <p class="mt-2 text-xs uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">
+            <p class="mt-1.5 text-xs uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">
               {{ card.ratioLabel }}
             </p>
           </template>
@@ -96,11 +101,11 @@
                 >
                   {{ card.badge }}
                 </span>
-                <h3 class="mt-5 text-2xl font-semibold text-slate-900 dark:text-white">{{ card.name }}</h3>
-                <p class="mt-4 text-sm leading-7 text-slate-600 dark:text-slate-300">{{ card.creditLabel }}</p>
+                <h3 class="mt-4 text-[1.9rem] font-semibold text-slate-900 dark:text-white">{{ card.name }}</h3>
+                <p class="mt-3 text-sm leading-7 text-slate-600 dark:text-slate-300">{{ card.creditLabel }}</p>
               </div>
 
-              <div class="mt-8 rounded-[1.5rem] border border-dashed border-slate-300/80 bg-slate-50/85 px-4 py-4 dark:border-white/10 dark:bg-slate-900/70">
+              <div class="mt-6 rounded-[1.35rem] border border-dashed border-slate-300/80 bg-slate-50/85 px-4 py-3.5 dark:border-white/10 dark:bg-slate-900/70">
                 <p class="text-sm font-semibold text-slate-900 dark:text-white">{{ card.priceLabel }}</p>
                 <p class="mt-2 text-xs uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">
                   Claude 方案开放后将在这里补充
@@ -129,7 +134,7 @@ type HomePackageCard = {
 
 const packageCards: HomePackageCard[] = [
   {
-    name: '¥15 / $50 额度包',
+    name: '¥15 / $50',
     priceLabel: '¥15',
     creditLabel: '$50',
     estimateValue: '1000 万',
@@ -139,7 +144,7 @@ const packageCards: HomePackageCard[] = [
     kind: 'codex'
   },
   {
-    name: '¥30 / $120 额度包',
+    name: '¥30 / $120',
     priceLabel: '¥30',
     creditLabel: '$120',
     estimateValue: '2400 万',
@@ -149,7 +154,7 @@ const packageCards: HomePackageCard[] = [
     kind: 'codex'
   },
   {
-    name: '¥100 / $400 额度包',
+    name: '¥100 / $400',
     priceLabel: '¥100',
     creditLabel: '$400',
     estimateValue: '8000 万',
