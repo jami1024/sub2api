@@ -8,9 +8,19 @@
         <!-- Tab Switcher (hide during payment and subscription confirm) -->
         <div v-if="tabs.length > 1 && paymentPhase === 'select' && !selectedPlan && !selectedBalancePackage" class="flex space-x-1 rounded-xl bg-gray-100 p-1 dark:bg-dark-800">
           <button v-for="tab in tabs" :key="tab.key"
+            :data-testid="`payment-tab-${tab.key}`"
             class="flex-1 rounded-lg px-4 py-2.5 text-sm font-medium transition-all"
-            :class="activeTab === tab.key ? 'bg-white text-gray-900 shadow dark:bg-dark-700 dark:text-white' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'"
-            @click="activeTab = tab.key">{{ tab.label }}</button>
+            :class="[
+              activeTab === tab.key
+                ? 'bg-white text-gray-900 shadow dark:bg-dark-700 dark:text-white'
+                : 'text-gray-500 dark:text-gray-400',
+              tab.disabled
+                ? 'cursor-not-allowed opacity-50'
+                : 'hover:text-gray-700 dark:hover:text-gray-300'
+            ]"
+            :disabled="tab.disabled"
+            @click="!tab.disabled && (activeTab = tab.key)"
+          >{{ tab.label }}</button>
         </div>
         <!-- Payment in progress (shared by recharge and subscription) -->
         <template v-if="paymentPhase === 'paying'">
@@ -90,28 +100,69 @@
           </template>
           <!-- Balance Package Tab -->
           <template v-else-if="activeTab === 'package'">
-            <template v-if="selectedBalancePackage">
-              <div class="card p-5">
-                <div class="mb-3 flex flex-wrap items-center gap-2">
-                  <span class="rounded-md border border-primary-200 bg-primary-50 px-2 py-0.5 text-xs font-medium text-primary-700 dark:border-primary-800 dark:bg-primary-950/30 dark:text-primary-300">
-                    {{ selectedBalancePackage.package_scope === 'codex' ? t('payment.balancePackages.codex') : t('payment.balancePackages.general') }}
-                  </span>
-                  <h3 class="text-lg font-bold text-gray-900 dark:text-white">{{ selectedBalancePackage.name }}</h3>
+            <div data-testid="balance-package-account-header" class="card p-5 sm:p-6">
+              <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                <div>
+                  <p class="text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">{{ t('payment.rechargeAccount') }}</p>
+                  <p class="mt-2 text-2xl font-semibold text-gray-900 dark:text-white">{{ user?.username || '' }}</p>
+                  <p class="mt-2 text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">{{ t('payment.currentBalance') }}</p>
+                  <p class="mt-1 text-lg font-semibold text-gray-900 dark:text-white">${{ user?.balance?.toFixed(2) || '0.00' }}</p>
                 </div>
-                <div class="grid grid-cols-2 gap-4">
-                  <div>
-                    <span class="text-xs text-gray-400 dark:text-gray-500">{{ t('payment.amountLabel') }}</span>
-                    <div class="text-2xl font-bold text-gray-900 dark:text-white">¥{{ selectedBalancePackage.price.toFixed(2) }}</div>
+                <div class="space-y-2 lg:text-right">
+                  <div v-if="currentScopeBannerKey" class="flex flex-wrap items-center gap-2 text-sm text-gray-500 dark:text-gray-400 lg:justify-end">
+                    <span>{{ t('profile.balanceMode') }}</span>
+                    <span :class="['px-2.5 py-1 text-[11px]', currentScopeBadgeClass]">
+                      {{ currentScopeLabel }}
+                    </span>
                   </div>
-                  <div>
-                    <span class="text-xs text-gray-400 dark:text-gray-500">{{ t('payment.creditedBalance') }}</span>
-                    <div class="text-2xl font-bold text-primary-600 dark:text-primary-400">${{ selectedBalancePackage.credit_amount.toFixed(2) }}</div>
-                  </div>
+                  <p v-if="currentScopeBannerKey" class="text-xs text-gray-500 dark:text-gray-400">
+                    {{ t('payment.balancePackages.currentScopeHint') }}
+                  </p>
                 </div>
-                <p v-if="selectedBalancePackage.description" class="mt-3 text-sm leading-relaxed text-gray-500 dark:text-gray-400">
-                  {{ selectedBalancePackage.description }}
-                </p>
               </div>
+            </div>
+            <div data-testid="balance-package-mode-guide" class="card p-4">
+              <div class="flex flex-col gap-3">
+                <div>
+                  <h3 class="text-sm font-semibold text-gray-900 dark:text-white">{{ t('payment.balancePackages.modeGuideTitle') }}</h3>
+                  <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ t('payment.balancePackages.modeGuideSubtitle') }}</p>
+                </div>
+                <div class="grid gap-2.5 md:grid-cols-2">
+                  <div class="rounded-xl bg-slate-50/80 px-3 py-3 dark:bg-dark-800/60">
+                    <div class="flex items-center gap-2">
+                      <span :class="['px-2.5 py-1 text-[11px]', packageScopeBadgeClass('codex')]">{{ t('payment.balancePackages.codex') }}</span>
+                      <p class="text-sm font-medium text-gray-900 dark:text-white">{{ t('payment.balancePackages.modeGuideCodexTitle') }}</p>
+                    </div>
+                    <p class="mt-2 text-xs leading-5 text-gray-500 dark:text-gray-400">{{ t('payment.balancePackages.modeGuideCodexDesc') }}</p>
+                  </div>
+                  <div class="rounded-xl bg-slate-50/80 px-3 py-3 dark:bg-dark-800/60">
+                    <div class="flex items-center gap-2">
+                      <span :class="['px-2.5 py-1 text-[11px]', packageScopeBadgeClass('general')]">{{ t('payment.balancePackages.general') }}</span>
+                      <p class="text-sm font-medium text-gray-900 dark:text-white">{{ t('payment.balancePackages.modeGuideGeneralTitle') }}</p>
+                    </div>
+                    <p class="mt-2 text-xs leading-5 text-gray-500 dark:text-gray-400">{{ t('payment.balancePackages.modeGuideGeneralDesc') }}</p>
+                  </div>
+                </div>
+                <div class="border-t border-gray-100 pt-3 dark:border-dark-700">
+                  <ul class="grid gap-2 text-xs leading-5 text-gray-500 dark:text-gray-400 md:grid-cols-3">
+                    <li class="flex items-start gap-2">
+                      <span class="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-slate-400/70 dark:bg-slate-500/70" />
+                      <span>{{ t('payment.balancePackages.noticeSingleMode') }}</span>
+                    </li>
+                    <li class="flex items-start gap-2">
+                      <span class="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-slate-400/70 dark:bg-slate-500/70" />
+                      <span>{{ t('payment.balancePackages.noticeSwitch') }}</span>
+                    </li>
+                    <li class="flex items-start gap-2">
+                      <span class="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-slate-400/70 dark:bg-slate-500/70" />
+                      <span>{{ t('payment.balancePackages.noticeForceSwitch') }}</span>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+            <template v-if="selectedBalancePackage">
+              <BalancePackageSummary :pkg="selectedBalancePackage" />
               <div v-if="enabledMethods.length >= 1" class="card p-6">
                 <PaymentMethodSelector
                   :methods="methodOptions"
@@ -124,32 +175,26 @@
                   <span class="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></span>
                   {{ t('common.processing') }}
                 </span>
-                <span v-else>{{ t('payment.createOrder') }} ¥{{ selectedBalancePackage.price.toFixed(2) }}</span>
+                <span v-else>{{ t('payment.balancePackages.payNow', { amount: selectedBalancePackage.price.toFixed(2) }) }}</span>
               </button>
-              <button class="btn btn-secondary w-full" @click="selectedBalancePackage = null">{{ t('common.cancel') }}</button>
+              <button class="btn btn-secondary w-full" @click="selectedBalancePackage = null">{{ t('payment.balancePackages.backToList') }}</button>
             </template>
             <template v-else>
               <div v-if="checkout.balance_packages.length === 0" class="card py-16 text-center">
                 <Icon name="gift" size="xl" class="mx-auto mb-3 text-gray-300 dark:text-dark-600" />
                 <p class="text-gray-500 dark:text-gray-400">{{ t('payment.balancePackages.empty') }}</p>
               </div>
-              <div v-else class="grid grid-cols-1 gap-5 sm:grid-cols-2">
-                <button
+              <div v-else class="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
+                <BalancePackageCard
                   v-for="pkg in checkout.balance_packages"
                   :key="pkg.id"
-                  class="card p-5 text-left transition hover:-translate-y-0.5 hover:shadow-lg"
-                  @click="selectBalancePackage(pkg)"
-                >
-                  <div class="mb-3 flex items-center justify-between gap-3">
-                    <span class="rounded-md border border-primary-200 bg-primary-50 px-2 py-0.5 text-xs font-medium text-primary-700 dark:border-primary-800 dark:bg-primary-950/30 dark:text-primary-300">
-                      {{ pkg.package_scope === 'codex' ? t('payment.balancePackages.codex') : t('payment.balancePackages.general') }}
-                    </span>
-                    <span class="text-sm text-gray-400 dark:text-gray-500">${{ pkg.credit_amount.toFixed(2) }}</span>
-                  </div>
-                  <h3 class="text-base font-bold text-gray-900 dark:text-white">{{ pkg.name }}</h3>
-                  <p v-if="pkg.description" class="mt-2 text-sm text-gray-500 dark:text-gray-400">{{ pkg.description }}</p>
-                  <div class="mt-4 text-2xl font-bold text-primary-600 dark:text-primary-400">¥{{ pkg.price.toFixed(2) }}</div>
-                </button>
+                  :pkg="pkg"
+                  :disabled="!isPackageCompatible(pkg)"
+                  :disabled-reason="balancePackageDisabledReason(pkg)"
+                  :can-force-switch="canForceSwitchPackage(pkg)"
+                  @select="selectBalancePackage(pkg)"
+                  @force-switch="openForceSwitchDialog(pkg)"
+                />
               </div>
             </template>
           </template>
@@ -297,6 +342,28 @@
         </div>
       </Transition>
     </Teleport>
+    <Teleport to="body">
+      <Transition name="modal">
+        <div
+          v-if="forceSwitchTarget"
+          class="fixed inset-0 z-[55] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+          @click.self="closeForceSwitchDialog"
+        >
+          <div class="w-full max-w-lg rounded-2xl border border-gray-200 bg-white p-6 shadow-2xl dark:border-dark-700 dark:bg-dark-900">
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-white">{{ t('payment.balancePackages.forceSwitchTitle') }}</h3>
+            <div class="mt-4 space-y-3 text-sm text-gray-600 dark:text-gray-300">
+              <p>{{ t('payment.balancePackages.forceSwitchCurrentBalance', { amount: Number(user?.balance || 0).toFixed(2), scope: currentScopeLabel }) }}</p>
+              <p>{{ t('payment.balancePackages.forceSwitchTargetScope', { scope: t(packageScopeLabelKey(forceSwitchTarget.package_scope)) }) }}</p>
+              <p class="font-semibold text-red-600 dark:text-red-400">{{ t('payment.balancePackages.forceSwitchIrreversible') }}</p>
+            </div>
+            <div class="mt-6 flex justify-end gap-3">
+              <button class="btn btn-secondary" @click="closeForceSwitchDialog">{{ t('common.cancel') }}</button>
+              <button data-testid="confirm-force-switch" class="btn btn-primary" @click="confirmForceSwitch">{{ t('payment.balancePackages.forceSwitchConfirm') }}</button>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
     <!-- Image Preview Overlay -->
     <Teleport to="body">
       <Transition name="modal">
@@ -338,7 +405,10 @@ import {
 import { platformAccentBarClass, platformBadgeLightClass, platformBadgeClass, platformTextClass, platformLabel } from '@/utils/platformColors'
 import SubscriptionPlanCard from '@/components/payment/SubscriptionPlanCard.vue'
 import PaymentStatusPanel from '@/components/payment/PaymentStatusPanel.vue'
+import BalancePackageCard from '@/components/payment/BalancePackageCard.vue'
+import BalancePackageSummary from '@/components/payment/BalancePackageSummary.vue'
 import Icon from '@/components/icons/Icon.vue'
+import { packageScopeBadgeClass, packageScopeLabelKey } from '@/utils/packageScopeBadge'
 import type { PaymentMethodOption } from '@/components/payment/PaymentMethodSelector.vue'
 import { buildPaymentErrorToastMessage, describePaymentScenarioError } from './paymentUx'
 import { hasWechatResumeQuery, parseWechatResumeRoute, stripWechatResumeQuery } from './paymentWechatResume'
@@ -368,6 +438,7 @@ const amount = ref<number | null>(null)
 const selectedMethod = ref('')
 const selectedPlan = ref<SubscriptionPlan | null>(null)
 const selectedBalancePackage = ref<BalancePackage | null>(null)
+const forceSwitchTarget = ref<BalancePackage | null>(null)
 const previewImage = ref('')
 
 const paymentPhase = ref<'select' | 'paying'>('select')
@@ -377,6 +448,7 @@ interface CreateOrderOptions {
   wechatResumeToken?: string
   paymentType?: string
   balancePackageId?: number
+  forceSwitchScope?: boolean
   isResume?: boolean
   mobileQrFallbackAttempted?: boolean
 }
@@ -543,8 +615,8 @@ const checkout = ref<CheckoutInfoResponse>({
 })
 
 const tabs = computed(() => {
-  const result: { key: 'recharge' | 'package' | 'subscription'; label: string }[] = []
-  if (!checkout.value.balance_disabled) result.push({ key: 'recharge', label: t('payment.tabTopUp') })
+  const result: { key: 'recharge' | 'package' | 'subscription'; label: string; disabled?: boolean }[] = []
+  if (!checkout.value.balance_disabled) result.push({ key: 'recharge', label: t('payment.tabTopUp'), disabled: true })
   if (checkout.value.balance_packages.length > 0) result.push({ key: 'package', label: t('payment.balancePackages.title') })
   result.push({ key: 'subscription', label: t('payment.tabSubscribe') })
   return result
@@ -553,6 +625,20 @@ const tabs = computed(() => {
 const visibleMethods = computed(() => getVisibleMethods(checkout.value.methods))
 const enabledMethods = computed(() => Object.keys(visibleMethods.value))
 const validAmount = computed(() => amount.value ?? 0)
+const currentPackageScope = computed(() => user.value?.package_scope || null)
+const hasScopedBalance = computed(() => Number(user.value?.balance || 0) > 0 && !!currentPackageScope.value)
+const currentScopeBannerKey = computed(() => {
+  if (!hasScopedBalance.value) return ''
+  if (currentPackageScope.value === 'codex') return 'payment.balancePackages.currentScopeCodex'
+  if (currentPackageScope.value === 'general') return 'payment.balancePackages.currentScopeGeneral'
+  return ''
+})
+const currentScopeLabel = computed(() =>
+  currentPackageScope.value ? t(packageScopeLabelKey(currentPackageScope.value)) : '',
+)
+const currentScopeBadgeClass = computed(() =>
+  packageScopeBadgeClass(currentPackageScope.value),
+)
 const balanceRechargeMultiplier = computed(() => {
   const multiplier = checkout.value.balance_recharge_multiplier
   return multiplier > 0 ? multiplier : 1
@@ -715,9 +801,38 @@ function selectPlan(plan: SubscriptionPlan) {
   errorMessage.value = ''
 }
 
+function isPackageCompatible(pkg: BalancePackage) {
+  if (!hasScopedBalance.value) return true
+  return currentPackageScope.value === pkg.package_scope
+}
+
+function canForceSwitchPackage(pkg: BalancePackage) {
+  return hasScopedBalance.value && !packageScopeMatchesCurrent(pkg)
+}
+
+function packageScopeMatchesCurrent(pkg: BalancePackage) {
+  return currentPackageScope.value === pkg.package_scope
+}
+
+function balancePackageDisabledReason(pkg: BalancePackage) {
+  if (isPackageCompatible(pkg)) return ''
+  return t('payment.balancePackages.unavailableCurrentScope')
+}
+
 function selectBalancePackage(pkg: BalancePackage) {
+  if (!isPackageCompatible(pkg)) return
   selectedBalancePackage.value = pkg
   errorMessage.value = ''
+}
+
+function openForceSwitchDialog(pkg: BalancePackage) {
+  if (!canForceSwitchPackage(pkg)) return
+  forceSwitchTarget.value = pkg
+  errorMessage.value = ''
+}
+
+function closeForceSwitchDialog() {
+  forceSwitchTarget.value = null
 }
 
 function selectPlanFromModal(plan: SubscriptionPlan) {
@@ -749,6 +864,16 @@ async function confirmBalancePackage() {
   })
 }
 
+async function confirmForceSwitch() {
+  if (!forceSwitchTarget.value || submitting.value) return
+  const target = forceSwitchTarget.value
+  closeForceSwitchDialog()
+  await createOrder(target.credit_amount, 'balance_package', undefined, {
+    balancePackageId: target.id,
+    forceSwitchScope: true,
+  })
+}
+
 async function createOrder(orderAmount: number, orderType: OrderType, planId?: number, options: CreateOrderOptions = {}) {
   submitting.value = true
   errorMessage.value = ''
@@ -772,6 +897,9 @@ async function createOrder(orderAmount: number, orderType: OrderType, planId?: n
     }
     if (options.balancePackageId) {
       payload.balance_package_id = options.balancePackageId
+    }
+    if (options.forceSwitchScope) {
+      payload.force_switch_scope = true
     }
 
     const result = await paymentStore.createOrder(payload) as CreateOrderResult & { resume_token?: string }
@@ -1100,6 +1228,10 @@ onMounted(async () => {
     }
     await resumeWechatPaymentFromQuery()
     if (checkout.value.balance_disabled) {
+      activeTab.value = 'subscription'
+    } else if (checkout.value.balance_packages.length > 0) {
+      activeTab.value = 'package'
+    } else {
       activeTab.value = 'subscription'
     }
     // Handle renewal navigation: ?tab=subscription&group=123

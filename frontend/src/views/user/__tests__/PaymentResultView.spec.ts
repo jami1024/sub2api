@@ -399,4 +399,33 @@ describe('PaymentResultView', () => {
     expect(wrapper.text()).toContain('payment.methods.alipay')
     expect(wrapper.text()).not.toContain('payment.methods.alipay_direct')
   })
+
+  it('renders balance_package credited amount with dollar prefix and safe base amount when fee_rate is missing', async () => {
+    routeState.query = {
+      resume_token: 'resume-balance-package-1',
+    }
+    resolveOrderPublicByResumeToken.mockResolvedValue({
+      data: {
+        ...orderFactory('COMPLETED'),
+        order_type: 'balance_package',
+        amount: 1,
+        pay_amount: 0.1,
+        fee_rate: undefined,
+      },
+    })
+
+    const wrapper = mount(PaymentResultView, {
+      global: {
+        stubs: {
+          OrderStatusBadge: true,
+        },
+      },
+    })
+
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('$1.00')
+    expect(wrapper.text()).toContain('¥0.10')
+    expect(wrapper.text()).not.toContain('NaN')
+  })
 })

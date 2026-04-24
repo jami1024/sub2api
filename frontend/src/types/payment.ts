@@ -168,6 +168,7 @@ export interface CreateOrderRequest {
   order_type: string
   plan_id?: number
   balance_package_id?: number
+  force_switch_scope?: boolean
   return_url?: string
   payment_source?: string
   openid?: string

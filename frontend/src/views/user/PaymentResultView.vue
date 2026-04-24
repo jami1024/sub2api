@@ -47,7 +47,7 @@
               <span class="text-gray-500 dark:text-gray-400">{{ t('payment.orders.baseAmount') }}</span>
               <span class="font-medium text-gray-900 dark:text-white">&#165;{{ baseAmount.toFixed(2) }}</span>
             </div>
-            <div v-if="order.fee_rate > 0" class="flex justify-between">
+            <div v-if="normalizedFeeRate > 0" class="flex justify-between">
               <span class="text-gray-500 dark:text-gray-400">{{ t('payment.orders.fee') }} ({{ order.fee_rate }}%)</span>
               <span class="font-medium text-gray-900 dark:text-white">&#165;{{ feeAmount.toFixed(2) }}</span>
             </div>
@@ -57,7 +57,7 @@
             </div>
             <div v-if="order.amount !== order.pay_amount" class="flex justify-between">
               <span class="text-gray-500 dark:text-gray-400">{{ t('payment.orders.creditedAmount') }}</span>
-              <span class="font-medium text-gray-900 dark:text-white">{{ order.order_type === 'balance' ? '$' : '¥' }}{{ order.amount.toFixed(2) }}</span>
+              <span class="font-medium text-gray-900 dark:text-white">{{ creditedAmountPrefix }}{{ order.amount.toFixed(2) }}</span>
             </div>
             <div class="flex justify-between">
               <span class="text-gray-500 dark:text-gray-400">{{ t('payment.orders.paymentMethod') }}</span>
@@ -136,15 +136,32 @@ let statusRefreshTimer: ReturnType<typeof setTimeout> | null = null
 const refreshAttempts = ref(0)
 
 /** 充值金额 = pay_amount / (1 + fee_rate/100)，fee_rate=0 时等于 pay_amount */
+const normalizedFeeRate = computed(() => {
+  const raw = order.value?.fee_rate
+  return typeof raw === 'number' && Number.isFinite(raw) ? raw : 0
+})
+
 const baseAmount = computed(() => {
-  if (!order.value || order.value.fee_rate <= 0) return order.value?.pay_amount ?? 0
-  return Math.round((order.value.pay_amount / (1 + order.value.fee_rate / 100)) * 100) / 100
+  if (!order.value) return 0
+  const payAmount = typeof order.value.pay_amount === 'number' && Number.isFinite(order.value.pay_amount)
+    ? order.value.pay_amount
+    : 0
+  if (normalizedFeeRate.value <= 0) return payAmount
+  return Math.round((payAmount / (1 + normalizedFeeRate.value / 100)) * 100) / 100
 })
 
 /** 手续费 = pay_amount - baseAmount */
 const feeAmount = computed(() => {
-  if (!order.value || order.value.fee_rate <= 0) return 0
-  return Math.round((order.value.pay_amount - baseAmount.value) * 100) / 100
+  if (!order.value || normalizedFeeRate.value <= 0) return 0
+  const payAmount = typeof order.value.pay_amount === 'number' && Number.isFinite(order.value.pay_amount)
+    ? order.value.pay_amount
+    : 0
+  return Math.round((payAmount - baseAmount.value) * 100) / 100
+})
+
+const creditedAmountPrefix = computed(() => {
+  const orderType = order.value?.order_type
+  return orderType === 'balance' || orderType === 'balance_package' ? '$' : '¥'
 })
 
 const isSuccess = computed(() => {

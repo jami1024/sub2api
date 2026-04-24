@@ -47,25 +47,27 @@
           "
         >
           <template v-if="card.kind === 'codex'">
-            <div class="flex items-start justify-between gap-3">
-              <div>
-                <p class="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400 dark:text-slate-500">
-                  Codex Package
-                </p>
-                <h3 class="mt-2.5 text-[1.95rem] font-semibold leading-none text-slate-900 dark:text-white sm:text-[2.05rem]">
-                  <span class="sr-only">{{ card.name }}</span>
-                  <span class="inline-grid grid-cols-[5rem_1.1rem_5.9rem] items-baseline tabular-nums sm:grid-cols-[5.4rem_1.2rem_6.4rem]">
-                    <span class="block text-right">{{ card.priceLabel }}</span>
-                    <span class="block text-center text-slate-400 dark:text-slate-500">/</span>
-                    <span class="block text-left">{{ card.creditLabel }}</span>
-                  </span>
-                </h3>
+            <div class="flex flex-col gap-3">
+              <div class="flex items-start justify-between gap-3">
+                <div class="min-w-0 flex-1">
+                  <p class="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400 dark:text-slate-500">
+                    Codex Package
+                  </p>
+                  <h3 class="mt-2.5 text-[1.95rem] font-semibold leading-none text-slate-900 dark:text-white sm:text-[2.05rem]">
+                    <span class="sr-only">{{ card.name }}</span>
+                    <span class="inline-grid grid-cols-[5rem_1.1rem_5.9rem] items-baseline tabular-nums sm:grid-cols-[5.4rem_1.2rem_6.4rem]">
+                      <span class="block text-right">{{ card.priceLabel }}</span>
+                      <span class="block text-center text-slate-400 dark:text-slate-500">/</span>
+                      <span class="block text-left">{{ card.creditLabel }}</span>
+                    </span>
+                  </h3>
+                </div>
+                <span
+                  class="inline-flex shrink-0 rounded-full border border-sky-200/80 bg-sky-50 px-2.5 py-1 text-xs font-semibold text-sky-700 dark:border-sky-400/20 dark:bg-sky-400/10 dark:text-sky-200"
+                >
+                  {{ card.multiplier }}
+                </span>
               </div>
-              <span
-                class="inline-flex rounded-full border border-sky-200/80 bg-sky-50 px-2.5 py-1 text-xs font-semibold text-sky-700 dark:border-sky-400/20 dark:bg-sky-400/10 dark:text-sky-200"
-              >
-                {{ card.multiplier }}
-              </span>
             </div>
 
             <div class="mt-5 rounded-[1.35rem] bg-slate-950 px-4 py-3.5 text-white dark:bg-white dark:text-slate-950">

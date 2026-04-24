@@ -16463,6 +16463,7 @@ type PaymentOrderMutation struct {
 	subscription_days        *int
 	addsubscription_days     *int
 	package_scope_snapshot   *string
+	force_switch_scope       *bool
 	provider_instance_id     *string
 	provider_key             *string
 	provider_snapshot        *map[string]interface{}
@@ -17559,6 +17560,42 @@ func (m *PaymentOrderMutation) ResetPackageScopeSnapshot() {
 	m.package_scope_snapshot = nil
 }
 
+// SetForceSwitchScope sets the "force_switch_scope" field.
+func (m *PaymentOrderMutation) SetForceSwitchScope(b bool) {
+	m.force_switch_scope = &b
+}
+
+// ForceSwitchScope returns the value of the "force_switch_scope" field in the mutation.
+func (m *PaymentOrderMutation) ForceSwitchScope() (r bool, exists bool) {
+	v := m.force_switch_scope
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldForceSwitchScope returns the old "force_switch_scope" field's value of the PaymentOrder entity.
+// If the PaymentOrder object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PaymentOrderMutation) OldForceSwitchScope(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldForceSwitchScope is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldForceSwitchScope requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldForceSwitchScope: %w", err)
+	}
+	return oldValue.ForceSwitchScope, nil
+}
+
+// ResetForceSwitchScope resets all changes to the "force_switch_scope" field.
+func (m *PaymentOrderMutation) ResetForceSwitchScope() {
+	m.force_switch_scope = nil
+}
+
 // SetProviderInstanceID sets the "provider_instance_id" field.
 func (m *PaymentOrderMutation) SetProviderInstanceID(s string) {
 	m.provider_instance_id = &s
@@ -18565,7 +18602,7 @@ func (m *PaymentOrderMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *PaymentOrderMutation) Fields() []string {
-	fields := make([]string, 0, 41)
+	fields := make([]string, 0, 42)
 	if m.user != nil {
 		fields = append(fields, paymentorder.FieldUserID)
 	}
@@ -18625,6 +18662,9 @@ func (m *PaymentOrderMutation) Fields() []string {
 	}
 	if m.package_scope_snapshot != nil {
 		fields = append(fields, paymentorder.FieldPackageScopeSnapshot)
+	}
+	if m.force_switch_scope != nil {
+		fields = append(fields, paymentorder.FieldForceSwitchScope)
 	}
 	if m.provider_instance_id != nil {
 		fields = append(fields, paymentorder.FieldProviderInstanceID)
@@ -18737,6 +18777,8 @@ func (m *PaymentOrderMutation) Field(name string) (ent.Value, bool) {
 		return m.SubscriptionDays()
 	case paymentorder.FieldPackageScopeSnapshot:
 		return m.PackageScopeSnapshot()
+	case paymentorder.FieldForceSwitchScope:
+		return m.ForceSwitchScope()
 	case paymentorder.FieldProviderInstanceID:
 		return m.ProviderInstanceID()
 	case paymentorder.FieldProviderKey:
@@ -18828,6 +18870,8 @@ func (m *PaymentOrderMutation) OldField(ctx context.Context, name string) (ent.V
 		return m.OldSubscriptionDays(ctx)
 	case paymentorder.FieldPackageScopeSnapshot:
 		return m.OldPackageScopeSnapshot(ctx)
+	case paymentorder.FieldForceSwitchScope:
+		return m.OldForceSwitchScope(ctx)
 	case paymentorder.FieldProviderInstanceID:
 		return m.OldProviderInstanceID(ctx)
 	case paymentorder.FieldProviderKey:
@@ -19018,6 +19062,13 @@ func (m *PaymentOrderMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetPackageScopeSnapshot(v)
+		return nil
+	case paymentorder.FieldForceSwitchScope:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetForceSwitchScope(v)
 		return nil
 	case paymentorder.FieldProviderInstanceID:
 		v, ok := value.(string)
@@ -19502,6 +19553,9 @@ func (m *PaymentOrderMutation) ResetField(name string) error {
 		return nil
 	case paymentorder.FieldPackageScopeSnapshot:
 		m.ResetPackageScopeSnapshot()
+		return nil
+	case paymentorder.FieldForceSwitchScope:
+		m.ResetForceSwitchScope()
 		return nil
 	case paymentorder.FieldProviderInstanceID:
 		m.ResetProviderInstanceID()

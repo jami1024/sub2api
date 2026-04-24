@@ -1,0 +1,2 @@
+ALTER TABLE payment_orders
+    ADD COLUMN IF NOT EXISTS force_switch_scope BOOLEAN NOT NULL DEFAULT FALSE;

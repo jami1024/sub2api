@@ -93,6 +93,8 @@ func (PaymentOrder) Fields() []ent.Field {
 		field.String("package_scope_snapshot").
 			MaxLen(20).
 			Default(""),
+		field.Bool("force_switch_scope").
+			Default(false),
 		field.String("provider_instance_id").
 			Optional().
 			Nillable().

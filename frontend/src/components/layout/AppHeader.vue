@@ -47,10 +47,10 @@
         <!-- Balance Display -->
         <div
           v-if="user"
-          class="hidden items-center gap-2 rounded-xl bg-primary-50 px-3 py-1.5 dark:bg-primary-900/20 sm:flex"
+          class="hidden items-center gap-2 px-1.5 py-1 sm:flex"
         >
           <svg
-            class="h-4 w-4 text-primary-600 dark:text-primary-400"
+            class="h-4 w-4 text-primary-500/90 dark:text-primary-400/90"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -62,9 +62,22 @@
               d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z"
             />
           </svg>
-          <span class="text-sm font-semibold text-primary-700 dark:text-primary-300">
-            ${{ user.balance?.toFixed(2) || '0.00' }}
-          </span>
+          <div class="flex min-w-0 flex-col items-start">
+            <span class="text-sm font-semibold text-gray-900 dark:text-white">
+              ${{ user.balance?.toFixed(2) || '0.00' }}
+            </span>
+            <div
+              v-if="balanceModeLabel"
+              data-testid="app-header-balance-mode-desktop"
+              :class="[
+                'mt-0.5 flex items-center gap-1.5 text-[10px] font-medium',
+                balanceModeTextClass,
+              ]"
+            >
+              <span :class="['h-1.5 w-1.5 rounded-full', balanceModeDotClass]" />
+              <span>{{ balanceModeLabel }}</span>
+            </div>
+          </div>
         </div>
 
         <!-- User Dropdown -->
@@ -112,6 +125,18 @@
                 </div>
                 <div class="text-sm font-semibold text-primary-600 dark:text-primary-400">
                   ${{ user.balance?.toFixed(2) || '0.00' }}
+                </div>
+                <div
+                  v-if="balanceModeLabel"
+                  data-testid="app-header-balance-mode-mobile"
+                  :class="[
+                    'mt-2 flex items-center gap-1.5 text-[10px] font-medium',
+                    balanceModeTextClass,
+                  ]"
+                >
+                  <span :class="['h-1.5 w-1.5 rounded-full', balanceModeDotClass]" />
+                  <span class="text-gray-400 dark:text-gray-500">{{ t('profile.balanceMode') }}</span>
+                  <span class="inline-block min-w-[4.75rem] text-left">{{ balanceModeLabel }}</span>
                 </div>
               </div>
 
@@ -237,6 +262,29 @@ const dropdownRef = ref<HTMLElement | null>(null)
 const contactInfo = computed(() => appStore.contactInfo)
 const docUrl = computed(() => appStore.docUrl)
 const avatarUrl = computed(() => user.value?.avatar_url?.trim() || '')
+const balanceModeLabel = computed(() => {
+  if (user.value?.package_scope === 'codex') return t('profile.balanceModeCodex')
+  if (user.value?.package_scope === 'general') return t('profile.balanceModeGeneral')
+  return ''
+})
+const balanceModeTextClass = computed(() => {
+  if (user.value?.package_scope === 'codex') {
+    return 'text-sky-700/85 dark:text-sky-300/90'
+  }
+  if (user.value?.package_scope === 'general') {
+    return 'text-violet-700/85 dark:text-violet-300/90'
+  }
+  return 'text-primary-700/85 dark:text-primary-300/90'
+})
+const balanceModeDotClass = computed(() => {
+  if (user.value?.package_scope === 'codex') {
+    return 'bg-sky-500 dark:bg-sky-400'
+  }
+  if (user.value?.package_scope === 'general') {
+    return 'bg-violet-500 dark:bg-violet-400'
+  }
+  return 'bg-primary-500 dark:bg-primary-400'
+})
 
 // 只在标准模式的管理员下显示新手引导按钮
 const showOnboardingButton = computed(() => {

@@ -29,6 +29,9 @@ vi.mock('vue-i18n', async (importOriginal) => {
     useI18n: () => ({
       t: (key: string, params?: Record<string, string>) => {
         if (key === 'profile.accountBalance') return 'Account Balance'
+        if (key === 'profile.balanceMode') return 'Balance Mode'
+        if (key === 'profile.balanceModeCodex') return 'Codex'
+        if (key === 'profile.balanceModeGeneral') return 'General'
         if (key === 'profile.concurrencyLimit') return 'Concurrency Limit'
         if (key === 'profile.memberSince') return 'Member Since'
         if (key === 'profile.administrator') return 'Administrator'
@@ -193,5 +196,24 @@ describe('ProfileInfoCard', () => {
     expect(wrapper.get('[data-testid="profile-side-column"]').exists()).toBe(true)
     expect(wrapper.get('[data-testid="profile-basics-panel"]').exists()).toBe(true)
     expect(wrapper.get('[data-testid="profile-auth-bindings-panel"]').exists()).toBe(true)
+  })
+
+  it('shows current balance mode when package scope exists', () => {
+    const wrapper = mount(ProfileInfoCard, {
+      props: {
+        user: createUser({
+          package_scope: 'codex'
+        })
+      },
+      global: {
+        stubs: {
+          Icon: true
+        }
+      }
+    })
+
+    expect(wrapper.get('[data-testid="profile-overview-balance-mode"]').text()).toContain('Balance Mode')
+    expect(wrapper.get('[data-testid="profile-overview-balance-mode"]').text()).toContain('Codex')
+    expect(wrapper.get('[data-testid="profile-overview-metric-balance"]').text()).toContain('$10.00')
   })
 })

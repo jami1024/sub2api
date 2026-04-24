@@ -59,6 +59,8 @@ type PaymentOrder struct {
 	SubscriptionDays *int `json:"subscription_days,omitempty"`
 	// PackageScopeSnapshot holds the value of the "package_scope_snapshot" field.
 	PackageScopeSnapshot string `json:"package_scope_snapshot,omitempty"`
+	// ForceSwitchScope holds the value of the "force_switch_scope" field.
+	ForceSwitchScope bool `json:"force_switch_scope,omitempty"`
 	// ProviderInstanceID holds the value of the "provider_instance_id" field.
 	ProviderInstanceID *string `json:"provider_instance_id,omitempty"`
 	// ProviderKey holds the value of the "provider_key" field.
@@ -134,7 +136,7 @@ func (*PaymentOrder) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case paymentorder.FieldProviderSnapshot:
 			values[i] = new([]byte)
-		case paymentorder.FieldForceRefund:
+		case paymentorder.FieldForceSwitchScope, paymentorder.FieldForceRefund:
 			values[i] = new(sql.NullBool)
 		case paymentorder.FieldAmount, paymentorder.FieldPayAmount, paymentorder.FieldFeeRate, paymentorder.FieldRefundAmount:
 			values[i] = new(sql.NullFloat64)
@@ -292,6 +294,12 @@ func (_m *PaymentOrder) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field package_scope_snapshot", values[i])
 			} else if value.Valid {
 				_m.PackageScopeSnapshot = value.String
+			}
+		case paymentorder.FieldForceSwitchScope:
+			if value, ok := values[i].(*sql.NullBool); !ok {
+				return fmt.Errorf("unexpected type %T for field force_switch_scope", values[i])
+			} else if value.Valid {
+				_m.ForceSwitchScope = value.Bool
 			}
 		case paymentorder.FieldProviderInstanceID:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -549,6 +557,9 @@ func (_m *PaymentOrder) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("package_scope_snapshot=")
 	builder.WriteString(_m.PackageScopeSnapshot)
+	builder.WriteString(", ")
+	builder.WriteString("force_switch_scope=")
+	builder.WriteString(fmt.Sprintf("%v", _m.ForceSwitchScope))
 	builder.WriteString(", ")
 	if v := _m.ProviderInstanceID; v != nil {
 		builder.WriteString("provider_instance_id=")

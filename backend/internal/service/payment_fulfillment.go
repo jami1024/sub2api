@@ -364,9 +364,28 @@ func (s *PaymentService) doBalancePackage(ctx context.Context, o *dbent.PaymentO
 		return infraerrors.BadRequest("PACKAGE_SCOPE_CONFLICT_AFTER_PAYMENT", "invalid package scope snapshot")
 	}
 	if user.Balance > 0 && !PackageScopeMatchesGroup(psStringValue(user.PackageScope), orderScope) {
-		return infraerrors.Conflict("PACKAGE_SCOPE_CONFLICT_AFTER_PAYMENT", "package scope conflict after payment")
+		if !o.ForceSwitchScope {
+			return infraerrors.Conflict("PACKAGE_SCOPE_CONFLICT_AFTER_PAYMENT", "package scope conflict after payment")
+		}
 	}
-	if psStringValue(user.PackageScope) == "" {
+	oldScope := psStringValue(user.PackageScope)
+	if user.Balance > 0 && !PackageScopeMatchesGroup(oldScope, orderScope) && o.ForceSwitchScope {
+		oldBalance := user.Balance
+		if err := s.userRepo.UpdateBalance(ctx, o.UserID, -oldBalance); err != nil {
+			return fmt.Errorf("clear user balance for scope switch: %w", err)
+		}
+		user.Balance = 0
+		user.PackageScope = &orderScope
+		if err := s.userRepo.Update(ctx, user); err != nil {
+			return fmt.Errorf("update user package scope after force switch: %w", err)
+		}
+		s.writeAuditLog(ctx, o.ID, "BALANCE_PACKAGE_FORCE_SWITCH", "system", map[string]any{
+			"userID":         o.UserID,
+			"oldScope":       oldScope,
+			"newScope":       orderScope,
+			"clearedBalance": oldBalance,
+		})
+	} else if psStringValue(user.PackageScope) == "" {
 		user.PackageScope = &orderScope
 		if err := s.userRepo.Update(ctx, user); err != nil {
 			return fmt.Errorf("update user package scope: %w", err)

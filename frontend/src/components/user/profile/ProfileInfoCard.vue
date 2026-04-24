@@ -66,9 +66,30 @@
                 <p class="text-xs font-medium uppercase tracking-[0.16em] text-gray-400 dark:text-gray-500">
                   {{ t('profile.accountBalance') }}
                 </p>
-                <p class="mt-1 text-lg font-semibold text-gray-900 dark:text-white">
-                  {{ formatCurrency(user?.balance || 0) }}
-                </p>
+                <div class="mt-1 flex flex-wrap items-center gap-2">
+                  <p class="text-lg font-semibold text-gray-900 dark:text-white">
+                    {{ formatCurrency(user?.balance || 0) }}
+                  </p>
+                </div>
+                <div
+                  v-if="balanceModeLabel"
+                  data-testid="profile-overview-balance-mode"
+                  :class="[
+                    'mt-2 flex items-center gap-1.5 text-[11px] font-medium',
+                    balanceModeTextClass,
+                  ]"
+                >
+                  <span :class="['h-1.5 w-1.5 rounded-full', balanceModeDotClass]" />
+                  <span class="text-gray-400 dark:text-gray-500">{{ t('profile.balanceMode') }}</span>
+                  <span
+                    v-if="balanceModeLabel"
+                    :class="[
+                      'inline-block min-w-[4.75rem] text-left',
+                    ]"
+                  >
+                    {{ balanceModeLabel }}
+                  </span>
+                </div>
               </div>
               <div
                 data-testid="profile-overview-metric-concurrency"
@@ -242,6 +263,33 @@ const primaryEmailDisplay = computed(() => {
   return email
 })
 const avatarInitial = computed(() => displayName.value.charAt(0).toUpperCase() || 'U')
+const balanceModeLabel = computed(() => {
+  if (props.user?.package_scope === 'codex') {
+    return t('profile.balanceModeCodex')
+  }
+  if (props.user?.package_scope === 'general') {
+    return t('profile.balanceModeGeneral')
+  }
+  return ''
+})
+const balanceModeTextClass = computed(() => {
+  if (props.user?.package_scope === 'codex') {
+    return 'text-sky-700/85 dark:text-sky-300/90'
+  }
+  if (props.user?.package_scope === 'general') {
+    return 'text-violet-700/85 dark:text-violet-300/90'
+  }
+  return 'text-primary-700/85 dark:text-primary-300/90'
+})
+const balanceModeDotClass = computed(() => {
+  if (props.user?.package_scope === 'codex') {
+    return 'bg-sky-500 dark:bg-sky-400'
+  }
+  if (props.user?.package_scope === 'general') {
+    return 'bg-violet-500 dark:bg-violet-400'
+  }
+  return 'bg-primary-500 dark:bg-primary-400'
+})
 const memberSinceLabel = computed(() => {
   const raw = props.user?.created_at?.trim()
   if (!raw) {

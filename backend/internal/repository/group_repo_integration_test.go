@@ -113,6 +113,49 @@ func (s *GroupRepoSuite) TestUpdate() {
 	s.Require().Equal("updated", got.Name)
 }
 
+func (s *GroupRepoSuite) TestCreate_PersistsPackageScope() {
+	scope := service.PackageScopeGeneral
+	group := &service.Group{
+		Name:             "scope-create",
+		Platform:         service.PlatformOpenAI,
+		PackageScope:     &scope,
+		RateMultiplier:   1.0,
+		IsExclusive:      false,
+		Status:           service.StatusActive,
+		SubscriptionType: service.SubscriptionTypeStandard,
+	}
+
+	s.Require().NoError(s.repo.Create(s.ctx, group))
+
+	got, err := s.repo.GetByID(s.ctx, group.ID)
+	s.Require().NoError(err)
+	s.Require().NotNil(got.PackageScope)
+	s.Require().Equal(service.PackageScopeGeneral, *got.PackageScope)
+}
+
+func (s *GroupRepoSuite) TestUpdate_PersistsPackageScope() {
+	initialScope := service.PackageScopeCodex
+	group := &service.Group{
+		Name:             "scope-update",
+		Platform:         service.PlatformOpenAI,
+		PackageScope:     &initialScope,
+		RateMultiplier:   1.0,
+		IsExclusive:      false,
+		Status:           service.StatusActive,
+		SubscriptionType: service.SubscriptionTypeStandard,
+	}
+	s.Require().NoError(s.repo.Create(s.ctx, group))
+
+	nextScope := service.PackageScopeGeneral
+	group.PackageScope = &nextScope
+	s.Require().NoError(s.repo.Update(s.ctx, group))
+
+	got, err := s.repo.GetByID(s.ctx, group.ID)
+	s.Require().NoError(err)
+	s.Require().NotNil(got.PackageScope)
+	s.Require().Equal(service.PackageScopeGeneral, *got.PackageScope)
+}
+
 func (s *GroupRepoSuite) TestGetByID_PreservesMessagesDispatchModelConfig() {
 	group := &service.Group{
 		Name:                  "openai-dispatch",

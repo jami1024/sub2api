@@ -406,6 +406,20 @@ func (_u *PaymentOrderUpdate) SetNillablePackageScopeSnapshot(v *string) *Paymen
 	return _u
 }
 
+// SetForceSwitchScope sets the "force_switch_scope" field.
+func (_u *PaymentOrderUpdate) SetForceSwitchScope(v bool) *PaymentOrderUpdate {
+	_u.mutation.SetForceSwitchScope(v)
+	return _u
+}
+
+// SetNillableForceSwitchScope sets the "force_switch_scope" field if the given value is not nil.
+func (_u *PaymentOrderUpdate) SetNillableForceSwitchScope(v *bool) *PaymentOrderUpdate {
+	if v != nil {
+		_u.SetForceSwitchScope(*v)
+	}
+	return _u
+}
+
 // SetProviderInstanceID sets the "provider_instance_id" field.
 func (_u *PaymentOrderUpdate) SetProviderInstanceID(v string) *PaymentOrderUpdate {
 	_u.mutation.SetProviderInstanceID(v)
@@ -999,6 +1013,9 @@ func (_u *PaymentOrderUpdate) sqlSave(ctx context.Context) (_node int, err error
 	if value, ok := _u.mutation.PackageScopeSnapshot(); ok {
 		_spec.SetField(paymentorder.FieldPackageScopeSnapshot, field.TypeString, value)
 	}
+	if value, ok := _u.mutation.ForceSwitchScope(); ok {
+		_spec.SetField(paymentorder.FieldForceSwitchScope, field.TypeBool, value)
+	}
 	if value, ok := _u.mutation.ProviderInstanceID(); ok {
 		_spec.SetField(paymentorder.FieldProviderInstanceID, field.TypeString, value)
 	}
@@ -1523,6 +1540,20 @@ func (_u *PaymentOrderUpdateOne) SetPackageScopeSnapshot(v string) *PaymentOrder
 func (_u *PaymentOrderUpdateOne) SetNillablePackageScopeSnapshot(v *string) *PaymentOrderUpdateOne {
 	if v != nil {
 		_u.SetPackageScopeSnapshot(*v)
+	}
+	return _u
+}
+
+// SetForceSwitchScope sets the "force_switch_scope" field.
+func (_u *PaymentOrderUpdateOne) SetForceSwitchScope(v bool) *PaymentOrderUpdateOne {
+	_u.mutation.SetForceSwitchScope(v)
+	return _u
+}
+
+// SetNillableForceSwitchScope sets the "force_switch_scope" field if the given value is not nil.
+func (_u *PaymentOrderUpdateOne) SetNillableForceSwitchScope(v *bool) *PaymentOrderUpdateOne {
+	if v != nil {
+		_u.SetForceSwitchScope(*v)
 	}
 	return _u
 }
@@ -2149,6 +2180,9 @@ func (_u *PaymentOrderUpdateOne) sqlSave(ctx context.Context) (_node *PaymentOrd
 	}
 	if value, ok := _u.mutation.PackageScopeSnapshot(); ok {
 		_spec.SetField(paymentorder.FieldPackageScopeSnapshot, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.ForceSwitchScope(); ok {
+		_spec.SetField(paymentorder.FieldForceSwitchScope, field.TypeBool, value)
 	}
 	if value, ok := _u.mutation.ProviderInstanceID(); ok {
 		_spec.SetField(paymentorder.FieldProviderInstanceID, field.TypeString, value)

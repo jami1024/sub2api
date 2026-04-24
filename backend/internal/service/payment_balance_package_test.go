@@ -6,10 +6,10 @@ import (
 	"testing"
 	"time"
 
+	"entgo.io/ent/dialect"
+	entsql "entgo.io/ent/dialect/sql"
 	dbent "github.com/Wei-Shaw/sub2api/ent"
 	"github.com/Wei-Shaw/sub2api/ent/enttest"
-	entsql "entgo.io/ent/dialect/sql"
-	"entgo.io/ent/dialect"
 	"github.com/Wei-Shaw/sub2api/internal/payment"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/pagination"
 	"github.com/stretchr/testify/require"
@@ -22,7 +22,9 @@ type packageScopeUserRepoStub struct {
 	balanceOps []float64
 }
 
-func (s *packageScopeUserRepoStub) Create(ctx context.Context, user *User) error { panic("unexpected Create call") }
+func (s *packageScopeUserRepoStub) Create(ctx context.Context, user *User) error {
+	panic("unexpected Create call")
+}
 func (s *packageScopeUserRepoStub) GetByID(ctx context.Context, id int64) (*User, error) {
 	if s.user == nil {
 		return nil, ErrUserNotFound
@@ -212,8 +214,10 @@ func (s *packageScopeAdminRedeemRepoStub) SumPositiveBalanceByUser(ctx context.C
 
 type packageScopeAuthCacheInvalidatorStub struct{}
 
-func (s *packageScopeAuthCacheInvalidatorStub) InvalidateAuthCacheByKey(ctx context.Context, key string)    {}
-func (s *packageScopeAuthCacheInvalidatorStub) InvalidateAuthCacheByUserID(ctx context.Context, userID int64) {}
+func (s *packageScopeAuthCacheInvalidatorStub) InvalidateAuthCacheByKey(ctx context.Context, key string) {
+}
+func (s *packageScopeAuthCacheInvalidatorStub) InvalidateAuthCacheByUserID(ctx context.Context, userID int64) {
+}
 func (s *packageScopeAuthCacheInvalidatorStub) InvalidateAuthCacheByGroupID(ctx context.Context, groupID int64) {
 }
 
@@ -356,8 +360,53 @@ func TestCreateBalancePackageOrderStoresSnapshot(t *testing.T) {
 	require.NotNil(t, order.BalancePackageID)
 	require.Equal(t, pkg.ID, *order.BalancePackageID)
 	require.Equal(t, PackageScopeCodex, order.PackageScopeSnapshot)
+	require.False(t, order.ForceSwitchScope)
 	require.Equal(t, pkg.CreditAmount, order.Amount)
 	require.Equal(t, pkg.Price, order.PayAmount)
+}
+
+func TestCreateBalancePackageOrder_AllowsDifferentScopeWithForceSwitch(t *testing.T) {
+	client := newPackageScopeEntClient(t)
+	createdUser, err := client.User.Create().
+		SetEmail("force-switch-user@example.com").
+		SetPasswordHash("hash").
+		SetRole(RoleUser).
+		SetBalance(15).
+		SetConcurrency(1).
+		SetStatus(StatusActive).
+		SetPackageScope(PackageScopeCodex).
+		Save(context.Background())
+	require.NoError(t, err)
+
+	pkg, err := client.BalancePackage.Create().
+		SetName("General 包").
+		SetDescription("general only").
+		SetPrice(88).
+		SetCreditAmount(80).
+		SetPackageScope(PackageScopeGeneral).
+		SetForSale(true).
+		Save(context.Background())
+	require.NoError(t, err)
+
+	codex := PackageScopeCodex
+	svc := &PaymentService{entClient: client}
+	order, err := svc.createOrderInTx(context.Background(), CreateOrderRequest{
+		UserID:           createdUser.ID,
+		PaymentType:      "alipay",
+		OrderType:        payment.OrderTypeBalancePackage,
+		BalancePackageID: pkg.ID,
+		ForceSwitchScope: true,
+		ClientIP:         "127.0.0.1",
+		SrcHost:          "example.com",
+	}, &User{
+		ID:           createdUser.ID,
+		Email:        createdUser.Email,
+		Username:     createdUser.Username,
+		Balance:      15,
+		PackageScope: &codex,
+	}, nil, pkg, &PaymentConfig{MaxPendingOrders: 3, OrderTimeoutMin: 30}, pkg.CreditAmount, pkg.Price, 0, pkg.Price, nil)
+	require.NoError(t, err)
+	require.True(t, order.ForceSwitchScope)
 }
 
 func TestExecuteBalancePackageFulfillmentCreditsUserBalance(t *testing.T) {
@@ -473,4 +522,67 @@ func TestExecuteBalancePackageFulfillmentMarksFailedAfterPaidConflict(t *testing
 	require.NoError(t, err)
 	require.Equal(t, OrderStatusFailed, reloaded.Status)
 	require.Contains(t, psStringValue(reloaded.FailedReason), "PACKAGE_SCOPE_CONFLICT_AFTER_PAYMENT")
+}
+
+func TestExecuteBalancePackageFulfillment_ForceSwitchClearsOldBalanceAndSwitchesScope(t *testing.T) {
+	ctx := context.Background()
+	client := newPackageScopeEntClient(t)
+
+	userEntity, err := client.User.Create().
+		SetEmail("balance-package-force@example.com").
+		SetPasswordHash("hash").
+		SetUsername("bp-force").
+		SetBalance(35).
+		SetConcurrency(1).
+		SetStatus(StatusActive).
+		SetPackageScope(PackageScopeCodex).
+		Save(ctx)
+	require.NoError(t, err)
+
+	order, err := client.PaymentOrder.Create().
+		SetUserID(userEntity.ID).
+		SetUserEmail(userEntity.Email).
+		SetUserName(userEntity.Username).
+		SetAmount(80).
+		SetPayAmount(88).
+		SetFeeRate(0).
+		SetRechargeCode("PAY-BP-FORCE").
+		SetOutTradeNo("sub2_bp_force_switch").
+		SetPaymentType(payment.TypeAlipay).
+		SetPaymentTradeNo("trade-bp-force").
+		SetOrderType(payment.OrderTypeBalancePackage).
+		SetBalancePackageID(3).
+		SetPackageScopeSnapshot(PackageScopeGeneral).
+		SetForceSwitchScope(true).
+		SetStatus(OrderStatusPaid).
+		SetPaidAt(time.Now()).
+		SetExpiresAt(time.Now().Add(time.Hour)).
+		SetClientIP("127.0.0.1").
+		SetSrcHost("example.com").
+		Save(ctx)
+	require.NoError(t, err)
+
+	existingScope := PackageScopeCodex
+	userRepo := &packageScopeUserRepoStub{user: &User{
+		ID:           userEntity.ID,
+		Email:        userEntity.Email,
+		Username:     userEntity.Username,
+		Balance:      35,
+		PackageScope: &existingScope,
+		Status:       StatusActive,
+	}}
+	svc := &PaymentService{entClient: client, userRepo: userRepo}
+
+	err = svc.ExecuteBalancePackageFulfillment(ctx, order.ID)
+	require.NoError(t, err)
+
+	updated, err := userRepo.GetByID(ctx, userEntity.ID)
+	require.NoError(t, err)
+	require.Equal(t, 80.0, updated.Balance)
+	require.Equal(t, PackageScopeGeneral, psStringValue(updated.PackageScope))
+	require.Equal(t, []float64{-35, 80}, userRepo.balanceOps)
+
+	reloaded, err := client.PaymentOrder.Get(ctx, order.ID)
+	require.NoError(t, err)
+	require.Equal(t, OrderStatusCompleted, reloaded.Status)
 }

@@ -234,6 +234,13 @@ describe('HomeView', () => {
     expect(wrapper.text()).toContain('敬请期待')
   })
 
+  it('renders the package multiplier badge text for codex cards', () => {
+    const wrapper = mountView()
+
+    const sectionText = wrapper.get('[data-testid="home-package-section"]').text()
+    expect(sectionText).toContain('1x')
+  })
+
   it('renders three codex package cards and one claude teaser card', () => {
     const wrapper = mountView()
     const cards = wrapper.findAll('[data-testid="home-package-card"]')

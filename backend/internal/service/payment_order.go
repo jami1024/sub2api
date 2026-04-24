@@ -77,7 +77,9 @@ func (s *PaymentService) CreateOrder(ctx context.Context, req CreateOrderRequest
 		return oauthResp, nil
 	}
 	if balancePackage != nil && user.Balance > 0 && !PackageScopeMatchesGroup(psStringValue(user.PackageScope), balancePackage.PackageScope) {
-		return nil, infraerrors.Conflict("PACKAGE_SCOPE_CONFLICT", "current balance package scope conflicts with requested balance package")
+		if !req.ForceSwitchScope {
+			return nil, infraerrors.Conflict("PACKAGE_SCOPE_CONFLICT", "current balance package scope conflicts with requested balance package")
+		}
 	}
 	order, err := s.createOrderInTx(ctx, req, user, plan, balancePackage, cfg, orderAmount, limitAmount, feeRate, payAmount, sel)
 	if err != nil {
@@ -188,6 +190,7 @@ func (s *PaymentService) createOrderInTx(ctx context.Context, req CreateOrderReq
 		SetPaymentType(req.PaymentType).
 		SetPaymentTradeNo("").
 		SetOrderType(req.OrderType).
+		SetForceSwitchScope(req.ForceSwitchScope).
 		SetStatus(OrderStatusPending).
 		SetExpiresAt(exp).
 		SetClientIP(req.ClientIP).

@@ -54,6 +54,8 @@ const (
 	FieldSubscriptionDays = "subscription_days"
 	// FieldPackageScopeSnapshot holds the string denoting the package_scope_snapshot field in the database.
 	FieldPackageScopeSnapshot = "package_scope_snapshot"
+	// FieldForceSwitchScope holds the string denoting the force_switch_scope field in the database.
+	FieldForceSwitchScope = "force_switch_scope"
 	// FieldProviderInstanceID holds the string denoting the provider_instance_id field in the database.
 	FieldProviderInstanceID = "provider_instance_id"
 	// FieldProviderKey holds the string denoting the provider_key field in the database.
@@ -132,6 +134,7 @@ var Columns = []string{
 	FieldSubscriptionGroupID,
 	FieldSubscriptionDays,
 	FieldPackageScopeSnapshot,
+	FieldForceSwitchScope,
 	FieldProviderInstanceID,
 	FieldProviderKey,
 	FieldProviderSnapshot,
@@ -190,6 +193,8 @@ var (
 	DefaultPackageScopeSnapshot string
 	// PackageScopeSnapshotValidator is a validator for the "package_scope_snapshot" field. It is called by the builders before save.
 	PackageScopeSnapshotValidator func(string) error
+	// DefaultForceSwitchScope holds the default value on creation for the "force_switch_scope" field.
+	DefaultForceSwitchScope bool
 	// ProviderInstanceIDValidator is a validator for the "provider_instance_id" field. It is called by the builders before save.
 	ProviderInstanceIDValidator func(string) error
 	// ProviderKeyValidator is a validator for the "provider_key" field. It is called by the builders before save.
@@ -322,6 +327,11 @@ func BySubscriptionDays(opts ...sql.OrderTermOption) OrderOption {
 // ByPackageScopeSnapshot orders the results by the package_scope_snapshot field.
 func ByPackageScopeSnapshot(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldPackageScopeSnapshot, opts...).ToFunc()
+}
+
+// ByForceSwitchScope orders the results by the force_switch_scope field.
+func ByForceSwitchScope(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldForceSwitchScope, opts...).ToFunc()
 }
 
 // ByProviderInstanceID orders the results by the provider_instance_id field.

@@ -239,6 +239,20 @@ func (_c *PaymentOrderCreate) SetNillablePackageScopeSnapshot(v *string) *Paymen
 	return _c
 }
 
+// SetForceSwitchScope sets the "force_switch_scope" field.
+func (_c *PaymentOrderCreate) SetForceSwitchScope(v bool) *PaymentOrderCreate {
+	_c.mutation.SetForceSwitchScope(v)
+	return _c
+}
+
+// SetNillableForceSwitchScope sets the "force_switch_scope" field if the given value is not nil.
+func (_c *PaymentOrderCreate) SetNillableForceSwitchScope(v *bool) *PaymentOrderCreate {
+	if v != nil {
+		_c.SetForceSwitchScope(*v)
+	}
+	return _c
+}
+
 // SetProviderInstanceID sets the "provider_instance_id" field.
 func (_c *PaymentOrderCreate) SetProviderInstanceID(v string) *PaymentOrderCreate {
 	_c.mutation.SetProviderInstanceID(v)
@@ -557,6 +571,10 @@ func (_c *PaymentOrderCreate) defaults() {
 		v := paymentorder.DefaultPackageScopeSnapshot
 		_c.mutation.SetPackageScopeSnapshot(v)
 	}
+	if _, ok := _c.mutation.ForceSwitchScope(); !ok {
+		v := paymentorder.DefaultForceSwitchScope
+		_c.mutation.SetForceSwitchScope(v)
+	}
 	if _, ok := _c.mutation.Status(); !ok {
 		v := paymentorder.DefaultStatus
 		_c.mutation.SetStatus(v)
@@ -656,6 +674,9 @@ func (_c *PaymentOrderCreate) check() error {
 		if err := paymentorder.PackageScopeSnapshotValidator(v); err != nil {
 			return &ValidationError{Name: "package_scope_snapshot", err: fmt.Errorf(`ent: validator failed for field "PaymentOrder.package_scope_snapshot": %w`, err)}
 		}
+	}
+	if _, ok := _c.mutation.ForceSwitchScope(); !ok {
+		return &ValidationError{Name: "force_switch_scope", err: errors.New(`ent: missing required field "PaymentOrder.force_switch_scope"`)}
 	}
 	if v, ok := _c.mutation.ProviderInstanceID(); ok {
 		if err := paymentorder.ProviderInstanceIDValidator(v); err != nil {
@@ -816,6 +837,10 @@ func (_c *PaymentOrderCreate) createSpec() (*PaymentOrder, *sqlgraph.CreateSpec)
 	if value, ok := _c.mutation.PackageScopeSnapshot(); ok {
 		_spec.SetField(paymentorder.FieldPackageScopeSnapshot, field.TypeString, value)
 		_node.PackageScopeSnapshot = value
+	}
+	if value, ok := _c.mutation.ForceSwitchScope(); ok {
+		_spec.SetField(paymentorder.FieldForceSwitchScope, field.TypeBool, value)
+		_node.ForceSwitchScope = value
 	}
 	if value, ok := _c.mutation.ProviderInstanceID(); ok {
 		_spec.SetField(paymentorder.FieldProviderInstanceID, field.TypeString, value)
@@ -1297,6 +1322,18 @@ func (u *PaymentOrderUpsert) SetPackageScopeSnapshot(v string) *PaymentOrderUpse
 // UpdatePackageScopeSnapshot sets the "package_scope_snapshot" field to the value that was provided on create.
 func (u *PaymentOrderUpsert) UpdatePackageScopeSnapshot() *PaymentOrderUpsert {
 	u.SetExcluded(paymentorder.FieldPackageScopeSnapshot)
+	return u
+}
+
+// SetForceSwitchScope sets the "force_switch_scope" field.
+func (u *PaymentOrderUpsert) SetForceSwitchScope(v bool) *PaymentOrderUpsert {
+	u.Set(paymentorder.FieldForceSwitchScope, v)
+	return u
+}
+
+// UpdateForceSwitchScope sets the "force_switch_scope" field to the value that was provided on create.
+func (u *PaymentOrderUpsert) UpdateForceSwitchScope() *PaymentOrderUpsert {
+	u.SetExcluded(paymentorder.FieldForceSwitchScope)
 	return u
 }
 
@@ -2051,6 +2088,20 @@ func (u *PaymentOrderUpsertOne) SetPackageScopeSnapshot(v string) *PaymentOrderU
 func (u *PaymentOrderUpsertOne) UpdatePackageScopeSnapshot() *PaymentOrderUpsertOne {
 	return u.Update(func(s *PaymentOrderUpsert) {
 		s.UpdatePackageScopeSnapshot()
+	})
+}
+
+// SetForceSwitchScope sets the "force_switch_scope" field.
+func (u *PaymentOrderUpsertOne) SetForceSwitchScope(v bool) *PaymentOrderUpsertOne {
+	return u.Update(func(s *PaymentOrderUpsert) {
+		s.SetForceSwitchScope(v)
+	})
+}
+
+// UpdateForceSwitchScope sets the "force_switch_scope" field to the value that was provided on create.
+func (u *PaymentOrderUpsertOne) UpdateForceSwitchScope() *PaymentOrderUpsertOne {
+	return u.Update(func(s *PaymentOrderUpsert) {
+		s.UpdateForceSwitchScope()
 	})
 }
 
@@ -3025,6 +3076,20 @@ func (u *PaymentOrderUpsertBulk) SetPackageScopeSnapshot(v string) *PaymentOrder
 func (u *PaymentOrderUpsertBulk) UpdatePackageScopeSnapshot() *PaymentOrderUpsertBulk {
 	return u.Update(func(s *PaymentOrderUpsert) {
 		s.UpdatePackageScopeSnapshot()
+	})
+}
+
+// SetForceSwitchScope sets the "force_switch_scope" field.
+func (u *PaymentOrderUpsertBulk) SetForceSwitchScope(v bool) *PaymentOrderUpsertBulk {
+	return u.Update(func(s *PaymentOrderUpsert) {
+		s.SetForceSwitchScope(v)
+	})
+}
+
+// UpdateForceSwitchScope sets the "force_switch_scope" field to the value that was provided on create.
+func (u *PaymentOrderUpsertBulk) UpdateForceSwitchScope() *PaymentOrderUpsertBulk {
+	return u.Update(func(s *PaymentOrderUpsert) {
+		s.UpdateForceSwitchScope()
 	})
 }
 

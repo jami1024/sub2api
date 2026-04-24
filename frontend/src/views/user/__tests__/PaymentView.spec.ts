@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { flushPromises, shallowMount } from '@vue/test-utils'
+import { flushPromises, mount, shallowMount } from '@vue/test-utils'
 import PaymentView from '../PaymentView.vue'
 import { PAYMENT_RECOVERY_STORAGE_KEY } from '@/components/payment/paymentFlow'
 
@@ -19,6 +19,11 @@ const showInfo = vi.hoisted(() => vi.fn())
 const showWarning = vi.hoisted(() => vi.fn())
 const getCheckoutInfo = vi.hoisted(() => vi.fn())
 const bridgeInvoke = vi.hoisted(() => vi.fn())
+const mockUser = vi.hoisted(() => ({
+  username: 'demo-user',
+  balance: 0,
+  package_scope: null as 'codex' | 'general' | null,
+}))
 
 vi.mock('vue-router', async () => {
   const actual = await vi.importActual<typeof import('vue-router')>('vue-router')
@@ -45,10 +50,7 @@ vi.mock('vue-i18n', async () => {
 
 vi.mock('@/stores/auth', () => ({
   useAuthStore: () => ({
-    user: {
-      username: 'demo-user',
-      balance: 0,
-    },
+    user: mockUser,
     refreshUser,
   }),
 }))
@@ -162,6 +164,38 @@ function checkoutInfoWithBalancePackagesFixture() {
   }
 }
 
+function checkoutInfoWithMixedBalancePackagesFixture() {
+  return {
+    data: {
+      ...checkoutInfoFixture().data,
+      balance_packages: [
+        {
+          id: 9,
+          name: 'Codex 100',
+          description: 'Codex balance package',
+          price: 100,
+          credit_amount: 100,
+          package_scope: 'codex',
+          product_name: 'Codex 100',
+          for_sale: true,
+          sort_order: 1,
+        },
+        {
+          id: 10,
+          name: 'Universal 80',
+          description: 'Universal balance package',
+          price: 88,
+          credit_amount: 80,
+          package_scope: 'general',
+          product_name: 'Universal 80',
+          for_sale: true,
+          sort_order: 2,
+        },
+      ],
+    },
+  }
+}
+
 function jsapiOrderFixture(resumeToken: string) {
   return {
     order_id: 123,
@@ -209,6 +243,8 @@ describe('PaymentView WeChat JSAPI flow', () => {
       wechat_resume: '1',
       wechat_resume_token: 'resume-token-123',
     }
+    mockUser.balance = 0
+    mockUser.package_scope = null
     routerReplace.mockReset().mockResolvedValue(undefined)
     routerPush.mockReset().mockResolvedValue(undefined)
     routerResolve.mockClear()
@@ -452,5 +488,160 @@ describe('PaymentView WeChat JSAPI flow', () => {
     await flushPromises()
 
     expect(wrapper.html()).toContain('payment.balancePackages.title')
+  })
+})
+
+describe('PaymentView balance package storefront', () => {
+  beforeEach(() => {
+    routeState.path = '/purchase'
+    routeState.query = {}
+    mockUser.balance = 0
+    mockUser.package_scope = null
+    routerReplace.mockReset().mockResolvedValue(undefined)
+    routerPush.mockReset().mockResolvedValue(undefined)
+    routerResolve.mockClear()
+    createOrder.mockReset()
+    refreshUser.mockReset()
+    fetchActiveSubscriptions.mockReset().mockResolvedValue(undefined)
+    showError.mockReset()
+    showInfo.mockReset()
+    showWarning.mockReset()
+    getCheckoutInfo.mockReset().mockResolvedValue(checkoutInfoWithMixedBalancePackagesFixture())
+    bridgeInvoke.mockReset()
+    window.localStorage.clear()
+  })
+
+  function mountPaymentView() {
+    return mount(PaymentView, {
+      global: {
+        stubs: {
+          AppLayout: { template: '<div><slot /></div>' },
+          Teleport: true,
+          Transition: false,
+          AmountInput: { template: '<div data-testid="amount-input-stub" />' },
+          PaymentMethodSelector: { template: '<div data-testid="payment-method-selector-stub" />' },
+          SubscriptionPlanCard: { template: '<div data-testid="subscription-plan-card-stub" />' },
+          PaymentStatusPanel: { template: '<div data-testid="payment-status-panel-stub" />' },
+          Icon: { template: '<div data-testid="icon-stub" />' },
+        },
+      },
+    })
+  }
+
+  it('defaults to balance package tab when packages exist and recharge tab stays disabled', async () => {
+    const wrapper = mountPaymentView()
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="payment-tab-package"]').classes()).toContain('bg-white')
+    expect(wrapper.find('[data-testid="payment-tab-recharge"]').attributes('disabled')).toBeDefined()
+  })
+
+  it('renders balance package cards with scope badge, credited amount and support hint', async () => {
+    const wrapper = mountPaymentView()
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="balance-package-card-9"]').text()).toContain('$100.00')
+    expect(wrapper.find('[data-testid="balance-package-card-9"]').text()).toContain('payment.balancePackages.supportsCodexOnly')
+    expect(wrapper.find('[data-testid="balance-package-card-10"]').text()).toContain('payment.balancePackages.supportsGeneralOnly')
+  })
+
+  it('renders a lightweight balance mode summary in the package header instead of a heavy standalone panel', async () => {
+    mockUser.balance = 35.93
+    mockUser.package_scope = 'codex'
+
+    const wrapper = mountPaymentView()
+    await flushPromises()
+
+    const header = wrapper.get('[data-testid="balance-package-account-header"]')
+    expect(header.text()).toContain('payment.currentBalance')
+    expect(header.text()).toContain('profile.balanceMode')
+    expect(header.text()).toContain('payment.balancePackages.codex')
+  })
+
+  it('renders package cards with compact support blocks and aligned action footer', async () => {
+    const wrapper = mountPaymentView()
+    await flushPromises()
+
+    const card = wrapper.get('[data-testid="balance-package-card-9"]')
+    expect(card.get('[data-testid="balance-package-card-support-9"]').text()).toContain('payment.balancePackages.supportsCodexOnly')
+    expect(card.get('[data-testid="balance-package-card-price-9"]').text()).toContain('¥100.00')
+    expect(card.get('[data-testid="balance-package-select-9"]').text()).toContain('payment.balancePackages.buyNow')
+  })
+
+  it('renders balance mode guide and notes above the package cards', async () => {
+    const wrapper = mountPaymentView()
+    await flushPromises()
+
+    const guide = wrapper.get('[data-testid="balance-package-mode-guide"]')
+    expect(guide.text()).toContain('payment.balancePackages.modeGuideTitle')
+    expect(guide.text()).toContain('payment.balancePackages.modeGuideCodexTitle')
+    expect(guide.text()).toContain('payment.balancePackages.modeGuideGeneralTitle')
+    expect(guide.text()).toContain('payment.balancePackages.noticeForceSwitch')
+  })
+
+  it('shows current package scope banner and disables conflicting packages', async () => {
+    mockUser.balance = 12
+    mockUser.package_scope = 'codex'
+
+    const wrapper = mountPaymentView()
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('profile.balanceMode')
+    expect(wrapper.text()).toContain('payment.balancePackages.codex')
+    expect(wrapper.find('[data-testid="balance-package-card-10"]').attributes('aria-disabled')).toBe('true')
+    expect(wrapper.find('[data-testid="balance-package-card-10"]').text()).toContain('payment.balancePackages.unavailableCurrentScope')
+  })
+
+  it('renders conflicting cards as restrained unavailable products instead of warning cards', async () => {
+    mockUser.balance = 12
+    mockUser.package_scope = 'codex'
+
+    const wrapper = mountPaymentView()
+    await flushPromises()
+
+    const card = wrapper.get('[data-testid="balance-package-card-10"]')
+    expect(card.attributes('aria-disabled')).toBe('true')
+    expect(card.text()).toContain('payment.balancePackages.unavailableCurrentScope')
+    expect(card.get('[data-testid="balance-package-force-switch-10"]').text()).toContain('payment.balancePackages.forceSwitch')
+  })
+
+  it('enters confirm state after selecting a compatible package', async () => {
+    const wrapper = mountPaymentView()
+    await flushPromises()
+
+    await wrapper.find('[data-testid="balance-package-select-9"]').trigger('click')
+
+    expect(wrapper.find('[data-testid="balance-package-summary"]').exists()).toBe(true)
+    expect(wrapper.text()).toContain('payment.balancePackages.purchaseNotice')
+    expect(wrapper.text()).toContain('payment.balancePackages.backToList')
+  })
+
+  it('shows force switch action for conflicting package and submits force_switch_scope after confirmation', async () => {
+    mockUser.balance = 12
+    mockUser.package_scope = 'codex'
+    createOrder.mockResolvedValue({
+      order_id: 999,
+      amount: 80,
+      pay_amount: 88,
+      fee_rate: 0,
+      expires_at: '2099-01-01T00:10:00.000Z',
+      payment_type: 'wxpay',
+      qr_code: 'weixin://test',
+      out_trade_no: 'sub2_force_switch_999',
+    })
+
+    const wrapper = mountPaymentView()
+    await flushPromises()
+
+    await wrapper.find('[data-testid="balance-package-force-switch-10"]').trigger('click')
+
+    expect(wrapper.text()).toContain('payment.balancePackages.forceSwitchIrreversible')
+
+    await wrapper.find('[data-testid="confirm-force-switch"]').trigger('click')
+
+    expect(createOrder).toHaveBeenCalledWith(expect.objectContaining({
+      force_switch_scope: true,
+      balance_package_id: 10,
+    }))
   })
 })

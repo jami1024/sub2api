@@ -155,6 +155,11 @@ func PackageScopeSnapshot(v string) predicate.PaymentOrder {
 	return predicate.PaymentOrder(sql.FieldEQ(FieldPackageScopeSnapshot, v))
 }
 
+// ForceSwitchScope applies equality check predicate on the "force_switch_scope" field. It's identical to ForceSwitchScopeEQ.
+func ForceSwitchScope(v bool) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldEQ(FieldForceSwitchScope, v))
+}
+
 // ProviderInstanceID applies equality check predicate on the "provider_instance_id" field. It's identical to ProviderInstanceIDEQ.
 func ProviderInstanceID(v string) predicate.PaymentOrder {
 	return predicate.PaymentOrder(sql.FieldEQ(FieldProviderInstanceID, v))
@@ -1413,6 +1418,16 @@ func PackageScopeSnapshotEqualFold(v string) predicate.PaymentOrder {
 // PackageScopeSnapshotContainsFold applies the ContainsFold predicate on the "package_scope_snapshot" field.
 func PackageScopeSnapshotContainsFold(v string) predicate.PaymentOrder {
 	return predicate.PaymentOrder(sql.FieldContainsFold(FieldPackageScopeSnapshot, v))
+}
+
+// ForceSwitchScopeEQ applies the EQ predicate on the "force_switch_scope" field.
+func ForceSwitchScopeEQ(v bool) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldEQ(FieldForceSwitchScope, v))
+}
+
+// ForceSwitchScopeNEQ applies the NEQ predicate on the "force_switch_scope" field.
+func ForceSwitchScopeNEQ(v bool) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldNEQ(FieldForceSwitchScope, v))
 }
 
 // ProviderInstanceIDEQ applies the EQ predicate on the "provider_instance_id" field.
