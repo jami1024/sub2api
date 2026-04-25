@@ -183,6 +183,20 @@ func (_c *PaymentOrderCreate) SetNillablePlanID(v *int64) *PaymentOrderCreate {
 	return _c
 }
 
+// SetBalancePackageID sets the "balance_package_id" field.
+func (_c *PaymentOrderCreate) SetBalancePackageID(v int64) *PaymentOrderCreate {
+	_c.mutation.SetBalancePackageID(v)
+	return _c
+}
+
+// SetNillableBalancePackageID sets the "balance_package_id" field if the given value is not nil.
+func (_c *PaymentOrderCreate) SetNillableBalancePackageID(v *int64) *PaymentOrderCreate {
+	if v != nil {
+		_c.SetBalancePackageID(*v)
+	}
+	return _c
+}
+
 // SetSubscriptionGroupID sets the "subscription_group_id" field.
 func (_c *PaymentOrderCreate) SetSubscriptionGroupID(v int64) *PaymentOrderCreate {
 	_c.mutation.SetSubscriptionGroupID(v)
@@ -207,6 +221,20 @@ func (_c *PaymentOrderCreate) SetSubscriptionDays(v int) *PaymentOrderCreate {
 func (_c *PaymentOrderCreate) SetNillableSubscriptionDays(v *int) *PaymentOrderCreate {
 	if v != nil {
 		_c.SetSubscriptionDays(*v)
+	}
+	return _c
+}
+
+// SetPackageScopeSnapshot sets the "package_scope_snapshot" field.
+func (_c *PaymentOrderCreate) SetPackageScopeSnapshot(v string) *PaymentOrderCreate {
+	_c.mutation.SetPackageScopeSnapshot(v)
+	return _c
+}
+
+// SetNillablePackageScopeSnapshot sets the "package_scope_snapshot" field if the given value is not nil.
+func (_c *PaymentOrderCreate) SetNillablePackageScopeSnapshot(v *string) *PaymentOrderCreate {
+	if v != nil {
+		_c.SetPackageScopeSnapshot(*v)
 	}
 	return _c
 }
@@ -525,6 +553,10 @@ func (_c *PaymentOrderCreate) defaults() {
 		v := paymentorder.DefaultOrderType
 		_c.mutation.SetOrderType(v)
 	}
+	if _, ok := _c.mutation.PackageScopeSnapshot(); !ok {
+		v := paymentorder.DefaultPackageScopeSnapshot
+		_c.mutation.SetPackageScopeSnapshot(v)
+	}
 	if _, ok := _c.mutation.Status(); !ok {
 		v := paymentorder.DefaultStatus
 		_c.mutation.SetStatus(v)
@@ -615,6 +647,14 @@ func (_c *PaymentOrderCreate) check() error {
 	if v, ok := _c.mutation.OrderType(); ok {
 		if err := paymentorder.OrderTypeValidator(v); err != nil {
 			return &ValidationError{Name: "order_type", err: fmt.Errorf(`ent: validator failed for field "PaymentOrder.order_type": %w`, err)}
+		}
+	}
+	if _, ok := _c.mutation.PackageScopeSnapshot(); !ok {
+		return &ValidationError{Name: "package_scope_snapshot", err: errors.New(`ent: missing required field "PaymentOrder.package_scope_snapshot"`)}
+	}
+	if v, ok := _c.mutation.PackageScopeSnapshot(); ok {
+		if err := paymentorder.PackageScopeSnapshotValidator(v); err != nil {
+			return &ValidationError{Name: "package_scope_snapshot", err: fmt.Errorf(`ent: validator failed for field "PaymentOrder.package_scope_snapshot": %w`, err)}
 		}
 	}
 	if v, ok := _c.mutation.ProviderInstanceID(); ok {
@@ -761,6 +801,10 @@ func (_c *PaymentOrderCreate) createSpec() (*PaymentOrder, *sqlgraph.CreateSpec)
 		_spec.SetField(paymentorder.FieldPlanID, field.TypeInt64, value)
 		_node.PlanID = &value
 	}
+	if value, ok := _c.mutation.BalancePackageID(); ok {
+		_spec.SetField(paymentorder.FieldBalancePackageID, field.TypeInt64, value)
+		_node.BalancePackageID = &value
+	}
 	if value, ok := _c.mutation.SubscriptionGroupID(); ok {
 		_spec.SetField(paymentorder.FieldSubscriptionGroupID, field.TypeInt64, value)
 		_node.SubscriptionGroupID = &value
@@ -768,6 +812,10 @@ func (_c *PaymentOrderCreate) createSpec() (*PaymentOrder, *sqlgraph.CreateSpec)
 	if value, ok := _c.mutation.SubscriptionDays(); ok {
 		_spec.SetField(paymentorder.FieldSubscriptionDays, field.TypeInt, value)
 		_node.SubscriptionDays = &value
+	}
+	if value, ok := _c.mutation.PackageScopeSnapshot(); ok {
+		_spec.SetField(paymentorder.FieldPackageScopeSnapshot, field.TypeString, value)
+		_node.PackageScopeSnapshot = value
 	}
 	if value, ok := _c.mutation.ProviderInstanceID(); ok {
 		_spec.SetField(paymentorder.FieldProviderInstanceID, field.TypeString, value)
@@ -1168,6 +1216,30 @@ func (u *PaymentOrderUpsert) ClearPlanID() *PaymentOrderUpsert {
 	return u
 }
 
+// SetBalancePackageID sets the "balance_package_id" field.
+func (u *PaymentOrderUpsert) SetBalancePackageID(v int64) *PaymentOrderUpsert {
+	u.Set(paymentorder.FieldBalancePackageID, v)
+	return u
+}
+
+// UpdateBalancePackageID sets the "balance_package_id" field to the value that was provided on create.
+func (u *PaymentOrderUpsert) UpdateBalancePackageID() *PaymentOrderUpsert {
+	u.SetExcluded(paymentorder.FieldBalancePackageID)
+	return u
+}
+
+// AddBalancePackageID adds v to the "balance_package_id" field.
+func (u *PaymentOrderUpsert) AddBalancePackageID(v int64) *PaymentOrderUpsert {
+	u.Add(paymentorder.FieldBalancePackageID, v)
+	return u
+}
+
+// ClearBalancePackageID clears the value of the "balance_package_id" field.
+func (u *PaymentOrderUpsert) ClearBalancePackageID() *PaymentOrderUpsert {
+	u.SetNull(paymentorder.FieldBalancePackageID)
+	return u
+}
+
 // SetSubscriptionGroupID sets the "subscription_group_id" field.
 func (u *PaymentOrderUpsert) SetSubscriptionGroupID(v int64) *PaymentOrderUpsert {
 	u.Set(paymentorder.FieldSubscriptionGroupID, v)
@@ -1213,6 +1285,18 @@ func (u *PaymentOrderUpsert) AddSubscriptionDays(v int) *PaymentOrderUpsert {
 // ClearSubscriptionDays clears the value of the "subscription_days" field.
 func (u *PaymentOrderUpsert) ClearSubscriptionDays() *PaymentOrderUpsert {
 	u.SetNull(paymentorder.FieldSubscriptionDays)
+	return u
+}
+
+// SetPackageScopeSnapshot sets the "package_scope_snapshot" field.
+func (u *PaymentOrderUpsert) SetPackageScopeSnapshot(v string) *PaymentOrderUpsert {
+	u.Set(paymentorder.FieldPackageScopeSnapshot, v)
+	return u
+}
+
+// UpdatePackageScopeSnapshot sets the "package_scope_snapshot" field to the value that was provided on create.
+func (u *PaymentOrderUpsert) UpdatePackageScopeSnapshot() *PaymentOrderUpsert {
+	u.SetExcluded(paymentorder.FieldPackageScopeSnapshot)
 	return u
 }
 
@@ -1872,6 +1956,34 @@ func (u *PaymentOrderUpsertOne) ClearPlanID() *PaymentOrderUpsertOne {
 	})
 }
 
+// SetBalancePackageID sets the "balance_package_id" field.
+func (u *PaymentOrderUpsertOne) SetBalancePackageID(v int64) *PaymentOrderUpsertOne {
+	return u.Update(func(s *PaymentOrderUpsert) {
+		s.SetBalancePackageID(v)
+	})
+}
+
+// AddBalancePackageID adds v to the "balance_package_id" field.
+func (u *PaymentOrderUpsertOne) AddBalancePackageID(v int64) *PaymentOrderUpsertOne {
+	return u.Update(func(s *PaymentOrderUpsert) {
+		s.AddBalancePackageID(v)
+	})
+}
+
+// UpdateBalancePackageID sets the "balance_package_id" field to the value that was provided on create.
+func (u *PaymentOrderUpsertOne) UpdateBalancePackageID() *PaymentOrderUpsertOne {
+	return u.Update(func(s *PaymentOrderUpsert) {
+		s.UpdateBalancePackageID()
+	})
+}
+
+// ClearBalancePackageID clears the value of the "balance_package_id" field.
+func (u *PaymentOrderUpsertOne) ClearBalancePackageID() *PaymentOrderUpsertOne {
+	return u.Update(func(s *PaymentOrderUpsert) {
+		s.ClearBalancePackageID()
+	})
+}
+
 // SetSubscriptionGroupID sets the "subscription_group_id" field.
 func (u *PaymentOrderUpsertOne) SetSubscriptionGroupID(v int64) *PaymentOrderUpsertOne {
 	return u.Update(func(s *PaymentOrderUpsert) {
@@ -1925,6 +2037,20 @@ func (u *PaymentOrderUpsertOne) UpdateSubscriptionDays() *PaymentOrderUpsertOne 
 func (u *PaymentOrderUpsertOne) ClearSubscriptionDays() *PaymentOrderUpsertOne {
 	return u.Update(func(s *PaymentOrderUpsert) {
 		s.ClearSubscriptionDays()
+	})
+}
+
+// SetPackageScopeSnapshot sets the "package_scope_snapshot" field.
+func (u *PaymentOrderUpsertOne) SetPackageScopeSnapshot(v string) *PaymentOrderUpsertOne {
+	return u.Update(func(s *PaymentOrderUpsert) {
+		s.SetPackageScopeSnapshot(v)
+	})
+}
+
+// UpdatePackageScopeSnapshot sets the "package_scope_snapshot" field to the value that was provided on create.
+func (u *PaymentOrderUpsertOne) UpdatePackageScopeSnapshot() *PaymentOrderUpsertOne {
+	return u.Update(func(s *PaymentOrderUpsert) {
+		s.UpdatePackageScopeSnapshot()
 	})
 }
 
@@ -2804,6 +2930,34 @@ func (u *PaymentOrderUpsertBulk) ClearPlanID() *PaymentOrderUpsertBulk {
 	})
 }
 
+// SetBalancePackageID sets the "balance_package_id" field.
+func (u *PaymentOrderUpsertBulk) SetBalancePackageID(v int64) *PaymentOrderUpsertBulk {
+	return u.Update(func(s *PaymentOrderUpsert) {
+		s.SetBalancePackageID(v)
+	})
+}
+
+// AddBalancePackageID adds v to the "balance_package_id" field.
+func (u *PaymentOrderUpsertBulk) AddBalancePackageID(v int64) *PaymentOrderUpsertBulk {
+	return u.Update(func(s *PaymentOrderUpsert) {
+		s.AddBalancePackageID(v)
+	})
+}
+
+// UpdateBalancePackageID sets the "balance_package_id" field to the value that was provided on create.
+func (u *PaymentOrderUpsertBulk) UpdateBalancePackageID() *PaymentOrderUpsertBulk {
+	return u.Update(func(s *PaymentOrderUpsert) {
+		s.UpdateBalancePackageID()
+	})
+}
+
+// ClearBalancePackageID clears the value of the "balance_package_id" field.
+func (u *PaymentOrderUpsertBulk) ClearBalancePackageID() *PaymentOrderUpsertBulk {
+	return u.Update(func(s *PaymentOrderUpsert) {
+		s.ClearBalancePackageID()
+	})
+}
+
 // SetSubscriptionGroupID sets the "subscription_group_id" field.
 func (u *PaymentOrderUpsertBulk) SetSubscriptionGroupID(v int64) *PaymentOrderUpsertBulk {
 	return u.Update(func(s *PaymentOrderUpsert) {
@@ -2857,6 +3011,20 @@ func (u *PaymentOrderUpsertBulk) UpdateSubscriptionDays() *PaymentOrderUpsertBul
 func (u *PaymentOrderUpsertBulk) ClearSubscriptionDays() *PaymentOrderUpsertBulk {
 	return u.Update(func(s *PaymentOrderUpsert) {
 		s.ClearSubscriptionDays()
+	})
+}
+
+// SetPackageScopeSnapshot sets the "package_scope_snapshot" field.
+func (u *PaymentOrderUpsertBulk) SetPackageScopeSnapshot(v string) *PaymentOrderUpsertBulk {
+	return u.Update(func(s *PaymentOrderUpsert) {
+		s.SetPackageScopeSnapshot(v)
+	})
+}
+
+// UpdatePackageScopeSnapshot sets the "package_scope_snapshot" field to the value that was provided on create.
+func (u *PaymentOrderUpsertBulk) UpdatePackageScopeSnapshot() *PaymentOrderUpsertBulk {
+	return u.Update(func(s *PaymentOrderUpsert) {
+		s.UpdatePackageScopeSnapshot()
 	})
 }
 

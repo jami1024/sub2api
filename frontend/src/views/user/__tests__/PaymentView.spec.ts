@@ -101,6 +101,7 @@ function checkoutInfoFixture() {
       global_min: 0,
       global_max: 0,
       plans: [],
+      balance_packages: [],
       balance_disabled: false,
       balance_recharge_multiplier: 1,
       recharge_fee_rate: 0,
@@ -134,6 +135,27 @@ function checkoutInfoWithPlansFixture() {
           sort_order: 1,
           for_sale: true,
           group_name: 'OpenAI',
+        },
+      ],
+    },
+  }
+}
+
+function checkoutInfoWithBalancePackagesFixture() {
+  return {
+    data: {
+      ...checkoutInfoFixture().data,
+      balance_packages: [
+        {
+          id: 9,
+          name: 'Codex 100',
+          description: 'Codex balance package',
+          price: 100,
+          credit_amount: 100,
+          package_scope: 'codex',
+          product_name: 'Codex 100',
+          for_sale: true,
+          sort_order: 1,
         },
       ],
     },
@@ -263,6 +285,7 @@ describe('PaymentView WeChat JSAPI flow', () => {
     const wrapper = shallowMount(PaymentView, {
       global: {
         stubs: {
+          AppLayout: { template: '<div><slot /></div>' },
           Teleport: true,
           Transition: false,
         },
@@ -303,6 +326,7 @@ describe('PaymentView WeChat JSAPI flow', () => {
     shallowMount(PaymentView, {
       global: {
         stubs: {
+          AppLayout: { template: '<div><slot /></div>' },
           Teleport: true,
           Transition: false,
         },
@@ -410,5 +434,23 @@ describe('PaymentView WeChat JSAPI flow', () => {
     expect(showWarning).toHaveBeenCalledWith('payment.errors.mobilePaymentFallbackToQr')
     expect(showError).not.toHaveBeenCalled()
     expect(window.localStorage.getItem(PAYMENT_RECOVERY_STORAGE_KEY)).toContain('weixin://wxpay/bizpayurl?pr=fallback-native')
+  })
+
+  it('shows balance package tab when checkout info contains balance packages', async () => {
+    routeState.query = {}
+    getCheckoutInfo.mockResolvedValue(checkoutInfoWithBalancePackagesFixture())
+
+    const wrapper = shallowMount(PaymentView, {
+      global: {
+        stubs: {
+          AppLayout: { template: '<div><slot /></div>' },
+          Teleport: true,
+          Transition: false,
+        },
+      },
+    })
+    await flushPromises()
+
+    expect(wrapper.html()).toContain('payment.balancePackages.title')
   })
 })

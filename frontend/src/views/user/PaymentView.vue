@@ -6,7 +6,7 @@
       </div>
       <template v-else>
         <!-- Tab Switcher (hide during payment and subscription confirm) -->
-        <div v-if="tabs.length > 1 && paymentPhase === 'select' && !selectedPlan" class="flex space-x-1 rounded-xl bg-gray-100 p-1 dark:bg-dark-800">
+        <div v-if="tabs.length > 1 && paymentPhase === 'select' && !selectedPlan && !selectedBalancePackage" class="flex space-x-1 rounded-xl bg-gray-100 p-1 dark:bg-dark-800">
           <button v-for="tab in tabs" :key="tab.key"
             class="flex-1 rounded-lg px-4 py-2.5 text-sm font-medium transition-all"
             :class="activeTab === tab.key ? 'bg-white text-gray-900 shadow dark:bg-dark-700 dark:text-white' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'"
@@ -86,6 +86,71 @@
               </span>
               <span v-else>{{ t('payment.createOrder') }} ¥{{ totalAmount.toFixed(2) }}</span>
             </button>
+            </template>
+          </template>
+          <!-- Balance Package Tab -->
+          <template v-else-if="activeTab === 'package'">
+            <template v-if="selectedBalancePackage">
+              <div class="card p-5">
+                <div class="mb-3 flex flex-wrap items-center gap-2">
+                  <span class="rounded-md border border-primary-200 bg-primary-50 px-2 py-0.5 text-xs font-medium text-primary-700 dark:border-primary-800 dark:bg-primary-950/30 dark:text-primary-300">
+                    {{ selectedBalancePackage.package_scope === 'codex' ? t('payment.balancePackages.codex') : t('payment.balancePackages.general') }}
+                  </span>
+                  <h3 class="text-lg font-bold text-gray-900 dark:text-white">{{ selectedBalancePackage.name }}</h3>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                  <div>
+                    <span class="text-xs text-gray-400 dark:text-gray-500">{{ t('payment.amountLabel') }}</span>
+                    <div class="text-2xl font-bold text-gray-900 dark:text-white">¥{{ selectedBalancePackage.price.toFixed(2) }}</div>
+                  </div>
+                  <div>
+                    <span class="text-xs text-gray-400 dark:text-gray-500">{{ t('payment.creditedBalance') }}</span>
+                    <div class="text-2xl font-bold text-primary-600 dark:text-primary-400">${{ selectedBalancePackage.credit_amount.toFixed(2) }}</div>
+                  </div>
+                </div>
+                <p v-if="selectedBalancePackage.description" class="mt-3 text-sm leading-relaxed text-gray-500 dark:text-gray-400">
+                  {{ selectedBalancePackage.description }}
+                </p>
+              </div>
+              <div v-if="enabledMethods.length >= 1" class="card p-6">
+                <PaymentMethodSelector
+                  :methods="methodOptions"
+                  :selected="selectedMethod"
+                  @select="selectedMethod = $event"
+                />
+              </div>
+              <button :class="['btn w-full py-3 text-base font-medium', paymentButtonClass]" :disabled="!canSubmitBalancePackage || submitting" @click="confirmBalancePackage">
+                <span v-if="submitting" class="flex items-center justify-center gap-2">
+                  <span class="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></span>
+                  {{ t('common.processing') }}
+                </span>
+                <span v-else>{{ t('payment.createOrder') }} ¥{{ selectedBalancePackage.price.toFixed(2) }}</span>
+              </button>
+              <button class="btn btn-secondary w-full" @click="selectedBalancePackage = null">{{ t('common.cancel') }}</button>
+            </template>
+            <template v-else>
+              <div v-if="checkout.balance_packages.length === 0" class="card py-16 text-center">
+                <Icon name="gift" size="xl" class="mx-auto mb-3 text-gray-300 dark:text-dark-600" />
+                <p class="text-gray-500 dark:text-gray-400">{{ t('payment.balancePackages.empty') }}</p>
+              </div>
+              <div v-else class="grid grid-cols-1 gap-5 sm:grid-cols-2">
+                <button
+                  v-for="pkg in checkout.balance_packages"
+                  :key="pkg.id"
+                  class="card p-5 text-left transition hover:-translate-y-0.5 hover:shadow-lg"
+                  @click="selectBalancePackage(pkg)"
+                >
+                  <div class="mb-3 flex items-center justify-between gap-3">
+                    <span class="rounded-md border border-primary-200 bg-primary-50 px-2 py-0.5 text-xs font-medium text-primary-700 dark:border-primary-800 dark:bg-primary-950/30 dark:text-primary-300">
+                      {{ pkg.package_scope === 'codex' ? t('payment.balancePackages.codex') : t('payment.balancePackages.general') }}
+                    </span>
+                    <span class="text-sm text-gray-400 dark:text-gray-500">${{ pkg.credit_amount.toFixed(2) }}</span>
+                  </div>
+                  <h3 class="text-base font-bold text-gray-900 dark:text-white">{{ pkg.name }}</h3>
+                  <p v-if="pkg.description" class="mt-2 text-sm text-gray-500 dark:text-gray-400">{{ pkg.description }}</p>
+                  <div class="mt-4 text-2xl font-bold text-primary-600 dark:text-primary-400">¥{{ pkg.price.toFixed(2) }}</div>
+                </button>
+              </div>
             </template>
           </template>
           <!-- Subscribe Tab -->
@@ -205,7 +270,7 @@
             </template>
           </template>
         </template>
-        <div v-if="(checkout.help_text || checkout.help_image_url) && paymentPhase === 'select' && !selectedPlan" class="card p-4">
+        <div v-if="(checkout.help_text || checkout.help_image_url) && paymentPhase === 'select' && !selectedPlan && !selectedBalancePackage" class="card p-4">
           <div class="flex flex-col items-center gap-3">
             <img v-if="checkout.help_image_url" :src="checkout.help_image_url" alt=""
               class="h-40 max-w-full cursor-pointer rounded-lg object-contain transition-opacity hover:opacity-80"
@@ -254,7 +319,7 @@ import { useAppStore } from '@/stores'
 import { paymentAPI } from '@/api/payment'
 import { extractApiErrorMessage, extractI18nErrorMessage } from '@/utils/apiError'
 import { isMobileDevice } from '@/utils/device'
-import type { SubscriptionPlan, CheckoutInfoResponse, CreateOrderResult, OrderType } from '@/types/payment'
+import type { SubscriptionPlan, BalancePackage, CheckoutInfoResponse, CreateOrderResult, OrderType } from '@/types/payment'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import AmountInput from '@/components/payment/AmountInput.vue'
 import PaymentMethodSelector from '@/components/payment/PaymentMethodSelector.vue'
@@ -298,10 +363,11 @@ const loading = ref(true)
 const submitting = ref(false)
 const errorMessage = ref('')
 const errorHintMessage = ref('')
-const activeTab = ref<'recharge' | 'subscription'>('recharge')
+const activeTab = ref<'recharge' | 'package' | 'subscription'>('recharge')
 const amount = ref<number | null>(null)
 const selectedMethod = ref('')
 const selectedPlan = ref<SubscriptionPlan | null>(null)
+const selectedBalancePackage = ref<BalancePackage | null>(null)
 const previewImage = ref('')
 
 const paymentPhase = ref<'select' | 'paying'>('select')
@@ -310,6 +376,7 @@ interface CreateOrderOptions {
   openid?: string
   wechatResumeToken?: string
   paymentType?: string
+  balancePackageId?: number
   isResume?: boolean
   mobileQrFallbackAttempted?: boolean
 }
@@ -451,6 +518,7 @@ function onPaymentDone() {
   const wasSubscription = paymentState.value.orderType === 'subscription'
   resetPayment()
   selectedPlan.value = null
+  selectedBalancePackage.value = null
   if (wasSubscription) {
     subscriptionStore.fetchActiveSubscriptions(true).catch(() => {})
   }
@@ -471,12 +539,13 @@ function onPaymentSettled() {
 // All checkout data from single API call
 const checkout = ref<CheckoutInfoResponse>({
   methods: {}, global_min: 0, global_max: 0,
-  plans: [], balance_disabled: false, balance_recharge_multiplier: 1, recharge_fee_rate: 0, help_text: '', help_image_url: '', stripe_publishable_key: '',
+  plans: [], balance_packages: [], balance_disabled: false, balance_recharge_multiplier: 1, recharge_fee_rate: 0, help_text: '', help_image_url: '', stripe_publishable_key: '',
 })
 
 const tabs = computed(() => {
-  const result: { key: 'recharge' | 'subscription'; label: string }[] = []
+  const result: { key: 'recharge' | 'package' | 'subscription'; label: string }[] = []
   if (!checkout.value.balance_disabled) result.push({ key: 'recharge', label: t('payment.tabTopUp') })
+  if (checkout.value.balance_packages.length > 0) result.push({ key: 'package', label: t('payment.balancePackages.title') })
   result.push({ key: 'subscription', label: t('payment.tabSubscribe') })
   return result
 })
@@ -598,6 +667,11 @@ const canSubmitSubscription = computed(() =>
     && amountFitsMethod(selectedPlan.value.price, selectedMethod.value)
     && selectedLimit.value?.available !== false
 )
+const canSubmitBalancePackage = computed(() =>
+  selectedBalancePackage.value !== null
+    && amountFitsMethod(selectedBalancePackage.value.price, selectedMethod.value)
+    && selectedLimit.value?.available !== false
+)
 
 // Auto-switch to first available method when current selection can't handle the amount
 watch(() => [validAmount.value, selectedMethod.value] as const, ([amt, method]) => {
@@ -641,6 +715,11 @@ function selectPlan(plan: SubscriptionPlan) {
   errorMessage.value = ''
 }
 
+function selectBalancePackage(pkg: BalancePackage) {
+  selectedBalancePackage.value = pkg
+  errorMessage.value = ''
+}
+
 function selectPlanFromModal(plan: SubscriptionPlan) {
   showRenewalModal.value = false
   renewGroupId.value = null
@@ -663,6 +742,13 @@ async function confirmSubscribe() {
   await createOrder(selectedPlan.value.price, 'subscription', selectedPlan.value.id)
 }
 
+async function confirmBalancePackage() {
+  if (!selectedBalancePackage.value || submitting.value) return
+  await createOrder(selectedBalancePackage.value.credit_amount, 'balance_package', undefined, {
+    balancePackageId: selectedBalancePackage.value.id,
+  })
+}
+
 async function createOrder(orderAmount: number, orderType: OrderType, planId?: number, options: CreateOrderOptions = {}) {
   submitting.value = true
   errorMessage.value = ''
@@ -683,6 +769,9 @@ async function createOrder(orderAmount: number, orderType: OrderType, planId?: n
     }
     if (options.wechatResumeToken) {
       payload.wechat_resume_token = options.wechatResumeToken
+    }
+    if (options.balancePackageId) {
+      payload.balance_package_id = options.balancePackageId
     }
 
     const result = await paymentStore.createOrder(payload) as CreateOrderResult & { resume_token?: string }

@@ -115,6 +115,20 @@ func (_c *UserCreate) SetNillableBalance(v *float64) *UserCreate {
 	return _c
 }
 
+// SetPackageScope sets the "package_scope" field.
+func (_c *UserCreate) SetPackageScope(v string) *UserCreate {
+	_c.mutation.SetPackageScope(v)
+	return _c
+}
+
+// SetNillablePackageScope sets the "package_scope" field if the given value is not nil.
+func (_c *UserCreate) SetNillablePackageScope(v *string) *UserCreate {
+	if v != nil {
+		_c.SetPackageScope(*v)
+	}
+	return _c
+}
+
 // SetConcurrency sets the "concurrency" field.
 func (_c *UserCreate) SetConcurrency(v int) *UserCreate {
 	_c.mutation.SetConcurrency(v)
@@ -660,6 +674,11 @@ func (_c *UserCreate) check() error {
 	if _, ok := _c.mutation.Balance(); !ok {
 		return &ValidationError{Name: "balance", err: errors.New(`ent: missing required field "User.balance"`)}
 	}
+	if v, ok := _c.mutation.PackageScope(); ok {
+		if err := user.PackageScopeValidator(v); err != nil {
+			return &ValidationError{Name: "package_scope", err: fmt.Errorf(`ent: validator failed for field "User.package_scope": %w`, err)}
+		}
+	}
 	if _, ok := _c.mutation.Concurrency(); !ok {
 		return &ValidationError{Name: "concurrency", err: errors.New(`ent: missing required field "User.concurrency"`)}
 	}
@@ -762,6 +781,10 @@ func (_c *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.Balance(); ok {
 		_spec.SetField(user.FieldBalance, field.TypeFloat64, value)
 		_node.Balance = value
+	}
+	if value, ok := _c.mutation.PackageScope(); ok {
+		_spec.SetField(user.FieldPackageScope, field.TypeString, value)
+		_node.PackageScope = &value
 	}
 	if value, ok := _c.mutation.Concurrency(); ok {
 		_spec.SetField(user.FieldConcurrency, field.TypeInt, value)
@@ -1159,6 +1182,24 @@ func (u *UserUpsert) AddBalance(v float64) *UserUpsert {
 	return u
 }
 
+// SetPackageScope sets the "package_scope" field.
+func (u *UserUpsert) SetPackageScope(v string) *UserUpsert {
+	u.Set(user.FieldPackageScope, v)
+	return u
+}
+
+// UpdatePackageScope sets the "package_scope" field to the value that was provided on create.
+func (u *UserUpsert) UpdatePackageScope() *UserUpsert {
+	u.SetExcluded(user.FieldPackageScope)
+	return u
+}
+
+// ClearPackageScope clears the value of the "package_scope" field.
+func (u *UserUpsert) ClearPackageScope() *UserUpsert {
+	u.SetNull(user.FieldPackageScope)
+	return u
+}
+
 // SetConcurrency sets the "concurrency" field.
 func (u *UserUpsert) SetConcurrency(v int) *UserUpsert {
 	u.Set(user.FieldConcurrency, v)
@@ -1545,6 +1586,27 @@ func (u *UserUpsertOne) AddBalance(v float64) *UserUpsertOne {
 func (u *UserUpsertOne) UpdateBalance() *UserUpsertOne {
 	return u.Update(func(s *UserUpsert) {
 		s.UpdateBalance()
+	})
+}
+
+// SetPackageScope sets the "package_scope" field.
+func (u *UserUpsertOne) SetPackageScope(v string) *UserUpsertOne {
+	return u.Update(func(s *UserUpsert) {
+		s.SetPackageScope(v)
+	})
+}
+
+// UpdatePackageScope sets the "package_scope" field to the value that was provided on create.
+func (u *UserUpsertOne) UpdatePackageScope() *UserUpsertOne {
+	return u.Update(func(s *UserUpsert) {
+		s.UpdatePackageScope()
+	})
+}
+
+// ClearPackageScope clears the value of the "package_scope" field.
+func (u *UserUpsertOne) ClearPackageScope() *UserUpsertOne {
+	return u.Update(func(s *UserUpsert) {
+		s.ClearPackageScope()
 	})
 }
 
@@ -2141,6 +2203,27 @@ func (u *UserUpsertBulk) AddBalance(v float64) *UserUpsertBulk {
 func (u *UserUpsertBulk) UpdateBalance() *UserUpsertBulk {
 	return u.Update(func(s *UserUpsert) {
 		s.UpdateBalance()
+	})
+}
+
+// SetPackageScope sets the "package_scope" field.
+func (u *UserUpsertBulk) SetPackageScope(v string) *UserUpsertBulk {
+	return u.Update(func(s *UserUpsert) {
+		s.SetPackageScope(v)
+	})
+}
+
+// UpdatePackageScope sets the "package_scope" field to the value that was provided on create.
+func (u *UserUpsertBulk) UpdatePackageScope() *UserUpsertBulk {
+	return u.Update(func(s *UserUpsert) {
+		s.UpdatePackageScope()
+	})
+}
+
+// ClearPackageScope clears the value of the "package_scope" field.
+func (u *UserUpsertBulk) ClearPackageScope() *UserUpsertBulk {
+	return u.Update(func(s *UserUpsert) {
+		s.ClearPackageScope()
 	})
 }
 

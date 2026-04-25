@@ -169,6 +169,28 @@ type UpdatePlanRequest struct {
 	SortOrder     *int     `json:"sort_order"`
 }
 
+type CreateBalancePackageRequest struct {
+	Name         string  `json:"name"`
+	Description  string  `json:"description"`
+	Price        float64 `json:"price"`
+	CreditAmount float64 `json:"credit_amount"`
+	PackageScope string  `json:"package_scope"`
+	ProductName  string  `json:"product_name"`
+	ForSale      bool    `json:"for_sale"`
+	SortOrder    int     `json:"sort_order"`
+}
+
+type UpdateBalancePackageRequest struct {
+	Name         *string  `json:"name"`
+	Description  *string  `json:"description"`
+	Price        *float64 `json:"price"`
+	CreditAmount *float64 `json:"credit_amount"`
+	PackageScope *string  `json:"package_scope"`
+	ProductName  *string  `json:"product_name"`
+	ForSale      *bool    `json:"for_sale"`
+	SortOrder    *int     `json:"sort_order"`
+}
+
 // PaymentConfigService manages payment configuration and CRUD for
 // provider instances, channels, and subscription plans.
 type PaymentConfigService struct {

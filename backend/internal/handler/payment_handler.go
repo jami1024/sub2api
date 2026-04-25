@@ -130,11 +130,28 @@ func (h *PaymentHandler) GetCheckoutInfo(c *gin.Context) {
 		})
 	}
 
+	packages, _ := h.configService.ListBalancePackages(ctx, true)
+	packageList := make([]checkoutBalancePackage, 0, len(packages))
+	for _, pkg := range packages {
+		packageList = append(packageList, checkoutBalancePackage{
+			ID:           int64(pkg.ID),
+			Name:         pkg.Name,
+			Description:  pkg.Description,
+			Price:        pkg.Price,
+			CreditAmount: pkg.CreditAmount,
+			PackageScope: pkg.PackageScope,
+			ProductName:  pkg.ProductName,
+			ForSale:      pkg.ForSale,
+			SortOrder:    pkg.SortOrder,
+		})
+	}
+
 	response.Success(c, checkoutInfoResponse{
 		Methods:                   limitsResp.Methods,
 		GlobalMin:                 limitsResp.GlobalMin,
 		GlobalMax:                 limitsResp.GlobalMax,
 		Plans:                     planList,
+		BalancePackages:           packageList,
 		BalanceDisabled:           cfg.BalanceDisabled,
 		BalanceRechargeMultiplier: cfg.BalanceRechargeMultiplier,
 		RechargeFeeRate:           cfg.RechargeFeeRate,
@@ -149,6 +166,7 @@ type checkoutInfoResponse struct {
 	GlobalMin                 float64                         `json:"global_min"`
 	GlobalMax                 float64                         `json:"global_max"`
 	Plans                     []checkoutPlan                  `json:"plans"`
+	BalancePackages           []checkoutBalancePackage        `json:"balance_packages"`
 	BalanceDisabled           bool                            `json:"balance_disabled"`
 	BalanceRechargeMultiplier float64                         `json:"balance_recharge_multiplier"`
 	RechargeFeeRate           float64                         `json:"recharge_fee_rate"`
@@ -175,6 +193,18 @@ type checkoutPlan struct {
 	ValidityUnit    string   `json:"validity_unit"`
 	Features        []string `json:"features"`
 	ProductName     string   `json:"product_name"`
+}
+
+type checkoutBalancePackage struct {
+	ID           int64   `json:"id"`
+	Name         string  `json:"name"`
+	Description  string  `json:"description"`
+	Price        float64 `json:"price"`
+	CreditAmount float64 `json:"credit_amount"`
+	PackageScope string  `json:"package_scope"`
+	ProductName  string  `json:"product_name"`
+	ForSale      bool    `json:"for_sale"`
+	SortOrder    int     `json:"sort_order"`
 }
 
 // parseFeatures splits a newline-separated features string into a string slice.
@@ -215,6 +245,7 @@ type CreateOrderRequest struct {
 	PaymentSource     string  `json:"payment_source"`
 	OrderType         string  `json:"order_type"`
 	PlanID            int64   `json:"plan_id"`
+	BalancePackageID  int64   `json:"balance_package_id"`
 	// IsMobile lets the frontend declare its mobile status directly. When
 	// nil we fall back to User-Agent heuristics (which miss iPadOS / some
 	// embedded browsers that strip the "Mobile" keyword).
@@ -264,6 +295,7 @@ func (h *PaymentHandler) CreateOrder(c *gin.Context) {
 		PaymentSource:   req.PaymentSource,
 		OrderType:       req.OrderType,
 		PlanID:          req.PlanID,
+		BalancePackageID: req.BalancePackageID,
 	})
 	if err != nil {
 		response.ErrorFrom(c, err)

@@ -39,6 +39,7 @@ const (
 const (
 	OrderTypeBalance      = "balance"
 	OrderTypeSubscription = "subscription"
+	OrderTypeBalancePackage = "balance_package"
 )
 
 // Entity statuses shared across users, groups, etc.

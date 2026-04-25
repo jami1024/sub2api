@@ -198,6 +198,26 @@ func TestAdminService_CreateGroup_NilImagePricing(t *testing.T) {
 	require.Nil(t, repo.created.ImagePrice4K)
 }
 
+func TestAdminService_CreateGroup_WithPackageScope(t *testing.T) {
+	repo := &groupRepoStubForAdmin{}
+	svc := &adminServiceImpl{groupRepo: repo}
+
+	scope := PackageScopeCodex
+	group, err := svc.CreateGroup(context.Background(), &CreateGroupInput{
+		Name:           "codex-group",
+		Description:    "Codex line",
+		Platform:       PlatformOpenAI,
+		PackageScope:   &scope,
+		RateMultiplier: 1.0,
+	})
+	require.NoError(t, err)
+	require.NotNil(t, group)
+	require.NotNil(t, repo.created)
+	require.NotNil(t, repo.created.PackageScope)
+	require.Equal(t, PackageScopeCodex, *repo.created.PackageScope)
+	require.Equal(t, PackageScopeCodex, *group.PackageScope)
+}
+
 // TestAdminService_UpdateGroup_WithImagePricing 测试更新分组时 ImagePrice 字段正确更新
 func TestAdminService_UpdateGroup_WithImagePricing(t *testing.T) {
 	existingGroup := &Group{

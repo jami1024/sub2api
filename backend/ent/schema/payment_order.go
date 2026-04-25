@@ -81,12 +81,18 @@ func (PaymentOrder) Fields() []ent.Field {
 		field.Int64("plan_id").
 			Optional().
 			Nillable(),
+		field.Int64("balance_package_id").
+			Optional().
+			Nillable(),
 		field.Int64("subscription_group_id").
 			Optional().
 			Nillable(),
 		field.Int("subscription_days").
 			Optional().
 			Nillable(),
+		field.String("package_scope_snapshot").
+			MaxLen(20).
+			Default(""),
 		field.String("provider_instance_id").
 			Optional().
 			Nillable().

@@ -14,6 +14,7 @@ type Group struct {
 	Name           string
 	Description    string
 	Platform       string
+	PackageScope   *string
 	RateMultiplier float64
 	IsExclusive    bool
 	Status         string

@@ -94,6 +94,14 @@ func RegisterPaymentRoutes(
 			plans.DELETE("/:id", adminPaymentHandler.DeletePlan)
 		}
 
+		packages := adminGroup.Group("/balance-packages")
+		{
+			packages.GET("", adminPaymentHandler.ListBalancePackages)
+			packages.POST("", adminPaymentHandler.CreateBalancePackage)
+			packages.PUT("/:id", adminPaymentHandler.UpdateBalancePackage)
+			packages.DELETE("/:id", adminPaymentHandler.DeleteBalancePackage)
+		}
+
 		// Provider Instances
 		providers := adminGroup.Group("/providers")
 		{

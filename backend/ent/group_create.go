@@ -147,6 +147,20 @@ func (_c *GroupCreate) SetNillablePlatform(v *string) *GroupCreate {
 	return _c
 }
 
+// SetPackageScope sets the "package_scope" field.
+func (_c *GroupCreate) SetPackageScope(v string) *GroupCreate {
+	_c.mutation.SetPackageScope(v)
+	return _c
+}
+
+// SetNillablePackageScope sets the "package_scope" field if the given value is not nil.
+func (_c *GroupCreate) SetNillablePackageScope(v *string) *GroupCreate {
+	if v != nil {
+		_c.SetPackageScope(*v)
+	}
+	return _c
+}
+
 // SetSubscriptionType sets the "subscription_type" field.
 func (_c *GroupCreate) SetSubscriptionType(v string) *GroupCreate {
 	_c.mutation.SetSubscriptionType(v)
@@ -689,6 +703,11 @@ func (_c *GroupCreate) check() error {
 			return &ValidationError{Name: "platform", err: fmt.Errorf(`ent: validator failed for field "Group.platform": %w`, err)}
 		}
 	}
+	if v, ok := _c.mutation.PackageScope(); ok {
+		if err := group.PackageScopeValidator(v); err != nil {
+			return &ValidationError{Name: "package_scope", err: fmt.Errorf(`ent: validator failed for field "Group.package_scope": %w`, err)}
+		}
+	}
 	if _, ok := _c.mutation.SubscriptionType(); !ok {
 		return &ValidationError{Name: "subscription_type", err: errors.New(`ent: missing required field "Group.subscription_type"`)}
 	}
@@ -800,6 +819,10 @@ func (_c *GroupCreate) createSpec() (*Group, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.Platform(); ok {
 		_spec.SetField(group.FieldPlatform, field.TypeString, value)
 		_node.Platform = value
+	}
+	if value, ok := _c.mutation.PackageScope(); ok {
+		_spec.SetField(group.FieldPackageScope, field.TypeString, value)
+		_node.PackageScope = &value
 	}
 	if value, ok := _c.mutation.SubscriptionType(); ok {
 		_spec.SetField(group.FieldSubscriptionType, field.TypeString, value)
@@ -1156,6 +1179,24 @@ func (u *GroupUpsert) SetPlatform(v string) *GroupUpsert {
 // UpdatePlatform sets the "platform" field to the value that was provided on create.
 func (u *GroupUpsert) UpdatePlatform() *GroupUpsert {
 	u.SetExcluded(group.FieldPlatform)
+	return u
+}
+
+// SetPackageScope sets the "package_scope" field.
+func (u *GroupUpsert) SetPackageScope(v string) *GroupUpsert {
+	u.Set(group.FieldPackageScope, v)
+	return u
+}
+
+// UpdatePackageScope sets the "package_scope" field to the value that was provided on create.
+func (u *GroupUpsert) UpdatePackageScope() *GroupUpsert {
+	u.SetExcluded(group.FieldPackageScope)
+	return u
+}
+
+// ClearPackageScope clears the value of the "package_scope" field.
+func (u *GroupUpsert) ClearPackageScope() *GroupUpsert {
+	u.SetNull(group.FieldPackageScope)
 	return u
 }
 
@@ -1718,6 +1759,27 @@ func (u *GroupUpsertOne) SetPlatform(v string) *GroupUpsertOne {
 func (u *GroupUpsertOne) UpdatePlatform() *GroupUpsertOne {
 	return u.Update(func(s *GroupUpsert) {
 		s.UpdatePlatform()
+	})
+}
+
+// SetPackageScope sets the "package_scope" field.
+func (u *GroupUpsertOne) SetPackageScope(v string) *GroupUpsertOne {
+	return u.Update(func(s *GroupUpsert) {
+		s.SetPackageScope(v)
+	})
+}
+
+// UpdatePackageScope sets the "package_scope" field to the value that was provided on create.
+func (u *GroupUpsertOne) UpdatePackageScope() *GroupUpsertOne {
+	return u.Update(func(s *GroupUpsert) {
+		s.UpdatePackageScope()
+	})
+}
+
+// ClearPackageScope clears the value of the "package_scope" field.
+func (u *GroupUpsertOne) ClearPackageScope() *GroupUpsertOne {
+	return u.Update(func(s *GroupUpsert) {
+		s.ClearPackageScope()
 	})
 }
 
@@ -2510,6 +2572,27 @@ func (u *GroupUpsertBulk) SetPlatform(v string) *GroupUpsertBulk {
 func (u *GroupUpsertBulk) UpdatePlatform() *GroupUpsertBulk {
 	return u.Update(func(s *GroupUpsert) {
 		s.UpdatePlatform()
+	})
+}
+
+// SetPackageScope sets the "package_scope" field.
+func (u *GroupUpsertBulk) SetPackageScope(v string) *GroupUpsertBulk {
+	return u.Update(func(s *GroupUpsert) {
+		s.SetPackageScope(v)
+	})
+}
+
+// UpdatePackageScope sets the "package_scope" field to the value that was provided on create.
+func (u *GroupUpsertBulk) UpdatePackageScope() *GroupUpsertBulk {
+	return u.Update(func(s *GroupUpsert) {
+		s.UpdatePackageScope()
+	})
+}
+
+// ClearPackageScope clears the value of the "package_scope" field.
+func (u *GroupUpsertBulk) ClearPackageScope() *GroupUpsertBulk {
+	return u.Update(func(s *GroupUpsert) {
+		s.ClearPackageScope()
 	})
 }
 

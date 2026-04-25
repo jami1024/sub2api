@@ -22,6 +22,7 @@ import (
 var (
 	ErrAPIKeyNotFound     = infraerrors.NotFound("API_KEY_NOT_FOUND", "api key not found")
 	ErrGroupNotAllowed    = infraerrors.Forbidden("GROUP_NOT_ALLOWED", "user is not allowed to bind this group")
+	ErrPackageScopeNotAllowed = infraerrors.Forbidden("PACKAGE_SCOPE_NOT_ALLOWED", "current balance cannot be used for this group")
 	ErrAPIKeyExists       = infraerrors.Conflict("API_KEY_EXISTS", "api key already exists")
 	ErrAPIKeyTooShort     = infraerrors.BadRequest("API_KEY_TOO_SHORT", "api key must be at least 16 characters")
 	ErrAPIKeyInvalidChars = infraerrors.BadRequest("API_KEY_INVALID_CHARS", "api key can only contain letters, numbers, underscores, and hyphens")
@@ -321,6 +322,10 @@ func (s *APIKeyService) canUserBindGroup(ctx context.Context, user *User, group 
 		_, err := s.userSubRepo.GetActiveByUserIDAndGroupID(ctx, user.ID, group.ID)
 		return err == nil // 有有效订阅则允许
 	}
+	groupScope := NormalizePackageScope(psStringValue(group.PackageScope))
+	if groupScope != "" && !PackageScopeMatchesGroup(psStringValue(user.PackageScope), groupScope) {
+		return false
+	}
 	// 标准类型分组：使用原有逻辑
 	return user.CanBindGroup(group.ID, group.IsExclusive)
 }
@@ -352,6 +357,10 @@ func (s *APIKeyService) Create(ctx context.Context, userID int64, req CreateAPIK
 		group, err := s.groupRepo.GetByID(ctx, *req.GroupID)
 		if err != nil {
 			return nil, fmt.Errorf("get group: %w", err)
+		}
+		if !group.IsSubscriptionType() && NormalizePackageScope(psStringValue(group.PackageScope)) != "" &&
+			!PackageScopeMatchesGroup(psStringValue(user.PackageScope), psStringValue(group.PackageScope)) {
+			return nil, ErrPackageScopeNotAllowed
 		}
 
 		// 检查用户是否可以绑定该分组
@@ -551,6 +560,10 @@ func (s *APIKeyService) Update(ctx context.Context, id int64, userID int64, req 
 		group, err := s.groupRepo.GetByID(ctx, *req.GroupID)
 		if err != nil {
 			return nil, fmt.Errorf("get group: %w", err)
+		}
+		if !group.IsSubscriptionType() && NormalizePackageScope(psStringValue(group.PackageScope)) != "" &&
+			!PackageScopeMatchesGroup(psStringValue(user.PackageScope), psStringValue(group.PackageScope)) {
+			return nil, ErrPackageScopeNotAllowed
 		}
 
 		if !s.canUserBindGroup(ctx, user, group) {
@@ -780,6 +793,10 @@ func (s *APIKeyService) canUserBindGroupInternal(user *User, group *Group, subsc
 	// 订阅类型分组：需要有效订阅
 	if group.IsSubscriptionType() {
 		return subscribedGroupIDs[group.ID]
+	}
+	groupScope := NormalizePackageScope(psStringValue(group.PackageScope))
+	if groupScope != "" && !PackageScopeMatchesGroup(psStringValue(user.PackageScope), groupScope) {
+		return false
 	}
 	// 标准类型分组：使用原有逻辑
 	return user.CanBindGroup(group.ID, group.IsExclusive)

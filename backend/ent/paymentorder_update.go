@@ -311,6 +311,33 @@ func (_u *PaymentOrderUpdate) ClearPlanID() *PaymentOrderUpdate {
 	return _u
 }
 
+// SetBalancePackageID sets the "balance_package_id" field.
+func (_u *PaymentOrderUpdate) SetBalancePackageID(v int64) *PaymentOrderUpdate {
+	_u.mutation.ResetBalancePackageID()
+	_u.mutation.SetBalancePackageID(v)
+	return _u
+}
+
+// SetNillableBalancePackageID sets the "balance_package_id" field if the given value is not nil.
+func (_u *PaymentOrderUpdate) SetNillableBalancePackageID(v *int64) *PaymentOrderUpdate {
+	if v != nil {
+		_u.SetBalancePackageID(*v)
+	}
+	return _u
+}
+
+// AddBalancePackageID adds value to the "balance_package_id" field.
+func (_u *PaymentOrderUpdate) AddBalancePackageID(v int64) *PaymentOrderUpdate {
+	_u.mutation.AddBalancePackageID(v)
+	return _u
+}
+
+// ClearBalancePackageID clears the value of the "balance_package_id" field.
+func (_u *PaymentOrderUpdate) ClearBalancePackageID() *PaymentOrderUpdate {
+	_u.mutation.ClearBalancePackageID()
+	return _u
+}
+
 // SetSubscriptionGroupID sets the "subscription_group_id" field.
 func (_u *PaymentOrderUpdate) SetSubscriptionGroupID(v int64) *PaymentOrderUpdate {
 	_u.mutation.ResetSubscriptionGroupID()
@@ -362,6 +389,20 @@ func (_u *PaymentOrderUpdate) AddSubscriptionDays(v int) *PaymentOrderUpdate {
 // ClearSubscriptionDays clears the value of the "subscription_days" field.
 func (_u *PaymentOrderUpdate) ClearSubscriptionDays() *PaymentOrderUpdate {
 	_u.mutation.ClearSubscriptionDays()
+	return _u
+}
+
+// SetPackageScopeSnapshot sets the "package_scope_snapshot" field.
+func (_u *PaymentOrderUpdate) SetPackageScopeSnapshot(v string) *PaymentOrderUpdate {
+	_u.mutation.SetPackageScopeSnapshot(v)
+	return _u
+}
+
+// SetNillablePackageScopeSnapshot sets the "package_scope_snapshot" field if the given value is not nil.
+func (_u *PaymentOrderUpdate) SetNillablePackageScopeSnapshot(v *string) *PaymentOrderUpdate {
+	if v != nil {
+		_u.SetPackageScopeSnapshot(*v)
+	}
 	return _u
 }
 
@@ -803,6 +844,11 @@ func (_u *PaymentOrderUpdate) check() error {
 			return &ValidationError{Name: "order_type", err: fmt.Errorf(`ent: validator failed for field "PaymentOrder.order_type": %w`, err)}
 		}
 	}
+	if v, ok := _u.mutation.PackageScopeSnapshot(); ok {
+		if err := paymentorder.PackageScopeSnapshotValidator(v); err != nil {
+			return &ValidationError{Name: "package_scope_snapshot", err: fmt.Errorf(`ent: validator failed for field "PaymentOrder.package_scope_snapshot": %w`, err)}
+		}
+	}
 	if v, ok := _u.mutation.ProviderInstanceID(); ok {
 		if err := paymentorder.ProviderInstanceIDValidator(v); err != nil {
 			return &ValidationError{Name: "provider_instance_id", err: fmt.Errorf(`ent: validator failed for field "PaymentOrder.provider_instance_id": %w`, err)}
@@ -923,6 +969,15 @@ func (_u *PaymentOrderUpdate) sqlSave(ctx context.Context) (_node int, err error
 	if _u.mutation.PlanIDCleared() {
 		_spec.ClearField(paymentorder.FieldPlanID, field.TypeInt64)
 	}
+	if value, ok := _u.mutation.BalancePackageID(); ok {
+		_spec.SetField(paymentorder.FieldBalancePackageID, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.AddedBalancePackageID(); ok {
+		_spec.AddField(paymentorder.FieldBalancePackageID, field.TypeInt64, value)
+	}
+	if _u.mutation.BalancePackageIDCleared() {
+		_spec.ClearField(paymentorder.FieldBalancePackageID, field.TypeInt64)
+	}
 	if value, ok := _u.mutation.SubscriptionGroupID(); ok {
 		_spec.SetField(paymentorder.FieldSubscriptionGroupID, field.TypeInt64, value)
 	}
@@ -940,6 +995,9 @@ func (_u *PaymentOrderUpdate) sqlSave(ctx context.Context) (_node int, err error
 	}
 	if _u.mutation.SubscriptionDaysCleared() {
 		_spec.ClearField(paymentorder.FieldSubscriptionDays, field.TypeInt)
+	}
+	if value, ok := _u.mutation.PackageScopeSnapshot(); ok {
+		_spec.SetField(paymentorder.FieldPackageScopeSnapshot, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.ProviderInstanceID(); ok {
 		_spec.SetField(paymentorder.FieldProviderInstanceID, field.TypeString, value)
@@ -1374,6 +1432,33 @@ func (_u *PaymentOrderUpdateOne) ClearPlanID() *PaymentOrderUpdateOne {
 	return _u
 }
 
+// SetBalancePackageID sets the "balance_package_id" field.
+func (_u *PaymentOrderUpdateOne) SetBalancePackageID(v int64) *PaymentOrderUpdateOne {
+	_u.mutation.ResetBalancePackageID()
+	_u.mutation.SetBalancePackageID(v)
+	return _u
+}
+
+// SetNillableBalancePackageID sets the "balance_package_id" field if the given value is not nil.
+func (_u *PaymentOrderUpdateOne) SetNillableBalancePackageID(v *int64) *PaymentOrderUpdateOne {
+	if v != nil {
+		_u.SetBalancePackageID(*v)
+	}
+	return _u
+}
+
+// AddBalancePackageID adds value to the "balance_package_id" field.
+func (_u *PaymentOrderUpdateOne) AddBalancePackageID(v int64) *PaymentOrderUpdateOne {
+	_u.mutation.AddBalancePackageID(v)
+	return _u
+}
+
+// ClearBalancePackageID clears the value of the "balance_package_id" field.
+func (_u *PaymentOrderUpdateOne) ClearBalancePackageID() *PaymentOrderUpdateOne {
+	_u.mutation.ClearBalancePackageID()
+	return _u
+}
+
 // SetSubscriptionGroupID sets the "subscription_group_id" field.
 func (_u *PaymentOrderUpdateOne) SetSubscriptionGroupID(v int64) *PaymentOrderUpdateOne {
 	_u.mutation.ResetSubscriptionGroupID()
@@ -1425,6 +1510,20 @@ func (_u *PaymentOrderUpdateOne) AddSubscriptionDays(v int) *PaymentOrderUpdateO
 // ClearSubscriptionDays clears the value of the "subscription_days" field.
 func (_u *PaymentOrderUpdateOne) ClearSubscriptionDays() *PaymentOrderUpdateOne {
 	_u.mutation.ClearSubscriptionDays()
+	return _u
+}
+
+// SetPackageScopeSnapshot sets the "package_scope_snapshot" field.
+func (_u *PaymentOrderUpdateOne) SetPackageScopeSnapshot(v string) *PaymentOrderUpdateOne {
+	_u.mutation.SetPackageScopeSnapshot(v)
+	return _u
+}
+
+// SetNillablePackageScopeSnapshot sets the "package_scope_snapshot" field if the given value is not nil.
+func (_u *PaymentOrderUpdateOne) SetNillablePackageScopeSnapshot(v *string) *PaymentOrderUpdateOne {
+	if v != nil {
+		_u.SetPackageScopeSnapshot(*v)
+	}
 	return _u
 }
 
@@ -1879,6 +1978,11 @@ func (_u *PaymentOrderUpdateOne) check() error {
 			return &ValidationError{Name: "order_type", err: fmt.Errorf(`ent: validator failed for field "PaymentOrder.order_type": %w`, err)}
 		}
 	}
+	if v, ok := _u.mutation.PackageScopeSnapshot(); ok {
+		if err := paymentorder.PackageScopeSnapshotValidator(v); err != nil {
+			return &ValidationError{Name: "package_scope_snapshot", err: fmt.Errorf(`ent: validator failed for field "PaymentOrder.package_scope_snapshot": %w`, err)}
+		}
+	}
 	if v, ok := _u.mutation.ProviderInstanceID(); ok {
 		if err := paymentorder.ProviderInstanceIDValidator(v); err != nil {
 			return &ValidationError{Name: "provider_instance_id", err: fmt.Errorf(`ent: validator failed for field "PaymentOrder.provider_instance_id": %w`, err)}
@@ -2016,6 +2120,15 @@ func (_u *PaymentOrderUpdateOne) sqlSave(ctx context.Context) (_node *PaymentOrd
 	if _u.mutation.PlanIDCleared() {
 		_spec.ClearField(paymentorder.FieldPlanID, field.TypeInt64)
 	}
+	if value, ok := _u.mutation.BalancePackageID(); ok {
+		_spec.SetField(paymentorder.FieldBalancePackageID, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.AddedBalancePackageID(); ok {
+		_spec.AddField(paymentorder.FieldBalancePackageID, field.TypeInt64, value)
+	}
+	if _u.mutation.BalancePackageIDCleared() {
+		_spec.ClearField(paymentorder.FieldBalancePackageID, field.TypeInt64)
+	}
 	if value, ok := _u.mutation.SubscriptionGroupID(); ok {
 		_spec.SetField(paymentorder.FieldSubscriptionGroupID, field.TypeInt64, value)
 	}
@@ -2033,6 +2146,9 @@ func (_u *PaymentOrderUpdateOne) sqlSave(ctx context.Context) (_node *PaymentOrd
 	}
 	if _u.mutation.SubscriptionDaysCleared() {
 		_spec.ClearField(paymentorder.FieldSubscriptionDays, field.TypeInt)
+	}
+	if value, ok := _u.mutation.PackageScopeSnapshot(); ok {
+		_spec.SetField(paymentorder.FieldPackageScopeSnapshot, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.ProviderInstanceID(); ok {
 		_spec.SetField(paymentorder.FieldProviderInstanceID, field.TypeString, value)

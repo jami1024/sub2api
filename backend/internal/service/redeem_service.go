@@ -320,6 +320,11 @@ func (s *RedeemService) Redeem(ctx context.Context, userID int64, code string) (
 		if amount < 0 && user.Balance+amount < 0 {
 			amount = -user.Balance
 		}
+		if ensurePackageScopeForPositiveBalanceCredit(user, amount) {
+			if err := s.userRepo.Update(txCtx, user); err != nil {
+				return nil, fmt.Errorf("update user package scope: %w", err)
+			}
+		}
 		if err := s.userRepo.UpdateBalance(txCtx, userID, amount); err != nil {
 			return nil, fmt.Errorf("update user balance: %w", err)
 		}

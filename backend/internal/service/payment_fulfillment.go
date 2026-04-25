@@ -194,6 +194,9 @@ func (s *PaymentService) executeFulfillment(ctx context.Context, oid int64) erro
 	if o.OrderType == payment.OrderTypeSubscription {
 		return s.ExecuteSubscriptionFulfillment(ctx, oid)
 	}
+	if o.OrderType == payment.OrderTypeBalancePackage {
+		return s.ExecuteBalancePackageFulfillment(ctx, oid)
+	}
 	return s.ExecuteBalanceFulfillment(ctx, oid)
 }
 
@@ -315,6 +318,64 @@ func (s *PaymentService) ExecuteSubscriptionFulfillment(ctx context.Context, oid
 		return err
 	}
 	return nil
+}
+
+func (s *PaymentService) ExecuteBalancePackageFulfillment(ctx context.Context, oid int64) error {
+	o, err := s.entClient.PaymentOrder.Get(ctx, oid)
+	if err != nil {
+		return infraerrors.NotFound("NOT_FOUND", "order not found")
+	}
+	if o.Status == OrderStatusCompleted {
+		return nil
+	}
+	if psIsRefundStatus(o.Status) {
+		return infraerrors.BadRequest("INVALID_STATUS", "refund-related order cannot fulfill")
+	}
+	if o.Status != OrderStatusPaid && o.Status != OrderStatusFailed {
+		return infraerrors.BadRequest("INVALID_STATUS", "order cannot fulfill in status "+o.Status)
+	}
+	if o.BalancePackageID == nil || strings.TrimSpace(o.PackageScopeSnapshot) == "" {
+		return infraerrors.BadRequest("INVALID_STATUS", "missing balance package info")
+	}
+	c, err := s.entClient.PaymentOrder.Update().
+		Where(paymentorder.IDEQ(oid), paymentorder.StatusIn(OrderStatusPaid, OrderStatusFailed)).
+		SetStatus(OrderStatusRecharging).
+		Save(ctx)
+	if err != nil {
+		return fmt.Errorf("lock: %w", err)
+	}
+	if c == 0 {
+		return nil
+	}
+	if err := s.doBalancePackage(ctx, o); err != nil {
+		s.markFailed(ctx, oid, err)
+		return err
+	}
+	return nil
+}
+
+func (s *PaymentService) doBalancePackage(ctx context.Context, o *dbent.PaymentOrder) error {
+	user, err := s.userRepo.GetByID(ctx, o.UserID)
+	if err != nil {
+		return fmt.Errorf("get user: %w", err)
+	}
+	orderScope := NormalizePackageScope(o.PackageScopeSnapshot)
+	if orderScope == "" {
+		return infraerrors.BadRequest("PACKAGE_SCOPE_CONFLICT_AFTER_PAYMENT", "invalid package scope snapshot")
+	}
+	if user.Balance > 0 && !PackageScopeMatchesGroup(psStringValue(user.PackageScope), orderScope) {
+		return infraerrors.Conflict("PACKAGE_SCOPE_CONFLICT_AFTER_PAYMENT", "package scope conflict after payment")
+	}
+	if psStringValue(user.PackageScope) == "" {
+		user.PackageScope = &orderScope
+		if err := s.userRepo.Update(ctx, user); err != nil {
+			return fmt.Errorf("update user package scope: %w", err)
+		}
+	}
+	if err := s.userRepo.UpdateBalance(ctx, o.UserID, o.Amount); err != nil {
+		return fmt.Errorf("update user balance: %w", err)
+	}
+	return s.markCompleted(ctx, o, "BALANCE_PACKAGE_SUCCESS")
 }
 
 func (s *PaymentService) doSub(ctx context.Context, o *dbent.PaymentOrder) error {

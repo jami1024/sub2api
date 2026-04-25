@@ -46,10 +46,14 @@ const (
 	FieldOrderType = "order_type"
 	// FieldPlanID holds the string denoting the plan_id field in the database.
 	FieldPlanID = "plan_id"
+	// FieldBalancePackageID holds the string denoting the balance_package_id field in the database.
+	FieldBalancePackageID = "balance_package_id"
 	// FieldSubscriptionGroupID holds the string denoting the subscription_group_id field in the database.
 	FieldSubscriptionGroupID = "subscription_group_id"
 	// FieldSubscriptionDays holds the string denoting the subscription_days field in the database.
 	FieldSubscriptionDays = "subscription_days"
+	// FieldPackageScopeSnapshot holds the string denoting the package_scope_snapshot field in the database.
+	FieldPackageScopeSnapshot = "package_scope_snapshot"
 	// FieldProviderInstanceID holds the string denoting the provider_instance_id field in the database.
 	FieldProviderInstanceID = "provider_instance_id"
 	// FieldProviderKey holds the string denoting the provider_key field in the database.
@@ -124,8 +128,10 @@ var Columns = []string{
 	FieldQrCodeImg,
 	FieldOrderType,
 	FieldPlanID,
+	FieldBalancePackageID,
 	FieldSubscriptionGroupID,
 	FieldSubscriptionDays,
+	FieldPackageScopeSnapshot,
 	FieldProviderInstanceID,
 	FieldProviderKey,
 	FieldProviderSnapshot,
@@ -180,6 +186,10 @@ var (
 	DefaultOrderType string
 	// OrderTypeValidator is a validator for the "order_type" field. It is called by the builders before save.
 	OrderTypeValidator func(string) error
+	// DefaultPackageScopeSnapshot holds the default value on creation for the "package_scope_snapshot" field.
+	DefaultPackageScopeSnapshot string
+	// PackageScopeSnapshotValidator is a validator for the "package_scope_snapshot" field. It is called by the builders before save.
+	PackageScopeSnapshotValidator func(string) error
 	// ProviderInstanceIDValidator is a validator for the "provider_instance_id" field. It is called by the builders before save.
 	ProviderInstanceIDValidator func(string) error
 	// ProviderKeyValidator is a validator for the "provider_key" field. It is called by the builders before save.
@@ -294,6 +304,11 @@ func ByPlanID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldPlanID, opts...).ToFunc()
 }
 
+// ByBalancePackageID orders the results by the balance_package_id field.
+func ByBalancePackageID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldBalancePackageID, opts...).ToFunc()
+}
+
 // BySubscriptionGroupID orders the results by the subscription_group_id field.
 func BySubscriptionGroupID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldSubscriptionGroupID, opts...).ToFunc()
@@ -302,6 +317,11 @@ func BySubscriptionGroupID(opts ...sql.OrderTermOption) OrderOption {
 // BySubscriptionDays orders the results by the subscription_days field.
 func BySubscriptionDays(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldSubscriptionDays, opts...).ToFunc()
+}
+
+// ByPackageScopeSnapshot orders the results by the package_scope_snapshot field.
+func ByPackageScopeSnapshot(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldPackageScopeSnapshot, opts...).ToFunc()
 }
 
 // ByProviderInstanceID orders the results by the provider_instance_id field.

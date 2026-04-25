@@ -19,6 +19,7 @@ import (
 	"github.com/Wei-Shaw/sub2api/ent/apikey"
 	"github.com/Wei-Shaw/sub2api/ent/authidentity"
 	"github.com/Wei-Shaw/sub2api/ent/authidentitychannel"
+	"github.com/Wei-Shaw/sub2api/ent/balancepackage"
 	"github.com/Wei-Shaw/sub2api/ent/errorpassthroughrule"
 	"github.com/Wei-Shaw/sub2api/ent/group"
 	"github.com/Wei-Shaw/sub2api/ent/idempotencyrecord"
@@ -109,6 +110,7 @@ func checkColumn(t, c string) error {
 			announcementread.Table:         announcementread.ValidColumn,
 			authidentity.Table:             authidentity.ValidColumn,
 			authidentitychannel.Table:      authidentitychannel.ValidColumn,
+			balancepackage.Table:           balancepackage.ValidColumn,
 			errorpassthroughrule.Table:     errorpassthroughrule.ValidColumn,
 			group.Table:                    group.ValidColumn,
 			idempotencyrecord.Table:        idempotencyrecord.ValidColumn,

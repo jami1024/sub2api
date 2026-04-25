@@ -4497,6 +4497,11 @@ func (s *OpenAIGatewayService) RecordUsage(ctx context.Context, input *OpenAIRec
 	if isSubscriptionBilling {
 		billingType = BillingTypeSubscription
 	}
+	if !isSubscriptionBilling && apiKey.Group != nil &&
+		NormalizePackageScope(psStringValue(apiKey.Group.PackageScope)) != "" &&
+		!PackageScopeMatchesGroup(psStringValue(user.PackageScope), psStringValue(apiKey.Group.PackageScope)) {
+		return ErrPackageScopeNotAllowed
+	}
 
 	// Create usage log
 	durationMs := int(result.Duration.Milliseconds())

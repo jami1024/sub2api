@@ -135,6 +135,11 @@ func PlanID(v int64) predicate.PaymentOrder {
 	return predicate.PaymentOrder(sql.FieldEQ(FieldPlanID, v))
 }
 
+// BalancePackageID applies equality check predicate on the "balance_package_id" field. It's identical to BalancePackageIDEQ.
+func BalancePackageID(v int64) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldEQ(FieldBalancePackageID, v))
+}
+
 // SubscriptionGroupID applies equality check predicate on the "subscription_group_id" field. It's identical to SubscriptionGroupIDEQ.
 func SubscriptionGroupID(v int64) predicate.PaymentOrder {
 	return predicate.PaymentOrder(sql.FieldEQ(FieldSubscriptionGroupID, v))
@@ -143,6 +148,11 @@ func SubscriptionGroupID(v int64) predicate.PaymentOrder {
 // SubscriptionDays applies equality check predicate on the "subscription_days" field. It's identical to SubscriptionDaysEQ.
 func SubscriptionDays(v int) predicate.PaymentOrder {
 	return predicate.PaymentOrder(sql.FieldEQ(FieldSubscriptionDays, v))
+}
+
+// PackageScopeSnapshot applies equality check predicate on the "package_scope_snapshot" field. It's identical to PackageScopeSnapshotEQ.
+func PackageScopeSnapshot(v string) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldEQ(FieldPackageScopeSnapshot, v))
 }
 
 // ProviderInstanceID applies equality check predicate on the "provider_instance_id" field. It's identical to ProviderInstanceIDEQ.
@@ -1190,6 +1200,56 @@ func PlanIDNotNil() predicate.PaymentOrder {
 	return predicate.PaymentOrder(sql.FieldNotNull(FieldPlanID))
 }
 
+// BalancePackageIDEQ applies the EQ predicate on the "balance_package_id" field.
+func BalancePackageIDEQ(v int64) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldEQ(FieldBalancePackageID, v))
+}
+
+// BalancePackageIDNEQ applies the NEQ predicate on the "balance_package_id" field.
+func BalancePackageIDNEQ(v int64) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldNEQ(FieldBalancePackageID, v))
+}
+
+// BalancePackageIDIn applies the In predicate on the "balance_package_id" field.
+func BalancePackageIDIn(vs ...int64) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldIn(FieldBalancePackageID, vs...))
+}
+
+// BalancePackageIDNotIn applies the NotIn predicate on the "balance_package_id" field.
+func BalancePackageIDNotIn(vs ...int64) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldNotIn(FieldBalancePackageID, vs...))
+}
+
+// BalancePackageIDGT applies the GT predicate on the "balance_package_id" field.
+func BalancePackageIDGT(v int64) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldGT(FieldBalancePackageID, v))
+}
+
+// BalancePackageIDGTE applies the GTE predicate on the "balance_package_id" field.
+func BalancePackageIDGTE(v int64) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldGTE(FieldBalancePackageID, v))
+}
+
+// BalancePackageIDLT applies the LT predicate on the "balance_package_id" field.
+func BalancePackageIDLT(v int64) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldLT(FieldBalancePackageID, v))
+}
+
+// BalancePackageIDLTE applies the LTE predicate on the "balance_package_id" field.
+func BalancePackageIDLTE(v int64) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldLTE(FieldBalancePackageID, v))
+}
+
+// BalancePackageIDIsNil applies the IsNil predicate on the "balance_package_id" field.
+func BalancePackageIDIsNil() predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldIsNull(FieldBalancePackageID))
+}
+
+// BalancePackageIDNotNil applies the NotNil predicate on the "balance_package_id" field.
+func BalancePackageIDNotNil() predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldNotNull(FieldBalancePackageID))
+}
+
 // SubscriptionGroupIDEQ applies the EQ predicate on the "subscription_group_id" field.
 func SubscriptionGroupIDEQ(v int64) predicate.PaymentOrder {
 	return predicate.PaymentOrder(sql.FieldEQ(FieldSubscriptionGroupID, v))
@@ -1288,6 +1348,71 @@ func SubscriptionDaysIsNil() predicate.PaymentOrder {
 // SubscriptionDaysNotNil applies the NotNil predicate on the "subscription_days" field.
 func SubscriptionDaysNotNil() predicate.PaymentOrder {
 	return predicate.PaymentOrder(sql.FieldNotNull(FieldSubscriptionDays))
+}
+
+// PackageScopeSnapshotEQ applies the EQ predicate on the "package_scope_snapshot" field.
+func PackageScopeSnapshotEQ(v string) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldEQ(FieldPackageScopeSnapshot, v))
+}
+
+// PackageScopeSnapshotNEQ applies the NEQ predicate on the "package_scope_snapshot" field.
+func PackageScopeSnapshotNEQ(v string) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldNEQ(FieldPackageScopeSnapshot, v))
+}
+
+// PackageScopeSnapshotIn applies the In predicate on the "package_scope_snapshot" field.
+func PackageScopeSnapshotIn(vs ...string) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldIn(FieldPackageScopeSnapshot, vs...))
+}
+
+// PackageScopeSnapshotNotIn applies the NotIn predicate on the "package_scope_snapshot" field.
+func PackageScopeSnapshotNotIn(vs ...string) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldNotIn(FieldPackageScopeSnapshot, vs...))
+}
+
+// PackageScopeSnapshotGT applies the GT predicate on the "package_scope_snapshot" field.
+func PackageScopeSnapshotGT(v string) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldGT(FieldPackageScopeSnapshot, v))
+}
+
+// PackageScopeSnapshotGTE applies the GTE predicate on the "package_scope_snapshot" field.
+func PackageScopeSnapshotGTE(v string) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldGTE(FieldPackageScopeSnapshot, v))
+}
+
+// PackageScopeSnapshotLT applies the LT predicate on the "package_scope_snapshot" field.
+func PackageScopeSnapshotLT(v string) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldLT(FieldPackageScopeSnapshot, v))
+}
+
+// PackageScopeSnapshotLTE applies the LTE predicate on the "package_scope_snapshot" field.
+func PackageScopeSnapshotLTE(v string) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldLTE(FieldPackageScopeSnapshot, v))
+}
+
+// PackageScopeSnapshotContains applies the Contains predicate on the "package_scope_snapshot" field.
+func PackageScopeSnapshotContains(v string) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldContains(FieldPackageScopeSnapshot, v))
+}
+
+// PackageScopeSnapshotHasPrefix applies the HasPrefix predicate on the "package_scope_snapshot" field.
+func PackageScopeSnapshotHasPrefix(v string) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldHasPrefix(FieldPackageScopeSnapshot, v))
+}
+
+// PackageScopeSnapshotHasSuffix applies the HasSuffix predicate on the "package_scope_snapshot" field.
+func PackageScopeSnapshotHasSuffix(v string) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldHasSuffix(FieldPackageScopeSnapshot, v))
+}
+
+// PackageScopeSnapshotEqualFold applies the EqualFold predicate on the "package_scope_snapshot" field.
+func PackageScopeSnapshotEqualFold(v string) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldEqualFold(FieldPackageScopeSnapshot, v))
+}
+
+// PackageScopeSnapshotContainsFold applies the ContainsFold predicate on the "package_scope_snapshot" field.
+func PackageScopeSnapshotContainsFold(v string) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldContainsFold(FieldPackageScopeSnapshot, v))
 }
 
 // ProviderInstanceIDEQ applies the EQ predicate on the "provider_instance_id" field.

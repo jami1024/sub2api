@@ -601,6 +601,11 @@
               {{ t("admin.groups.subscription.typeHint") }}
             </p>
           </div>
+          <div v-if="createForm.subscription_type !== 'subscription'" class="mt-3">
+            <label class="input-label">{{ t("admin.groups.packageScope") }}</label>
+            <Select v-model="createForm.package_scope" :options="packageScopeOptions" />
+            <p class="input-hint">{{ t("admin.groups.packageScopeHint") }}</p>
+          </div>
 
           <!-- Subscription limits (only show when subscription type is selected) -->
           <div
@@ -1736,6 +1741,11 @@
               {{ t("admin.groups.subscription.typeNotEditable") }}
             </p>
           </div>
+          <div v-if="editForm.subscription_type !== 'subscription'" class="mt-3">
+            <label class="input-label">{{ t("admin.groups.packageScope") }}</label>
+            <Select v-model="editForm.package_scope" :options="packageScopeOptions" />
+            <p class="input-hint">{{ t("admin.groups.packageScopeHint") }}</p>
+          </div>
 
           <!-- Subscription limits (only show when subscription type is selected) -->
           <div
@@ -2739,7 +2749,7 @@ import { useI18n } from "vue-i18n";
 import { useAppStore } from "@/stores/app";
 import { useOnboardingStore } from "@/stores/onboarding";
 import { adminAPI } from "@/api/admin";
-import type { AdminGroup, GroupPlatform, SubscriptionType } from "@/types";
+import type { AdminGroup, GroupPlatform, SubscriptionType, PackageScope } from "@/types";
 import type { Column } from "@/components/common/types";
 import AppLayout from "@/components/layout/AppLayout.vue";
 import TablePageLayout from "@/components/layout/TablePageLayout.vue";
@@ -2843,6 +2853,11 @@ const editStatusOptions = computed(() => [
 const subscriptionTypeOptions = computed(() => [
   { value: "standard", label: t("admin.groups.subscription.standard") },
   { value: "subscription", label: t("admin.groups.subscription.subscription") },
+]);
+
+const packageScopeOptions = computed(() => [
+  { value: "codex", label: t("payment.balancePackages.codex") },
+  { value: "general", label: t("payment.balancePackages.general") },
 ]);
 
 // 降级分组选项（创建时）- 仅包含 anthropic 平台且未启用 claude_code_only 的分组
@@ -3003,6 +3018,7 @@ const createForm = reactive({
   name: "",
   description: "",
   platform: "anthropic" as GroupPlatform,
+  package_scope: "codex" as PackageScope,
   rate_multiplier: 1.0,
   is_exclusive: false,
   subscription_type: "standard" as SubscriptionType,
@@ -3284,6 +3300,7 @@ const editForm = reactive({
   name: "",
   description: "",
   platform: "anthropic" as GroupPlatform,
+  package_scope: "codex" as PackageScope,
   rate_multiplier: 1.0,
   is_exclusive: false,
   status: "active" as "active" | "inactive",
@@ -3473,6 +3490,7 @@ const closeCreateModal = () => {
   createForm.name = "";
   createForm.description = "";
   createForm.platform = "anthropic";
+  createForm.package_scope = "codex";
   createForm.rate_multiplier = 1.0;
   createForm.is_exclusive = false;
   createForm.subscription_type = "standard";
@@ -3575,6 +3593,7 @@ const handleEdit = async (group: AdminGroup) => {
   editForm.name = group.name;
   editForm.description = group.description || "";
   editForm.platform = group.platform;
+  editForm.package_scope = (group.package_scope || "codex") as PackageScope;
   editForm.rate_multiplier = group.rate_multiplier;
   editForm.is_exclusive = group.is_exclusive;
   editForm.status = group.status;

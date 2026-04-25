@@ -19,6 +19,7 @@ import (
 	"github.com/Wei-Shaw/sub2api/ent/apikey"
 	"github.com/Wei-Shaw/sub2api/ent/authidentity"
 	"github.com/Wei-Shaw/sub2api/ent/authidentitychannel"
+	"github.com/Wei-Shaw/sub2api/ent/balancepackage"
 	"github.com/Wei-Shaw/sub2api/ent/errorpassthroughrule"
 	"github.com/Wei-Shaw/sub2api/ent/group"
 	"github.com/Wei-Shaw/sub2api/ent/idempotencyrecord"
@@ -62,6 +63,7 @@ const (
 	TypeAnnouncementRead         = "AnnouncementRead"
 	TypeAuthIdentity             = "AuthIdentity"
 	TypeAuthIdentityChannel      = "AuthIdentityChannel"
+	TypeBalancePackage           = "BalancePackage"
 	TypeErrorPassthroughRule     = "ErrorPassthroughRule"
 	TypeGroup                    = "Group"
 	TypeIdempotencyRecord        = "IdempotencyRecord"
@@ -8734,6 +8736,920 @@ func (m *AuthIdentityChannelMutation) ResetEdge(name string) error {
 	return fmt.Errorf("unknown AuthIdentityChannel edge %s", name)
 }
 
+// BalancePackageMutation represents an operation that mutates the BalancePackage nodes in the graph.
+type BalancePackageMutation struct {
+	config
+	op               Op
+	typ              string
+	id               *int64
+	name             *string
+	description      *string
+	price            *float64
+	addprice         *float64
+	credit_amount    *float64
+	addcredit_amount *float64
+	package_scope    *string
+	product_name     *string
+	for_sale         *bool
+	sort_order       *int
+	addsort_order    *int
+	created_at       *time.Time
+	updated_at       *time.Time
+	clearedFields    map[string]struct{}
+	done             bool
+	oldValue         func(context.Context) (*BalancePackage, error)
+	predicates       []predicate.BalancePackage
+}
+
+var _ ent.Mutation = (*BalancePackageMutation)(nil)
+
+// balancepackageOption allows management of the mutation configuration using functional options.
+type balancepackageOption func(*BalancePackageMutation)
+
+// newBalancePackageMutation creates new mutation for the BalancePackage entity.
+func newBalancePackageMutation(c config, op Op, opts ...balancepackageOption) *BalancePackageMutation {
+	m := &BalancePackageMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeBalancePackage,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withBalancePackageID sets the ID field of the mutation.
+func withBalancePackageID(id int64) balancepackageOption {
+	return func(m *BalancePackageMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *BalancePackage
+		)
+		m.oldValue = func(ctx context.Context) (*BalancePackage, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().BalancePackage.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withBalancePackage sets the old BalancePackage of the mutation.
+func withBalancePackage(node *BalancePackage) balancepackageOption {
+	return func(m *BalancePackageMutation) {
+		m.oldValue = func(context.Context) (*BalancePackage, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m BalancePackageMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m BalancePackageMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *BalancePackageMutation) ID() (id int64, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *BalancePackageMutation) IDs(ctx context.Context) ([]int64, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int64{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().BalancePackage.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetName sets the "name" field.
+func (m *BalancePackageMutation) SetName(s string) {
+	m.name = &s
+}
+
+// Name returns the value of the "name" field in the mutation.
+func (m *BalancePackageMutation) Name() (r string, exists bool) {
+	v := m.name
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldName returns the old "name" field's value of the BalancePackage entity.
+// If the BalancePackage object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *BalancePackageMutation) OldName(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldName is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldName requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldName: %w", err)
+	}
+	return oldValue.Name, nil
+}
+
+// ResetName resets all changes to the "name" field.
+func (m *BalancePackageMutation) ResetName() {
+	m.name = nil
+}
+
+// SetDescription sets the "description" field.
+func (m *BalancePackageMutation) SetDescription(s string) {
+	m.description = &s
+}
+
+// Description returns the value of the "description" field in the mutation.
+func (m *BalancePackageMutation) Description() (r string, exists bool) {
+	v := m.description
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDescription returns the old "description" field's value of the BalancePackage entity.
+// If the BalancePackage object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *BalancePackageMutation) OldDescription(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDescription is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDescription requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDescription: %w", err)
+	}
+	return oldValue.Description, nil
+}
+
+// ResetDescription resets all changes to the "description" field.
+func (m *BalancePackageMutation) ResetDescription() {
+	m.description = nil
+}
+
+// SetPrice sets the "price" field.
+func (m *BalancePackageMutation) SetPrice(f float64) {
+	m.price = &f
+	m.addprice = nil
+}
+
+// Price returns the value of the "price" field in the mutation.
+func (m *BalancePackageMutation) Price() (r float64, exists bool) {
+	v := m.price
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldPrice returns the old "price" field's value of the BalancePackage entity.
+// If the BalancePackage object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *BalancePackageMutation) OldPrice(ctx context.Context) (v float64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldPrice is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldPrice requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldPrice: %w", err)
+	}
+	return oldValue.Price, nil
+}
+
+// AddPrice adds f to the "price" field.
+func (m *BalancePackageMutation) AddPrice(f float64) {
+	if m.addprice != nil {
+		*m.addprice += f
+	} else {
+		m.addprice = &f
+	}
+}
+
+// AddedPrice returns the value that was added to the "price" field in this mutation.
+func (m *BalancePackageMutation) AddedPrice() (r float64, exists bool) {
+	v := m.addprice
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetPrice resets all changes to the "price" field.
+func (m *BalancePackageMutation) ResetPrice() {
+	m.price = nil
+	m.addprice = nil
+}
+
+// SetCreditAmount sets the "credit_amount" field.
+func (m *BalancePackageMutation) SetCreditAmount(f float64) {
+	m.credit_amount = &f
+	m.addcredit_amount = nil
+}
+
+// CreditAmount returns the value of the "credit_amount" field in the mutation.
+func (m *BalancePackageMutation) CreditAmount() (r float64, exists bool) {
+	v := m.credit_amount
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreditAmount returns the old "credit_amount" field's value of the BalancePackage entity.
+// If the BalancePackage object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *BalancePackageMutation) OldCreditAmount(ctx context.Context) (v float64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreditAmount is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreditAmount requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreditAmount: %w", err)
+	}
+	return oldValue.CreditAmount, nil
+}
+
+// AddCreditAmount adds f to the "credit_amount" field.
+func (m *BalancePackageMutation) AddCreditAmount(f float64) {
+	if m.addcredit_amount != nil {
+		*m.addcredit_amount += f
+	} else {
+		m.addcredit_amount = &f
+	}
+}
+
+// AddedCreditAmount returns the value that was added to the "credit_amount" field in this mutation.
+func (m *BalancePackageMutation) AddedCreditAmount() (r float64, exists bool) {
+	v := m.addcredit_amount
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetCreditAmount resets all changes to the "credit_amount" field.
+func (m *BalancePackageMutation) ResetCreditAmount() {
+	m.credit_amount = nil
+	m.addcredit_amount = nil
+}
+
+// SetPackageScope sets the "package_scope" field.
+func (m *BalancePackageMutation) SetPackageScope(s string) {
+	m.package_scope = &s
+}
+
+// PackageScope returns the value of the "package_scope" field in the mutation.
+func (m *BalancePackageMutation) PackageScope() (r string, exists bool) {
+	v := m.package_scope
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldPackageScope returns the old "package_scope" field's value of the BalancePackage entity.
+// If the BalancePackage object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *BalancePackageMutation) OldPackageScope(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldPackageScope is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldPackageScope requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldPackageScope: %w", err)
+	}
+	return oldValue.PackageScope, nil
+}
+
+// ResetPackageScope resets all changes to the "package_scope" field.
+func (m *BalancePackageMutation) ResetPackageScope() {
+	m.package_scope = nil
+}
+
+// SetProductName sets the "product_name" field.
+func (m *BalancePackageMutation) SetProductName(s string) {
+	m.product_name = &s
+}
+
+// ProductName returns the value of the "product_name" field in the mutation.
+func (m *BalancePackageMutation) ProductName() (r string, exists bool) {
+	v := m.product_name
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldProductName returns the old "product_name" field's value of the BalancePackage entity.
+// If the BalancePackage object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *BalancePackageMutation) OldProductName(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldProductName is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldProductName requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldProductName: %w", err)
+	}
+	return oldValue.ProductName, nil
+}
+
+// ResetProductName resets all changes to the "product_name" field.
+func (m *BalancePackageMutation) ResetProductName() {
+	m.product_name = nil
+}
+
+// SetForSale sets the "for_sale" field.
+func (m *BalancePackageMutation) SetForSale(b bool) {
+	m.for_sale = &b
+}
+
+// ForSale returns the value of the "for_sale" field in the mutation.
+func (m *BalancePackageMutation) ForSale() (r bool, exists bool) {
+	v := m.for_sale
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldForSale returns the old "for_sale" field's value of the BalancePackage entity.
+// If the BalancePackage object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *BalancePackageMutation) OldForSale(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldForSale is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldForSale requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldForSale: %w", err)
+	}
+	return oldValue.ForSale, nil
+}
+
+// ResetForSale resets all changes to the "for_sale" field.
+func (m *BalancePackageMutation) ResetForSale() {
+	m.for_sale = nil
+}
+
+// SetSortOrder sets the "sort_order" field.
+func (m *BalancePackageMutation) SetSortOrder(i int) {
+	m.sort_order = &i
+	m.addsort_order = nil
+}
+
+// SortOrder returns the value of the "sort_order" field in the mutation.
+func (m *BalancePackageMutation) SortOrder() (r int, exists bool) {
+	v := m.sort_order
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSortOrder returns the old "sort_order" field's value of the BalancePackage entity.
+// If the BalancePackage object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *BalancePackageMutation) OldSortOrder(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSortOrder is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSortOrder requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSortOrder: %w", err)
+	}
+	return oldValue.SortOrder, nil
+}
+
+// AddSortOrder adds i to the "sort_order" field.
+func (m *BalancePackageMutation) AddSortOrder(i int) {
+	if m.addsort_order != nil {
+		*m.addsort_order += i
+	} else {
+		m.addsort_order = &i
+	}
+}
+
+// AddedSortOrder returns the value that was added to the "sort_order" field in this mutation.
+func (m *BalancePackageMutation) AddedSortOrder() (r int, exists bool) {
+	v := m.addsort_order
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetSortOrder resets all changes to the "sort_order" field.
+func (m *BalancePackageMutation) ResetSortOrder() {
+	m.sort_order = nil
+	m.addsort_order = nil
+}
+
+// SetCreatedAt sets the "created_at" field.
+func (m *BalancePackageMutation) SetCreatedAt(t time.Time) {
+	m.created_at = &t
+}
+
+// CreatedAt returns the value of the "created_at" field in the mutation.
+func (m *BalancePackageMutation) CreatedAt() (r time.Time, exists bool) {
+	v := m.created_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreatedAt returns the old "created_at" field's value of the BalancePackage entity.
+// If the BalancePackage object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *BalancePackageMutation) OldCreatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreatedAt: %w", err)
+	}
+	return oldValue.CreatedAt, nil
+}
+
+// ResetCreatedAt resets all changes to the "created_at" field.
+func (m *BalancePackageMutation) ResetCreatedAt() {
+	m.created_at = nil
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (m *BalancePackageMutation) SetUpdatedAt(t time.Time) {
+	m.updated_at = &t
+}
+
+// UpdatedAt returns the value of the "updated_at" field in the mutation.
+func (m *BalancePackageMutation) UpdatedAt() (r time.Time, exists bool) {
+	v := m.updated_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUpdatedAt returns the old "updated_at" field's value of the BalancePackage entity.
+// If the BalancePackage object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *BalancePackageMutation) OldUpdatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUpdatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUpdatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUpdatedAt: %w", err)
+	}
+	return oldValue.UpdatedAt, nil
+}
+
+// ResetUpdatedAt resets all changes to the "updated_at" field.
+func (m *BalancePackageMutation) ResetUpdatedAt() {
+	m.updated_at = nil
+}
+
+// Where appends a list predicates to the BalancePackageMutation builder.
+func (m *BalancePackageMutation) Where(ps ...predicate.BalancePackage) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the BalancePackageMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *BalancePackageMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.BalancePackage, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *BalancePackageMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *BalancePackageMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (BalancePackage).
+func (m *BalancePackageMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *BalancePackageMutation) Fields() []string {
+	fields := make([]string, 0, 10)
+	if m.name != nil {
+		fields = append(fields, balancepackage.FieldName)
+	}
+	if m.description != nil {
+		fields = append(fields, balancepackage.FieldDescription)
+	}
+	if m.price != nil {
+		fields = append(fields, balancepackage.FieldPrice)
+	}
+	if m.credit_amount != nil {
+		fields = append(fields, balancepackage.FieldCreditAmount)
+	}
+	if m.package_scope != nil {
+		fields = append(fields, balancepackage.FieldPackageScope)
+	}
+	if m.product_name != nil {
+		fields = append(fields, balancepackage.FieldProductName)
+	}
+	if m.for_sale != nil {
+		fields = append(fields, balancepackage.FieldForSale)
+	}
+	if m.sort_order != nil {
+		fields = append(fields, balancepackage.FieldSortOrder)
+	}
+	if m.created_at != nil {
+		fields = append(fields, balancepackage.FieldCreatedAt)
+	}
+	if m.updated_at != nil {
+		fields = append(fields, balancepackage.FieldUpdatedAt)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *BalancePackageMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case balancepackage.FieldName:
+		return m.Name()
+	case balancepackage.FieldDescription:
+		return m.Description()
+	case balancepackage.FieldPrice:
+		return m.Price()
+	case balancepackage.FieldCreditAmount:
+		return m.CreditAmount()
+	case balancepackage.FieldPackageScope:
+		return m.PackageScope()
+	case balancepackage.FieldProductName:
+		return m.ProductName()
+	case balancepackage.FieldForSale:
+		return m.ForSale()
+	case balancepackage.FieldSortOrder:
+		return m.SortOrder()
+	case balancepackage.FieldCreatedAt:
+		return m.CreatedAt()
+	case balancepackage.FieldUpdatedAt:
+		return m.UpdatedAt()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *BalancePackageMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case balancepackage.FieldName:
+		return m.OldName(ctx)
+	case balancepackage.FieldDescription:
+		return m.OldDescription(ctx)
+	case balancepackage.FieldPrice:
+		return m.OldPrice(ctx)
+	case balancepackage.FieldCreditAmount:
+		return m.OldCreditAmount(ctx)
+	case balancepackage.FieldPackageScope:
+		return m.OldPackageScope(ctx)
+	case balancepackage.FieldProductName:
+		return m.OldProductName(ctx)
+	case balancepackage.FieldForSale:
+		return m.OldForSale(ctx)
+	case balancepackage.FieldSortOrder:
+		return m.OldSortOrder(ctx)
+	case balancepackage.FieldCreatedAt:
+		return m.OldCreatedAt(ctx)
+	case balancepackage.FieldUpdatedAt:
+		return m.OldUpdatedAt(ctx)
+	}
+	return nil, fmt.Errorf("unknown BalancePackage field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *BalancePackageMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case balancepackage.FieldName:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetName(v)
+		return nil
+	case balancepackage.FieldDescription:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDescription(v)
+		return nil
+	case balancepackage.FieldPrice:
+		v, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetPrice(v)
+		return nil
+	case balancepackage.FieldCreditAmount:
+		v, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreditAmount(v)
+		return nil
+	case balancepackage.FieldPackageScope:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetPackageScope(v)
+		return nil
+	case balancepackage.FieldProductName:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetProductName(v)
+		return nil
+	case balancepackage.FieldForSale:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetForSale(v)
+		return nil
+	case balancepackage.FieldSortOrder:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSortOrder(v)
+		return nil
+	case balancepackage.FieldCreatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreatedAt(v)
+		return nil
+	case balancepackage.FieldUpdatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUpdatedAt(v)
+		return nil
+	}
+	return fmt.Errorf("unknown BalancePackage field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *BalancePackageMutation) AddedFields() []string {
+	var fields []string
+	if m.addprice != nil {
+		fields = append(fields, balancepackage.FieldPrice)
+	}
+	if m.addcredit_amount != nil {
+		fields = append(fields, balancepackage.FieldCreditAmount)
+	}
+	if m.addsort_order != nil {
+		fields = append(fields, balancepackage.FieldSortOrder)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *BalancePackageMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case balancepackage.FieldPrice:
+		return m.AddedPrice()
+	case balancepackage.FieldCreditAmount:
+		return m.AddedCreditAmount()
+	case balancepackage.FieldSortOrder:
+		return m.AddedSortOrder()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *BalancePackageMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case balancepackage.FieldPrice:
+		v, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddPrice(v)
+		return nil
+	case balancepackage.FieldCreditAmount:
+		v, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddCreditAmount(v)
+		return nil
+	case balancepackage.FieldSortOrder:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddSortOrder(v)
+		return nil
+	}
+	return fmt.Errorf("unknown BalancePackage numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *BalancePackageMutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *BalancePackageMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *BalancePackageMutation) ClearField(name string) error {
+	return fmt.Errorf("unknown BalancePackage nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *BalancePackageMutation) ResetField(name string) error {
+	switch name {
+	case balancepackage.FieldName:
+		m.ResetName()
+		return nil
+	case balancepackage.FieldDescription:
+		m.ResetDescription()
+		return nil
+	case balancepackage.FieldPrice:
+		m.ResetPrice()
+		return nil
+	case balancepackage.FieldCreditAmount:
+		m.ResetCreditAmount()
+		return nil
+	case balancepackage.FieldPackageScope:
+		m.ResetPackageScope()
+		return nil
+	case balancepackage.FieldProductName:
+		m.ResetProductName()
+		return nil
+	case balancepackage.FieldForSale:
+		m.ResetForSale()
+		return nil
+	case balancepackage.FieldSortOrder:
+		m.ResetSortOrder()
+		return nil
+	case balancepackage.FieldCreatedAt:
+		m.ResetCreatedAt()
+		return nil
+	case balancepackage.FieldUpdatedAt:
+		m.ResetUpdatedAt()
+		return nil
+	}
+	return fmt.Errorf("unknown BalancePackage field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *BalancePackageMutation) AddedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *BalancePackageMutation) AddedIDs(name string) []ent.Value {
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *BalancePackageMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *BalancePackageMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *BalancePackageMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *BalancePackageMutation) EdgeCleared(name string) bool {
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *BalancePackageMutation) ClearEdge(name string) error {
+	return fmt.Errorf("unknown BalancePackage unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *BalancePackageMutation) ResetEdge(name string) error {
+	return fmt.Errorf("unknown BalancePackage edge %s", name)
+}
+
 // ErrorPassthroughRuleMutation represents an operation that mutates the ErrorPassthroughRule nodes in the graph.
 type ErrorPassthroughRuleMutation struct {
 	config
@@ -10070,6 +10986,7 @@ type GroupMutation struct {
 	is_exclusive                            *bool
 	status                                  *string
 	platform                                *string
+	package_scope                           *string
 	subscription_type                       *string
 	daily_limit_usd                         *float64
 	adddaily_limit_usd                      *float64
@@ -10594,6 +11511,55 @@ func (m *GroupMutation) OldPlatform(ctx context.Context) (v string, err error) {
 // ResetPlatform resets all changes to the "platform" field.
 func (m *GroupMutation) ResetPlatform() {
 	m.platform = nil
+}
+
+// SetPackageScope sets the "package_scope" field.
+func (m *GroupMutation) SetPackageScope(s string) {
+	m.package_scope = &s
+}
+
+// PackageScope returns the value of the "package_scope" field in the mutation.
+func (m *GroupMutation) PackageScope() (r string, exists bool) {
+	v := m.package_scope
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldPackageScope returns the old "package_scope" field's value of the Group entity.
+// If the Group object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *GroupMutation) OldPackageScope(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldPackageScope is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldPackageScope requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldPackageScope: %w", err)
+	}
+	return oldValue.PackageScope, nil
+}
+
+// ClearPackageScope clears the value of the "package_scope" field.
+func (m *GroupMutation) ClearPackageScope() {
+	m.package_scope = nil
+	m.clearedFields[group.FieldPackageScope] = struct{}{}
+}
+
+// PackageScopeCleared returns if the "package_scope" field was cleared in this mutation.
+func (m *GroupMutation) PackageScopeCleared() bool {
+	_, ok := m.clearedFields[group.FieldPackageScope]
+	return ok
+}
+
+// ResetPackageScope resets all changes to the "package_scope" field.
+func (m *GroupMutation) ResetPackageScope() {
+	m.package_scope = nil
+	delete(m.clearedFields, group.FieldPackageScope)
 }
 
 // SetSubscriptionType sets the "subscription_type" field.
@@ -12106,7 +13072,7 @@ func (m *GroupMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *GroupMutation) Fields() []string {
-	fields := make([]string, 0, 31)
+	fields := make([]string, 0, 32)
 	if m.created_at != nil {
 		fields = append(fields, group.FieldCreatedAt)
 	}
@@ -12133,6 +13099,9 @@ func (m *GroupMutation) Fields() []string {
 	}
 	if m.platform != nil {
 		fields = append(fields, group.FieldPlatform)
+	}
+	if m.package_scope != nil {
+		fields = append(fields, group.FieldPackageScope)
 	}
 	if m.subscription_type != nil {
 		fields = append(fields, group.FieldSubscriptionType)
@@ -12226,6 +13195,8 @@ func (m *GroupMutation) Field(name string) (ent.Value, bool) {
 		return m.Status()
 	case group.FieldPlatform:
 		return m.Platform()
+	case group.FieldPackageScope:
+		return m.PackageScope()
 	case group.FieldSubscriptionType:
 		return m.SubscriptionType()
 	case group.FieldDailyLimitUsd:
@@ -12297,6 +13268,8 @@ func (m *GroupMutation) OldField(ctx context.Context, name string) (ent.Value, e
 		return m.OldStatus(ctx)
 	case group.FieldPlatform:
 		return m.OldPlatform(ctx)
+	case group.FieldPackageScope:
+		return m.OldPackageScope(ctx)
 	case group.FieldSubscriptionType:
 		return m.OldSubscriptionType(ctx)
 	case group.FieldDailyLimitUsd:
@@ -12412,6 +13385,13 @@ func (m *GroupMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetPlatform(v)
+		return nil
+	case group.FieldPackageScope:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetPackageScope(v)
 		return nil
 	case group.FieldSubscriptionType:
 		v, ok := value.(string)
@@ -12750,6 +13730,9 @@ func (m *GroupMutation) ClearedFields() []string {
 	if m.FieldCleared(group.FieldDescription) {
 		fields = append(fields, group.FieldDescription)
 	}
+	if m.FieldCleared(group.FieldPackageScope) {
+		fields = append(fields, group.FieldPackageScope)
+	}
 	if m.FieldCleared(group.FieldDailyLimitUsd) {
 		fields = append(fields, group.FieldDailyLimitUsd)
 	}
@@ -12796,6 +13779,9 @@ func (m *GroupMutation) ClearField(name string) error {
 		return nil
 	case group.FieldDescription:
 		m.ClearDescription()
+		return nil
+	case group.FieldPackageScope:
+		m.ClearPackageScope()
 		return nil
 	case group.FieldDailyLimitUsd:
 		m.ClearDailyLimitUsd()
@@ -12858,6 +13844,9 @@ func (m *GroupMutation) ResetField(name string) error {
 		return nil
 	case group.FieldPlatform:
 		m.ResetPlatform()
+		return nil
+	case group.FieldPackageScope:
+		m.ResetPackageScope()
 		return nil
 	case group.FieldSubscriptionType:
 		m.ResetSubscriptionType()
@@ -15467,10 +16456,13 @@ type PaymentOrderMutation struct {
 	order_type               *string
 	plan_id                  *int64
 	addplan_id               *int64
+	balance_package_id       *int64
+	addbalance_package_id    *int64
 	subscription_group_id    *int64
 	addsubscription_group_id *int64
 	subscription_days        *int
 	addsubscription_days     *int
+	package_scope_snapshot   *string
 	provider_instance_id     *string
 	provider_key             *string
 	provider_snapshot        *map[string]interface{}
@@ -16321,6 +17313,76 @@ func (m *PaymentOrderMutation) ResetPlanID() {
 	delete(m.clearedFields, paymentorder.FieldPlanID)
 }
 
+// SetBalancePackageID sets the "balance_package_id" field.
+func (m *PaymentOrderMutation) SetBalancePackageID(i int64) {
+	m.balance_package_id = &i
+	m.addbalance_package_id = nil
+}
+
+// BalancePackageID returns the value of the "balance_package_id" field in the mutation.
+func (m *PaymentOrderMutation) BalancePackageID() (r int64, exists bool) {
+	v := m.balance_package_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldBalancePackageID returns the old "balance_package_id" field's value of the PaymentOrder entity.
+// If the PaymentOrder object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PaymentOrderMutation) OldBalancePackageID(ctx context.Context) (v *int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldBalancePackageID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldBalancePackageID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldBalancePackageID: %w", err)
+	}
+	return oldValue.BalancePackageID, nil
+}
+
+// AddBalancePackageID adds i to the "balance_package_id" field.
+func (m *PaymentOrderMutation) AddBalancePackageID(i int64) {
+	if m.addbalance_package_id != nil {
+		*m.addbalance_package_id += i
+	} else {
+		m.addbalance_package_id = &i
+	}
+}
+
+// AddedBalancePackageID returns the value that was added to the "balance_package_id" field in this mutation.
+func (m *PaymentOrderMutation) AddedBalancePackageID() (r int64, exists bool) {
+	v := m.addbalance_package_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ClearBalancePackageID clears the value of the "balance_package_id" field.
+func (m *PaymentOrderMutation) ClearBalancePackageID() {
+	m.balance_package_id = nil
+	m.addbalance_package_id = nil
+	m.clearedFields[paymentorder.FieldBalancePackageID] = struct{}{}
+}
+
+// BalancePackageIDCleared returns if the "balance_package_id" field was cleared in this mutation.
+func (m *PaymentOrderMutation) BalancePackageIDCleared() bool {
+	_, ok := m.clearedFields[paymentorder.FieldBalancePackageID]
+	return ok
+}
+
+// ResetBalancePackageID resets all changes to the "balance_package_id" field.
+func (m *PaymentOrderMutation) ResetBalancePackageID() {
+	m.balance_package_id = nil
+	m.addbalance_package_id = nil
+	delete(m.clearedFields, paymentorder.FieldBalancePackageID)
+}
+
 // SetSubscriptionGroupID sets the "subscription_group_id" field.
 func (m *PaymentOrderMutation) SetSubscriptionGroupID(i int64) {
 	m.subscription_group_id = &i
@@ -16459,6 +17521,42 @@ func (m *PaymentOrderMutation) ResetSubscriptionDays() {
 	m.subscription_days = nil
 	m.addsubscription_days = nil
 	delete(m.clearedFields, paymentorder.FieldSubscriptionDays)
+}
+
+// SetPackageScopeSnapshot sets the "package_scope_snapshot" field.
+func (m *PaymentOrderMutation) SetPackageScopeSnapshot(s string) {
+	m.package_scope_snapshot = &s
+}
+
+// PackageScopeSnapshot returns the value of the "package_scope_snapshot" field in the mutation.
+func (m *PaymentOrderMutation) PackageScopeSnapshot() (r string, exists bool) {
+	v := m.package_scope_snapshot
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldPackageScopeSnapshot returns the old "package_scope_snapshot" field's value of the PaymentOrder entity.
+// If the PaymentOrder object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PaymentOrderMutation) OldPackageScopeSnapshot(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldPackageScopeSnapshot is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldPackageScopeSnapshot requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldPackageScopeSnapshot: %w", err)
+	}
+	return oldValue.PackageScopeSnapshot, nil
+}
+
+// ResetPackageScopeSnapshot resets all changes to the "package_scope_snapshot" field.
+func (m *PaymentOrderMutation) ResetPackageScopeSnapshot() {
+	m.package_scope_snapshot = nil
 }
 
 // SetProviderInstanceID sets the "provider_instance_id" field.
@@ -17467,7 +18565,7 @@ func (m *PaymentOrderMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *PaymentOrderMutation) Fields() []string {
-	fields := make([]string, 0, 39)
+	fields := make([]string, 0, 41)
 	if m.user != nil {
 		fields = append(fields, paymentorder.FieldUserID)
 	}
@@ -17516,11 +18614,17 @@ func (m *PaymentOrderMutation) Fields() []string {
 	if m.plan_id != nil {
 		fields = append(fields, paymentorder.FieldPlanID)
 	}
+	if m.balance_package_id != nil {
+		fields = append(fields, paymentorder.FieldBalancePackageID)
+	}
 	if m.subscription_group_id != nil {
 		fields = append(fields, paymentorder.FieldSubscriptionGroupID)
 	}
 	if m.subscription_days != nil {
 		fields = append(fields, paymentorder.FieldSubscriptionDays)
+	}
+	if m.package_scope_snapshot != nil {
+		fields = append(fields, paymentorder.FieldPackageScopeSnapshot)
 	}
 	if m.provider_instance_id != nil {
 		fields = append(fields, paymentorder.FieldProviderInstanceID)
@@ -17625,10 +18729,14 @@ func (m *PaymentOrderMutation) Field(name string) (ent.Value, bool) {
 		return m.OrderType()
 	case paymentorder.FieldPlanID:
 		return m.PlanID()
+	case paymentorder.FieldBalancePackageID:
+		return m.BalancePackageID()
 	case paymentorder.FieldSubscriptionGroupID:
 		return m.SubscriptionGroupID()
 	case paymentorder.FieldSubscriptionDays:
 		return m.SubscriptionDays()
+	case paymentorder.FieldPackageScopeSnapshot:
+		return m.PackageScopeSnapshot()
 	case paymentorder.FieldProviderInstanceID:
 		return m.ProviderInstanceID()
 	case paymentorder.FieldProviderKey:
@@ -17712,10 +18820,14 @@ func (m *PaymentOrderMutation) OldField(ctx context.Context, name string) (ent.V
 		return m.OldOrderType(ctx)
 	case paymentorder.FieldPlanID:
 		return m.OldPlanID(ctx)
+	case paymentorder.FieldBalancePackageID:
+		return m.OldBalancePackageID(ctx)
 	case paymentorder.FieldSubscriptionGroupID:
 		return m.OldSubscriptionGroupID(ctx)
 	case paymentorder.FieldSubscriptionDays:
 		return m.OldSubscriptionDays(ctx)
+	case paymentorder.FieldPackageScopeSnapshot:
+		return m.OldPackageScopeSnapshot(ctx)
 	case paymentorder.FieldProviderInstanceID:
 		return m.OldProviderInstanceID(ctx)
 	case paymentorder.FieldProviderKey:
@@ -17879,6 +18991,13 @@ func (m *PaymentOrderMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetPlanID(v)
 		return nil
+	case paymentorder.FieldBalancePackageID:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetBalancePackageID(v)
+		return nil
 	case paymentorder.FieldSubscriptionGroupID:
 		v, ok := value.(int64)
 		if !ok {
@@ -17892,6 +19011,13 @@ func (m *PaymentOrderMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetSubscriptionDays(v)
+		return nil
+	case paymentorder.FieldPackageScopeSnapshot:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetPackageScopeSnapshot(v)
 		return nil
 	case paymentorder.FieldProviderInstanceID:
 		v, ok := value.(string)
@@ -18060,6 +19186,9 @@ func (m *PaymentOrderMutation) AddedFields() []string {
 	if m.addplan_id != nil {
 		fields = append(fields, paymentorder.FieldPlanID)
 	}
+	if m.addbalance_package_id != nil {
+		fields = append(fields, paymentorder.FieldBalancePackageID)
+	}
 	if m.addsubscription_group_id != nil {
 		fields = append(fields, paymentorder.FieldSubscriptionGroupID)
 	}
@@ -18085,6 +19214,8 @@ func (m *PaymentOrderMutation) AddedField(name string) (ent.Value, bool) {
 		return m.AddedFeeRate()
 	case paymentorder.FieldPlanID:
 		return m.AddedPlanID()
+	case paymentorder.FieldBalancePackageID:
+		return m.AddedBalancePackageID()
 	case paymentorder.FieldSubscriptionGroupID:
 		return m.AddedSubscriptionGroupID()
 	case paymentorder.FieldSubscriptionDays:
@@ -18127,6 +19258,13 @@ func (m *PaymentOrderMutation) AddField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.AddPlanID(v)
+		return nil
+	case paymentorder.FieldBalancePackageID:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddBalancePackageID(v)
 		return nil
 	case paymentorder.FieldSubscriptionGroupID:
 		v, ok := value.(int64)
@@ -18171,6 +19309,9 @@ func (m *PaymentOrderMutation) ClearedFields() []string {
 	}
 	if m.FieldCleared(paymentorder.FieldPlanID) {
 		fields = append(fields, paymentorder.FieldPlanID)
+	}
+	if m.FieldCleared(paymentorder.FieldBalancePackageID) {
+		fields = append(fields, paymentorder.FieldBalancePackageID)
 	}
 	if m.FieldCleared(paymentorder.FieldSubscriptionGroupID) {
 		fields = append(fields, paymentorder.FieldSubscriptionGroupID)
@@ -18245,6 +19386,9 @@ func (m *PaymentOrderMutation) ClearField(name string) error {
 		return nil
 	case paymentorder.FieldPlanID:
 		m.ClearPlanID()
+		return nil
+	case paymentorder.FieldBalancePackageID:
+		m.ClearBalancePackageID()
 		return nil
 	case paymentorder.FieldSubscriptionGroupID:
 		m.ClearSubscriptionGroupID()
@@ -18347,11 +19491,17 @@ func (m *PaymentOrderMutation) ResetField(name string) error {
 	case paymentorder.FieldPlanID:
 		m.ResetPlanID()
 		return nil
+	case paymentorder.FieldBalancePackageID:
+		m.ResetBalancePackageID()
+		return nil
 	case paymentorder.FieldSubscriptionGroupID:
 		m.ResetSubscriptionGroupID()
 		return nil
 	case paymentorder.FieldSubscriptionDays:
 		m.ResetSubscriptionDays()
+		return nil
+	case paymentorder.FieldPackageScopeSnapshot:
+		m.ResetPackageScopeSnapshot()
 		return nil
 	case paymentorder.FieldProviderInstanceID:
 		m.ResetProviderInstanceID()
@@ -32750,6 +33900,7 @@ type UserMutation struct {
 	role                          *string
 	balance                       *float64
 	addbalance                    *float64
+	package_scope                 *string
 	concurrency                   *int
 	addconcurrency                *int
 	status                        *string
@@ -33193,6 +34344,55 @@ func (m *UserMutation) AddedBalance() (r float64, exists bool) {
 func (m *UserMutation) ResetBalance() {
 	m.balance = nil
 	m.addbalance = nil
+}
+
+// SetPackageScope sets the "package_scope" field.
+func (m *UserMutation) SetPackageScope(s string) {
+	m.package_scope = &s
+}
+
+// PackageScope returns the value of the "package_scope" field in the mutation.
+func (m *UserMutation) PackageScope() (r string, exists bool) {
+	v := m.package_scope
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldPackageScope returns the old "package_scope" field's value of the User entity.
+// If the User object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UserMutation) OldPackageScope(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldPackageScope is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldPackageScope requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldPackageScope: %w", err)
+	}
+	return oldValue.PackageScope, nil
+}
+
+// ClearPackageScope clears the value of the "package_scope" field.
+func (m *UserMutation) ClearPackageScope() {
+	m.package_scope = nil
+	m.clearedFields[user.FieldPackageScope] = struct{}{}
+}
+
+// PackageScopeCleared returns if the "package_scope" field was cleared in this mutation.
+func (m *UserMutation) PackageScopeCleared() bool {
+	_, ok := m.clearedFields[user.FieldPackageScope]
+	return ok
+}
+
+// ResetPackageScope resets all changes to the "package_scope" field.
+func (m *UserMutation) ResetPackageScope() {
+	m.package_scope = nil
+	delete(m.clearedFields, user.FieldPackageScope)
 }
 
 // SetConcurrency sets the "concurrency" field.
@@ -34599,7 +35799,7 @@ func (m *UserMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *UserMutation) Fields() []string {
-	fields := make([]string, 0, 23)
+	fields := make([]string, 0, 24)
 	if m.created_at != nil {
 		fields = append(fields, user.FieldCreatedAt)
 	}
@@ -34620,6 +35820,9 @@ func (m *UserMutation) Fields() []string {
 	}
 	if m.balance != nil {
 		fields = append(fields, user.FieldBalance)
+	}
+	if m.package_scope != nil {
+		fields = append(fields, user.FieldPackageScope)
 	}
 	if m.concurrency != nil {
 		fields = append(fields, user.FieldConcurrency)
@@ -34691,6 +35894,8 @@ func (m *UserMutation) Field(name string) (ent.Value, bool) {
 		return m.Role()
 	case user.FieldBalance:
 		return m.Balance()
+	case user.FieldPackageScope:
+		return m.PackageScope()
 	case user.FieldConcurrency:
 		return m.Concurrency()
 	case user.FieldStatus:
@@ -34746,6 +35951,8 @@ func (m *UserMutation) OldField(ctx context.Context, name string) (ent.Value, er
 		return m.OldRole(ctx)
 	case user.FieldBalance:
 		return m.OldBalance(ctx)
+	case user.FieldPackageScope:
+		return m.OldPackageScope(ctx)
 	case user.FieldConcurrency:
 		return m.OldConcurrency(ctx)
 	case user.FieldStatus:
@@ -34835,6 +36042,13 @@ func (m *UserMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetBalance(v)
+		return nil
+	case user.FieldPackageScope:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetPackageScope(v)
 		return nil
 	case user.FieldConcurrency:
 		v, ok := value.(int)
@@ -35044,6 +36258,9 @@ func (m *UserMutation) ClearedFields() []string {
 	if m.FieldCleared(user.FieldDeletedAt) {
 		fields = append(fields, user.FieldDeletedAt)
 	}
+	if m.FieldCleared(user.FieldPackageScope) {
+		fields = append(fields, user.FieldPackageScope)
+	}
 	if m.FieldCleared(user.FieldTotpSecretEncrypted) {
 		fields = append(fields, user.FieldTotpSecretEncrypted)
 	}
@@ -35075,6 +36292,9 @@ func (m *UserMutation) ClearField(name string) error {
 	switch name {
 	case user.FieldDeletedAt:
 		m.ClearDeletedAt()
+		return nil
+	case user.FieldPackageScope:
+		m.ClearPackageScope()
 		return nil
 	case user.FieldTotpSecretEncrypted:
 		m.ClearTotpSecretEncrypted()
@@ -35119,6 +36339,9 @@ func (m *UserMutation) ResetField(name string) error {
 		return nil
 	case user.FieldBalance:
 		m.ResetBalance()
+		return nil
+	case user.FieldPackageScope:
+		m.ResetPackageScope()
 		return nil
 	case user.FieldConcurrency:
 		m.ResetConcurrency()

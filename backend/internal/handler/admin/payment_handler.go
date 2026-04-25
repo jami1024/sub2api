@@ -238,6 +238,61 @@ func (h *PaymentHandler) DeletePlan(c *gin.Context) {
 	response.Success(c, gin.H{"message": "deleted"})
 }
 
+// --- Balance Packages ---
+
+func (h *PaymentHandler) ListBalancePackages(c *gin.Context) {
+	packages, err := h.configService.ListBalancePackages(c.Request.Context(), false)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, packages)
+}
+
+func (h *PaymentHandler) CreateBalancePackage(c *gin.Context) {
+	var req service.CreateBalancePackageRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "Invalid request: "+err.Error())
+		return
+	}
+	pkg, err := h.configService.CreateBalancePackage(c.Request.Context(), req)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Created(c, pkg)
+}
+
+func (h *PaymentHandler) UpdateBalancePackage(c *gin.Context) {
+	id, ok := parseIDParam(c, "id")
+	if !ok {
+		return
+	}
+	var req service.UpdateBalancePackageRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "Invalid request: "+err.Error())
+		return
+	}
+	pkg, err := h.configService.UpdateBalancePackage(c.Request.Context(), id, req)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, pkg)
+}
+
+func (h *PaymentHandler) DeleteBalancePackage(c *gin.Context) {
+	id, ok := parseIDParam(c, "id")
+	if !ok {
+		return
+	}
+	if err := h.configService.DeleteBalancePackage(c.Request.Context(), id); err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, gin.H{"message": "deleted"})
+}
+
 // --- Provider Instances ---
 
 // ListProviders returns all payment provider instances.

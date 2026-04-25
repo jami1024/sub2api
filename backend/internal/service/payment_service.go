@@ -83,6 +83,7 @@ type CreateOrderRequest struct {
 	PaymentSource   string
 	OrderType       string
 	PlanID          int64
+	BalancePackageID int64
 }
 
 type CreateOrderResponse struct {

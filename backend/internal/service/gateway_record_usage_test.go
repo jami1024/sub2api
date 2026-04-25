@@ -346,6 +346,38 @@ func TestGatewayServiceRecordUsage_GeneratesRequestIDWhenAllSourcesMissing(t *te
 	require.Equal(t, billingRepo.lastCmd.RequestID, usageRepo.lastLog.RequestID)
 }
 
+func TestGatewayServiceRecordUsage_RejectsDifferentPackageScope(t *testing.T) {
+	usageRepo := &openAIRecordUsageLogRepoStub{}
+	svc := newGatewayRecordUsageServiceForTest(usageRepo, &openAIRecordUsageUserRepoStub{}, &openAIRecordUsageSubRepoStub{})
+
+	codex := PackageScopeCodex
+	general := PackageScopeGeneral
+	err := svc.RecordUsage(context.Background(), &RecordUsageInput{
+		Result: &ForwardResult{
+			RequestID: "gateway_scope_mismatch",
+			Usage: ClaudeUsage{
+				InputTokens:  10,
+				OutputTokens: 6,
+			},
+			Model:    "claude-sonnet-4",
+			Duration: time.Second,
+		},
+		APIKey: &APIKey{
+			ID:    1,
+			Quota: 100,
+			Group: &Group{
+				ID:              2,
+				SubscriptionType: SubscriptionTypeStandard,
+				PackageScope:    &general,
+			},
+		},
+		User:    &User{ID: 10, PackageScope: &codex},
+		Account: &Account{ID: 20},
+	})
+	require.ErrorIs(t, err, ErrPackageScopeNotAllowed)
+	require.Equal(t, 0, usageRepo.calls)
+}
+
 func TestGatewayServiceRecordUsage_DroppedUsageLogDoesNotSyncFallback(t *testing.T) {
 	usageRepo := &openAIRecordUsageBestEffortLogRepoStub{
 		bestEffortErr: MarkUsageLogCreateDropped(errors.New("usage log best-effort queue full")),

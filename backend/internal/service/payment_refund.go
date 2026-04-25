@@ -181,6 +181,9 @@ func (s *PaymentService) validateRefundRequest(ctx context.Context, oid, uid int
 	if o.UserID != uid {
 		return nil, infraerrors.Forbidden("FORBIDDEN", "no permission")
 	}
+	if o.OrderType == payment.OrderTypeBalancePackage {
+		return nil, infraerrors.BadRequest("REFUND_UNSUPPORTED", "automatic refund is not supported for balance package orders")
+	}
 	if o.OrderType != payment.OrderTypeBalance {
 		return nil, infraerrors.BadRequest("INVALID_ORDER_TYPE", "only balance orders can request refund")
 	}

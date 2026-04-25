@@ -128,6 +128,26 @@ func (_u *UserUpdate) AddBalance(v float64) *UserUpdate {
 	return _u
 }
 
+// SetPackageScope sets the "package_scope" field.
+func (_u *UserUpdate) SetPackageScope(v string) *UserUpdate {
+	_u.mutation.SetPackageScope(v)
+	return _u
+}
+
+// SetNillablePackageScope sets the "package_scope" field if the given value is not nil.
+func (_u *UserUpdate) SetNillablePackageScope(v *string) *UserUpdate {
+	if v != nil {
+		_u.SetPackageScope(*v)
+	}
+	return _u
+}
+
+// ClearPackageScope clears the value of the "package_scope" field.
+func (_u *UserUpdate) ClearPackageScope() *UserUpdate {
+	_u.mutation.ClearPackageScope()
+	return _u
+}
+
 // SetConcurrency sets the "concurrency" field.
 func (_u *UserUpdate) SetConcurrency(v int) *UserUpdate {
 	_u.mutation.ResetConcurrency()
@@ -906,6 +926,11 @@ func (_u *UserUpdate) check() error {
 			return &ValidationError{Name: "role", err: fmt.Errorf(`ent: validator failed for field "User.role": %w`, err)}
 		}
 	}
+	if v, ok := _u.mutation.PackageScope(); ok {
+		if err := user.PackageScopeValidator(v); err != nil {
+			return &ValidationError{Name: "package_scope", err: fmt.Errorf(`ent: validator failed for field "User.package_scope": %w`, err)}
+		}
+	}
 	if v, ok := _u.mutation.Status(); ok {
 		if err := user.StatusValidator(v); err != nil {
 			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "User.status": %w`, err)}
@@ -959,6 +984,12 @@ func (_u *UserUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.AddedBalance(); ok {
 		_spec.AddField(user.FieldBalance, field.TypeFloat64, value)
+	}
+	if value, ok := _u.mutation.PackageScope(); ok {
+		_spec.SetField(user.FieldPackageScope, field.TypeString, value)
+	}
+	if _u.mutation.PackageScopeCleared() {
+		_spec.ClearField(user.FieldPackageScope, field.TypeString)
 	}
 	if value, ok := _u.mutation.Concurrency(); ok {
 		_spec.SetField(user.FieldConcurrency, field.TypeInt, value)
@@ -1693,6 +1724,26 @@ func (_u *UserUpdateOne) SetNillableBalance(v *float64) *UserUpdateOne {
 // AddBalance adds value to the "balance" field.
 func (_u *UserUpdateOne) AddBalance(v float64) *UserUpdateOne {
 	_u.mutation.AddBalance(v)
+	return _u
+}
+
+// SetPackageScope sets the "package_scope" field.
+func (_u *UserUpdateOne) SetPackageScope(v string) *UserUpdateOne {
+	_u.mutation.SetPackageScope(v)
+	return _u
+}
+
+// SetNillablePackageScope sets the "package_scope" field if the given value is not nil.
+func (_u *UserUpdateOne) SetNillablePackageScope(v *string) *UserUpdateOne {
+	if v != nil {
+		_u.SetPackageScope(*v)
+	}
+	return _u
+}
+
+// ClearPackageScope clears the value of the "package_scope" field.
+func (_u *UserUpdateOne) ClearPackageScope() *UserUpdateOne {
+	_u.mutation.ClearPackageScope()
 	return _u
 }
 
@@ -2487,6 +2538,11 @@ func (_u *UserUpdateOne) check() error {
 			return &ValidationError{Name: "role", err: fmt.Errorf(`ent: validator failed for field "User.role": %w`, err)}
 		}
 	}
+	if v, ok := _u.mutation.PackageScope(); ok {
+		if err := user.PackageScopeValidator(v); err != nil {
+			return &ValidationError{Name: "package_scope", err: fmt.Errorf(`ent: validator failed for field "User.package_scope": %w`, err)}
+		}
+	}
 	if v, ok := _u.mutation.Status(); ok {
 		if err := user.StatusValidator(v); err != nil {
 			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "User.status": %w`, err)}
@@ -2557,6 +2613,12 @@ func (_u *UserUpdateOne) sqlSave(ctx context.Context) (_node *User, err error) {
 	}
 	if value, ok := _u.mutation.AddedBalance(); ok {
 		_spec.AddField(user.FieldBalance, field.TypeFloat64, value)
+	}
+	if value, ok := _u.mutation.PackageScope(); ok {
+		_spec.SetField(user.FieldPackageScope, field.TypeString, value)
+	}
+	if _u.mutation.PackageScopeCleared() {
+		_spec.ClearField(user.FieldPackageScope, field.TypeString)
 	}
 	if value, ok := _u.mutation.Concurrency(); ok {
 		_spec.SetField(user.FieldConcurrency, field.TypeInt, value)

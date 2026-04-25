@@ -34,6 +34,8 @@ const (
 	FieldStatus = "status"
 	// FieldPlatform holds the string denoting the platform field in the database.
 	FieldPlatform = "platform"
+	// FieldPackageScope holds the string denoting the package_scope field in the database.
+	FieldPackageScope = "package_scope"
 	// FieldSubscriptionType holds the string denoting the subscription_type field in the database.
 	FieldSubscriptionType = "subscription_type"
 	// FieldDailyLimitUsd holds the string denoting the daily_limit_usd field in the database.
@@ -162,6 +164,7 @@ var Columns = []string{
 	FieldIsExclusive,
 	FieldStatus,
 	FieldPlatform,
+	FieldPackageScope,
 	FieldSubscriptionType,
 	FieldDailyLimitUsd,
 	FieldWeeklyLimitUsd,
@@ -233,6 +236,8 @@ var (
 	DefaultPlatform string
 	// PlatformValidator is a validator for the "platform" field. It is called by the builders before save.
 	PlatformValidator func(string) error
+	// PackageScopeValidator is a validator for the "package_scope" field. It is called by the builders before save.
+	PackageScopeValidator func(string) error
 	// DefaultSubscriptionType holds the default value on creation for the "subscription_type" field.
 	DefaultSubscriptionType string
 	// SubscriptionTypeValidator is a validator for the "subscription_type" field. It is called by the builders before save.
@@ -316,6 +321,11 @@ func ByStatus(opts ...sql.OrderTermOption) OrderOption {
 // ByPlatform orders the results by the platform field.
 func ByPlatform(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldPlatform, opts...).ToFunc()
+}
+
+// ByPackageScope orders the results by the package_scope field.
+func ByPackageScope(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldPackageScope, opts...).ToFunc()
 }
 
 // BySubscriptionType orders the results by the subscription_type field.

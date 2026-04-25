@@ -179,6 +179,7 @@ type CreateGroupInput struct {
 	Name             string
 	Description      string
 	Platform         string
+	PackageScope     *string
 	RateMultiplier   float64
 	IsExclusive      bool
 	SubscriptionType string   // standard/subscription
@@ -215,6 +216,7 @@ type UpdateGroupInput struct {
 	Name             string
 	Description      string
 	Platform         string
+	PackageScope     *string
 	RateMultiplier   *float64 // 使用指针以支持设置为0
 	IsExclusive      *bool
 	Status           string
@@ -819,6 +821,8 @@ func (s *adminServiceImpl) UpdateUserBalance(ctx context.Context, userID int64, 
 		return nil, fmt.Errorf("balance cannot be negative, current balance: %.2f, requested operation would result in: %.2f", oldBalance, user.Balance)
 	}
 
+	ensurePackageScopeForPositiveBalanceCredit(user, user.Balance-oldBalance)
+
 	if err := s.userRepo.Update(ctx, user); err != nil {
 		return nil, err
 	}
@@ -1407,6 +1411,7 @@ func (s *adminServiceImpl) CreateGroup(ctx context.Context, input *CreateGroupIn
 		Name:                            input.Name,
 		Description:                     input.Description,
 		Platform:                        platform,
+		PackageScope:                    input.PackageScope,
 		RateMultiplier:                  input.RateMultiplier,
 		IsExclusive:                     input.IsExclusive,
 		Status:                          StatusActive,
@@ -1566,6 +1571,9 @@ func (s *adminServiceImpl) UpdateGroup(ctx context.Context, id int64, input *Upd
 	}
 	if input.Platform != "" {
 		group.Platform = input.Platform
+	}
+	if input.PackageScope != nil {
+		group.PackageScope = input.PackageScope
 	}
 	if input.RateMultiplier != nil {
 		if *input.RateMultiplier <= 0 {

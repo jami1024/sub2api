@@ -100,6 +100,11 @@ func Platform(v string) predicate.Group {
 	return predicate.Group(sql.FieldEQ(FieldPlatform, v))
 }
 
+// PackageScope applies equality check predicate on the "package_scope" field. It's identical to PackageScopeEQ.
+func PackageScope(v string) predicate.Group {
+	return predicate.Group(sql.FieldEQ(FieldPackageScope, v))
+}
+
 // SubscriptionType applies equality check predicate on the "subscription_type" field. It's identical to SubscriptionTypeEQ.
 func SubscriptionType(v string) predicate.Group {
 	return predicate.Group(sql.FieldEQ(FieldSubscriptionType, v))
@@ -643,6 +648,81 @@ func PlatformEqualFold(v string) predicate.Group {
 // PlatformContainsFold applies the ContainsFold predicate on the "platform" field.
 func PlatformContainsFold(v string) predicate.Group {
 	return predicate.Group(sql.FieldContainsFold(FieldPlatform, v))
+}
+
+// PackageScopeEQ applies the EQ predicate on the "package_scope" field.
+func PackageScopeEQ(v string) predicate.Group {
+	return predicate.Group(sql.FieldEQ(FieldPackageScope, v))
+}
+
+// PackageScopeNEQ applies the NEQ predicate on the "package_scope" field.
+func PackageScopeNEQ(v string) predicate.Group {
+	return predicate.Group(sql.FieldNEQ(FieldPackageScope, v))
+}
+
+// PackageScopeIn applies the In predicate on the "package_scope" field.
+func PackageScopeIn(vs ...string) predicate.Group {
+	return predicate.Group(sql.FieldIn(FieldPackageScope, vs...))
+}
+
+// PackageScopeNotIn applies the NotIn predicate on the "package_scope" field.
+func PackageScopeNotIn(vs ...string) predicate.Group {
+	return predicate.Group(sql.FieldNotIn(FieldPackageScope, vs...))
+}
+
+// PackageScopeGT applies the GT predicate on the "package_scope" field.
+func PackageScopeGT(v string) predicate.Group {
+	return predicate.Group(sql.FieldGT(FieldPackageScope, v))
+}
+
+// PackageScopeGTE applies the GTE predicate on the "package_scope" field.
+func PackageScopeGTE(v string) predicate.Group {
+	return predicate.Group(sql.FieldGTE(FieldPackageScope, v))
+}
+
+// PackageScopeLT applies the LT predicate on the "package_scope" field.
+func PackageScopeLT(v string) predicate.Group {
+	return predicate.Group(sql.FieldLT(FieldPackageScope, v))
+}
+
+// PackageScopeLTE applies the LTE predicate on the "package_scope" field.
+func PackageScopeLTE(v string) predicate.Group {
+	return predicate.Group(sql.FieldLTE(FieldPackageScope, v))
+}
+
+// PackageScopeContains applies the Contains predicate on the "package_scope" field.
+func PackageScopeContains(v string) predicate.Group {
+	return predicate.Group(sql.FieldContains(FieldPackageScope, v))
+}
+
+// PackageScopeHasPrefix applies the HasPrefix predicate on the "package_scope" field.
+func PackageScopeHasPrefix(v string) predicate.Group {
+	return predicate.Group(sql.FieldHasPrefix(FieldPackageScope, v))
+}
+
+// PackageScopeHasSuffix applies the HasSuffix predicate on the "package_scope" field.
+func PackageScopeHasSuffix(v string) predicate.Group {
+	return predicate.Group(sql.FieldHasSuffix(FieldPackageScope, v))
+}
+
+// PackageScopeIsNil applies the IsNil predicate on the "package_scope" field.
+func PackageScopeIsNil() predicate.Group {
+	return predicate.Group(sql.FieldIsNull(FieldPackageScope))
+}
+
+// PackageScopeNotNil applies the NotNil predicate on the "package_scope" field.
+func PackageScopeNotNil() predicate.Group {
+	return predicate.Group(sql.FieldNotNull(FieldPackageScope))
+}
+
+// PackageScopeEqualFold applies the EqualFold predicate on the "package_scope" field.
+func PackageScopeEqualFold(v string) predicate.Group {
+	return predicate.Group(sql.FieldEqualFold(FieldPackageScope, v))
+}
+
+// PackageScopeContainsFold applies the ContainsFold predicate on the "package_scope" field.
+func PackageScopeContainsFold(v string) predicate.Group {
+	return predicate.Group(sql.FieldContainsFold(FieldPackageScope, v))
 }
 
 // SubscriptionTypeEQ applies the EQ predicate on the "subscription_type" field.

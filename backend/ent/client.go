@@ -22,6 +22,7 @@ import (
 	"github.com/Wei-Shaw/sub2api/ent/apikey"
 	"github.com/Wei-Shaw/sub2api/ent/authidentity"
 	"github.com/Wei-Shaw/sub2api/ent/authidentitychannel"
+	"github.com/Wei-Shaw/sub2api/ent/balancepackage"
 	"github.com/Wei-Shaw/sub2api/ent/errorpassthroughrule"
 	"github.com/Wei-Shaw/sub2api/ent/group"
 	"github.com/Wei-Shaw/sub2api/ent/idempotencyrecord"
@@ -68,6 +69,8 @@ type Client struct {
 	AuthIdentity *AuthIdentityClient
 	// AuthIdentityChannel is the client for interacting with the AuthIdentityChannel builders.
 	AuthIdentityChannel *AuthIdentityChannelClient
+	// BalancePackage is the client for interacting with the BalancePackage builders.
+	BalancePackage *BalancePackageClient
 	// ErrorPassthroughRule is the client for interacting with the ErrorPassthroughRule builders.
 	ErrorPassthroughRule *ErrorPassthroughRuleClient
 	// Group is the client for interacting with the Group builders.
@@ -132,6 +135,7 @@ func (c *Client) init() {
 	c.AnnouncementRead = NewAnnouncementReadClient(c.config)
 	c.AuthIdentity = NewAuthIdentityClient(c.config)
 	c.AuthIdentityChannel = NewAuthIdentityChannelClient(c.config)
+	c.BalancePackage = NewBalancePackageClient(c.config)
 	c.ErrorPassthroughRule = NewErrorPassthroughRuleClient(c.config)
 	c.Group = NewGroupClient(c.config)
 	c.IdempotencyRecord = NewIdempotencyRecordClient(c.config)
@@ -254,6 +258,7 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		AnnouncementRead:         NewAnnouncementReadClient(cfg),
 		AuthIdentity:             NewAuthIdentityClient(cfg),
 		AuthIdentityChannel:      NewAuthIdentityChannelClient(cfg),
+		BalancePackage:           NewBalancePackageClient(cfg),
 		ErrorPassthroughRule:     NewErrorPassthroughRuleClient(cfg),
 		Group:                    NewGroupClient(cfg),
 		IdempotencyRecord:        NewIdempotencyRecordClient(cfg),
@@ -303,6 +308,7 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		AnnouncementRead:         NewAnnouncementReadClient(cfg),
 		AuthIdentity:             NewAuthIdentityClient(cfg),
 		AuthIdentityChannel:      NewAuthIdentityChannelClient(cfg),
+		BalancePackage:           NewBalancePackageClient(cfg),
 		ErrorPassthroughRule:     NewErrorPassthroughRuleClient(cfg),
 		Group:                    NewGroupClient(cfg),
 		IdempotencyRecord:        NewIdempotencyRecordClient(cfg),
@@ -356,12 +362,13 @@ func (c *Client) Close() error {
 func (c *Client) Use(hooks ...Hook) {
 	for _, n := range []interface{ Use(...Hook) }{
 		c.APIKey, c.Account, c.AccountGroup, c.Announcement, c.AnnouncementRead,
-		c.AuthIdentity, c.AuthIdentityChannel, c.ErrorPassthroughRule, c.Group,
-		c.IdempotencyRecord, c.IdentityAdoptionDecision, c.PaymentAuditLog,
-		c.PaymentOrder, c.PaymentProviderInstance, c.PendingAuthSession, c.PromoCode,
-		c.PromoCodeUsage, c.Proxy, c.RedeemCode, c.SecuritySecret, c.Setting,
-		c.SubscriptionPlan, c.TLSFingerprintProfile, c.UsageCleanupTask, c.UsageLog,
-		c.User, c.UserAllowedGroup, c.UserAttributeDefinition, c.UserAttributeValue,
+		c.AuthIdentity, c.AuthIdentityChannel, c.BalancePackage,
+		c.ErrorPassthroughRule, c.Group, c.IdempotencyRecord,
+		c.IdentityAdoptionDecision, c.PaymentAuditLog, c.PaymentOrder,
+		c.PaymentProviderInstance, c.PendingAuthSession, c.PromoCode, c.PromoCodeUsage,
+		c.Proxy, c.RedeemCode, c.SecuritySecret, c.Setting, c.SubscriptionPlan,
+		c.TLSFingerprintProfile, c.UsageCleanupTask, c.UsageLog, c.User,
+		c.UserAllowedGroup, c.UserAttributeDefinition, c.UserAttributeValue,
 		c.UserSubscription,
 	} {
 		n.Use(hooks...)
@@ -373,12 +380,13 @@ func (c *Client) Use(hooks ...Hook) {
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	for _, n := range []interface{ Intercept(...Interceptor) }{
 		c.APIKey, c.Account, c.AccountGroup, c.Announcement, c.AnnouncementRead,
-		c.AuthIdentity, c.AuthIdentityChannel, c.ErrorPassthroughRule, c.Group,
-		c.IdempotencyRecord, c.IdentityAdoptionDecision, c.PaymentAuditLog,
-		c.PaymentOrder, c.PaymentProviderInstance, c.PendingAuthSession, c.PromoCode,
-		c.PromoCodeUsage, c.Proxy, c.RedeemCode, c.SecuritySecret, c.Setting,
-		c.SubscriptionPlan, c.TLSFingerprintProfile, c.UsageCleanupTask, c.UsageLog,
-		c.User, c.UserAllowedGroup, c.UserAttributeDefinition, c.UserAttributeValue,
+		c.AuthIdentity, c.AuthIdentityChannel, c.BalancePackage,
+		c.ErrorPassthroughRule, c.Group, c.IdempotencyRecord,
+		c.IdentityAdoptionDecision, c.PaymentAuditLog, c.PaymentOrder,
+		c.PaymentProviderInstance, c.PendingAuthSession, c.PromoCode, c.PromoCodeUsage,
+		c.Proxy, c.RedeemCode, c.SecuritySecret, c.Setting, c.SubscriptionPlan,
+		c.TLSFingerprintProfile, c.UsageCleanupTask, c.UsageLog, c.User,
+		c.UserAllowedGroup, c.UserAttributeDefinition, c.UserAttributeValue,
 		c.UserSubscription,
 	} {
 		n.Intercept(interceptors...)
@@ -402,6 +410,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.AuthIdentity.mutate(ctx, m)
 	case *AuthIdentityChannelMutation:
 		return c.AuthIdentityChannel.mutate(ctx, m)
+	case *BalancePackageMutation:
+		return c.BalancePackage.mutate(ctx, m)
 	case *ErrorPassthroughRuleMutation:
 		return c.ErrorPassthroughRule.mutate(ctx, m)
 	case *GroupMutation:
@@ -1592,6 +1602,139 @@ func (c *AuthIdentityChannelClient) mutate(ctx context.Context, m *AuthIdentityC
 		return (&AuthIdentityChannelDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
 		return nil, fmt.Errorf("ent: unknown AuthIdentityChannel mutation op: %q", m.Op())
+	}
+}
+
+// BalancePackageClient is a client for the BalancePackage schema.
+type BalancePackageClient struct {
+	config
+}
+
+// NewBalancePackageClient returns a client for the BalancePackage from the given config.
+func NewBalancePackageClient(c config) *BalancePackageClient {
+	return &BalancePackageClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `balancepackage.Hooks(f(g(h())))`.
+func (c *BalancePackageClient) Use(hooks ...Hook) {
+	c.hooks.BalancePackage = append(c.hooks.BalancePackage, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `balancepackage.Intercept(f(g(h())))`.
+func (c *BalancePackageClient) Intercept(interceptors ...Interceptor) {
+	c.inters.BalancePackage = append(c.inters.BalancePackage, interceptors...)
+}
+
+// Create returns a builder for creating a BalancePackage entity.
+func (c *BalancePackageClient) Create() *BalancePackageCreate {
+	mutation := newBalancePackageMutation(c.config, OpCreate)
+	return &BalancePackageCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of BalancePackage entities.
+func (c *BalancePackageClient) CreateBulk(builders ...*BalancePackageCreate) *BalancePackageCreateBulk {
+	return &BalancePackageCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *BalancePackageClient) MapCreateBulk(slice any, setFunc func(*BalancePackageCreate, int)) *BalancePackageCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &BalancePackageCreateBulk{err: fmt.Errorf("calling to BalancePackageClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*BalancePackageCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &BalancePackageCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for BalancePackage.
+func (c *BalancePackageClient) Update() *BalancePackageUpdate {
+	mutation := newBalancePackageMutation(c.config, OpUpdate)
+	return &BalancePackageUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *BalancePackageClient) UpdateOne(_m *BalancePackage) *BalancePackageUpdateOne {
+	mutation := newBalancePackageMutation(c.config, OpUpdateOne, withBalancePackage(_m))
+	return &BalancePackageUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *BalancePackageClient) UpdateOneID(id int64) *BalancePackageUpdateOne {
+	mutation := newBalancePackageMutation(c.config, OpUpdateOne, withBalancePackageID(id))
+	return &BalancePackageUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for BalancePackage.
+func (c *BalancePackageClient) Delete() *BalancePackageDelete {
+	mutation := newBalancePackageMutation(c.config, OpDelete)
+	return &BalancePackageDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *BalancePackageClient) DeleteOne(_m *BalancePackage) *BalancePackageDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *BalancePackageClient) DeleteOneID(id int64) *BalancePackageDeleteOne {
+	builder := c.Delete().Where(balancepackage.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &BalancePackageDeleteOne{builder}
+}
+
+// Query returns a query builder for BalancePackage.
+func (c *BalancePackageClient) Query() *BalancePackageQuery {
+	return &BalancePackageQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeBalancePackage},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a BalancePackage entity by its id.
+func (c *BalancePackageClient) Get(ctx context.Context, id int64) (*BalancePackage, error) {
+	return c.Query().Where(balancepackage.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *BalancePackageClient) GetX(ctx context.Context, id int64) *BalancePackage {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *BalancePackageClient) Hooks() []Hook {
+	return c.hooks.BalancePackage
+}
+
+// Interceptors returns the client interceptors.
+func (c *BalancePackageClient) Interceptors() []Interceptor {
+	return c.inters.BalancePackage
+}
+
+func (c *BalancePackageClient) mutate(ctx context.Context, m *BalancePackageMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&BalancePackageCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&BalancePackageUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&BalancePackageUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&BalancePackageDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown BalancePackage mutation op: %q", m.Op())
 	}
 }
 
@@ -5355,8 +5498,8 @@ func (c *UserSubscriptionClient) mutate(ctx context.Context, m *UserSubscription
 type (
 	hooks struct {
 		APIKey, Account, AccountGroup, Announcement, AnnouncementRead, AuthIdentity,
-		AuthIdentityChannel, ErrorPassthroughRule, Group, IdempotencyRecord,
-		IdentityAdoptionDecision, PaymentAuditLog, PaymentOrder,
+		AuthIdentityChannel, BalancePackage, ErrorPassthroughRule, Group,
+		IdempotencyRecord, IdentityAdoptionDecision, PaymentAuditLog, PaymentOrder,
 		PaymentProviderInstance, PendingAuthSession, PromoCode, PromoCodeUsage, Proxy,
 		RedeemCode, SecuritySecret, Setting, SubscriptionPlan, TLSFingerprintProfile,
 		UsageCleanupTask, UsageLog, User, UserAllowedGroup, UserAttributeDefinition,
@@ -5364,8 +5507,8 @@ type (
 	}
 	inters struct {
 		APIKey, Account, AccountGroup, Announcement, AnnouncementRead, AuthIdentity,
-		AuthIdentityChannel, ErrorPassthroughRule, Group, IdempotencyRecord,
-		IdentityAdoptionDecision, PaymentAuditLog, PaymentOrder,
+		AuthIdentityChannel, BalancePackage, ErrorPassthroughRule, Group,
+		IdempotencyRecord, IdentityAdoptionDecision, PaymentAuditLog, PaymentOrder,
 		PaymentProviderInstance, PendingAuthSession, PromoCode, PromoCodeUsage, Proxy,
 		RedeemCode, SecuritySecret, Setting, SubscriptionPlan, TLSFingerprintProfile,
 		UsageCleanupTask, UsageLog, User, UserAllowedGroup, UserAttributeDefinition,

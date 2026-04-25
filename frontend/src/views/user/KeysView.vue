@@ -406,6 +406,9 @@
 
         <div>
           <label class="input-label">{{ t('keys.groupLabel') }}</label>
+          <p v-if="user?.package_scope" class="mb-2 text-xs text-gray-500 dark:text-gray-400">
+            {{ user.package_scope === 'codex' ? t('keys.packageScopeHintCodex') : t('keys.packageScopeHintGeneral') }}
+          </p>
           <Select
             v-model="formData.group_id"
             :options="groupOptions"
@@ -1047,6 +1050,7 @@
 <script setup lang="ts">
 	import { ref, computed, onMounted, onUnmounted, type ComponentPublicInstance } from 'vue'
 	import { useI18n } from 'vue-i18n'
+	import { useAuthStore } from '@/stores/auth'
 	import { useAppStore } from '@/stores/app'
 	import { useOnboardingStore } from '@/stores/onboarding'
 	import { useClipboard } from '@/composables/useClipboard'
@@ -1091,8 +1095,10 @@ interface GroupOption {
 }
 
 const appStore = useAppStore()
+const authStore = useAuthStore()
 const onboardingStore = useOnboardingStore()
 const { copyToClipboard: clipboardCopy } = useClipboard()
+const user = computed(() => authStore.user)
 
 const columns = computed<Column[]>(() => [
   { key: 'name', label: t('common.name'), sortable: true },

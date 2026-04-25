@@ -641,6 +641,38 @@ func TestOpenAIGatewayServiceRecordUsage_GeneratesRequestIDWhenAllSourcesMissing
 	require.Equal(t, billingRepo.lastCmd.RequestID, usageRepo.lastLog.RequestID)
 }
 
+func TestOpenAIGatewayServiceRecordUsage_RejectsDifferentPackageScope(t *testing.T) {
+	usageRepo := &openAIRecordUsageLogRepoStub{}
+	svc := newOpenAIRecordUsageServiceForTest(usageRepo, &openAIRecordUsageUserRepoStub{}, &openAIRecordUsageSubRepoStub{}, nil)
+
+	codex := PackageScopeCodex
+	general := PackageScopeGeneral
+	err := svc.RecordUsage(context.Background(), &OpenAIRecordUsageInput{
+		Result: &OpenAIForwardResult{
+			RequestID: "openai_scope_mismatch",
+			Usage: OpenAIUsage{
+				InputTokens:  10,
+				OutputTokens: 6,
+			},
+			Model:    "gpt-5",
+			Duration: time.Second,
+		},
+		APIKey: &APIKey{
+			ID:    1,
+			Quota: 100,
+			Group: &Group{
+				ID:               2,
+				SubscriptionType: SubscriptionTypeStandard,
+				PackageScope:     &general,
+			},
+		},
+		User:    &User{ID: 10, PackageScope: &codex},
+		Account: &Account{ID: 20},
+	})
+	require.ErrorIs(t, err, ErrPackageScopeNotAllowed)
+	require.Equal(t, 0, usageRepo.calls)
+}
+
 func TestOpenAIGatewayServiceRecordUsage_BillingErrorSkipsUsageLogWrite(t *testing.T) {
 	usageRepo := &openAIRecordUsageLogRepoStub{}
 	billingRepo := &openAIRecordUsageBillingRepoStub{err: errors.New("billing tx failed")}

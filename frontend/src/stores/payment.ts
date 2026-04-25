@@ -6,7 +6,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { paymentAPI } from '@/api/payment'
-import type { PaymentConfig, PaymentOrder, SubscriptionPlan, CreateOrderRequest } from '@/types/payment'
+import type { PaymentConfig, PaymentOrder, SubscriptionPlan, BalancePackage, CreateOrderRequest } from '@/types/payment'
 
 export const usePaymentStore = defineStore('payment', () => {
   // ==================== State ====================
@@ -17,6 +17,8 @@ export const usePaymentStore = defineStore('payment', () => {
   const currentOrder = ref<PaymentOrder | null>(null)
   /** Available subscription plans */
   const plans = ref<SubscriptionPlan[]>([])
+  /** Available balance packages */
+  const balancePackages = ref<BalancePackage[]>([])
 
   const configLoading = ref(false)
   const configLoaded = ref(false)
@@ -90,6 +92,7 @@ export const usePaymentStore = defineStore('payment', () => {
     config,
     currentOrder,
     plans,
+    balancePackages,
     configLoading,
     configLoaded,
     fetchConfig,

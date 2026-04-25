@@ -19,6 +19,7 @@ type User struct {
 	PasswordHash   string
 	Role           string
 	Balance        float64
+	PackageScope   *string
 	Concurrency    int
 	Status         string
 	AllowedGroups  []int64

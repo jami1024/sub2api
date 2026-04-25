@@ -49,6 +49,10 @@ func (User) Fields() []ent.Field {
 		field.Float("balance").
 			SchemaType(map[string]string{dialect.Postgres: "decimal(20,8)"}).
 			Default(0),
+		field.String("package_scope").
+			MaxLen(20).
+			Optional().
+			Nillable(),
 		field.Int("concurrency").
 			Default(5),
 		field.String("status").

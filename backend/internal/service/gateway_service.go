@@ -7787,6 +7787,11 @@ func (s *GatewayService) recordUsageCore(ctx context.Context, input *recordUsage
 	if isSubscriptionBilling {
 		billingType = BillingTypeSubscription
 	}
+	if !isSubscriptionBilling && apiKey.Group != nil &&
+		NormalizePackageScope(psStringValue(apiKey.Group.PackageScope)) != "" &&
+		!PackageScopeMatchesGroup(psStringValue(user.PackageScope), psStringValue(apiKey.Group.PackageScope)) {
+		return ErrPackageScopeNotAllowed
+	}
 
 	// 创建使用日志
 	accountRateMultiplier := account.BillingRateMultiplier()

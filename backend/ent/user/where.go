@@ -90,6 +90,11 @@ func Balance(v float64) predicate.User {
 	return predicate.User(sql.FieldEQ(FieldBalance, v))
 }
 
+// PackageScope applies equality check predicate on the "package_scope" field. It's identical to PackageScopeEQ.
+func PackageScope(v string) predicate.User {
+	return predicate.User(sql.FieldEQ(FieldPackageScope, v))
+}
+
 // Concurrency applies equality check predicate on the "concurrency" field. It's identical to ConcurrencyEQ.
 func Concurrency(v int) predicate.User {
 	return predicate.User(sql.FieldEQ(FieldConcurrency, v))
@@ -533,6 +538,81 @@ func BalanceLT(v float64) predicate.User {
 // BalanceLTE applies the LTE predicate on the "balance" field.
 func BalanceLTE(v float64) predicate.User {
 	return predicate.User(sql.FieldLTE(FieldBalance, v))
+}
+
+// PackageScopeEQ applies the EQ predicate on the "package_scope" field.
+func PackageScopeEQ(v string) predicate.User {
+	return predicate.User(sql.FieldEQ(FieldPackageScope, v))
+}
+
+// PackageScopeNEQ applies the NEQ predicate on the "package_scope" field.
+func PackageScopeNEQ(v string) predicate.User {
+	return predicate.User(sql.FieldNEQ(FieldPackageScope, v))
+}
+
+// PackageScopeIn applies the In predicate on the "package_scope" field.
+func PackageScopeIn(vs ...string) predicate.User {
+	return predicate.User(sql.FieldIn(FieldPackageScope, vs...))
+}
+
+// PackageScopeNotIn applies the NotIn predicate on the "package_scope" field.
+func PackageScopeNotIn(vs ...string) predicate.User {
+	return predicate.User(sql.FieldNotIn(FieldPackageScope, vs...))
+}
+
+// PackageScopeGT applies the GT predicate on the "package_scope" field.
+func PackageScopeGT(v string) predicate.User {
+	return predicate.User(sql.FieldGT(FieldPackageScope, v))
+}
+
+// PackageScopeGTE applies the GTE predicate on the "package_scope" field.
+func PackageScopeGTE(v string) predicate.User {
+	return predicate.User(sql.FieldGTE(FieldPackageScope, v))
+}
+
+// PackageScopeLT applies the LT predicate on the "package_scope" field.
+func PackageScopeLT(v string) predicate.User {
+	return predicate.User(sql.FieldLT(FieldPackageScope, v))
+}
+
+// PackageScopeLTE applies the LTE predicate on the "package_scope" field.
+func PackageScopeLTE(v string) predicate.User {
+	return predicate.User(sql.FieldLTE(FieldPackageScope, v))
+}
+
+// PackageScopeContains applies the Contains predicate on the "package_scope" field.
+func PackageScopeContains(v string) predicate.User {
+	return predicate.User(sql.FieldContains(FieldPackageScope, v))
+}
+
+// PackageScopeHasPrefix applies the HasPrefix predicate on the "package_scope" field.
+func PackageScopeHasPrefix(v string) predicate.User {
+	return predicate.User(sql.FieldHasPrefix(FieldPackageScope, v))
+}
+
+// PackageScopeHasSuffix applies the HasSuffix predicate on the "package_scope" field.
+func PackageScopeHasSuffix(v string) predicate.User {
+	return predicate.User(sql.FieldHasSuffix(FieldPackageScope, v))
+}
+
+// PackageScopeIsNil applies the IsNil predicate on the "package_scope" field.
+func PackageScopeIsNil() predicate.User {
+	return predicate.User(sql.FieldIsNull(FieldPackageScope))
+}
+
+// PackageScopeNotNil applies the NotNil predicate on the "package_scope" field.
+func PackageScopeNotNil() predicate.User {
+	return predicate.User(sql.FieldNotNull(FieldPackageScope))
+}
+
+// PackageScopeEqualFold applies the EqualFold predicate on the "package_scope" field.
+func PackageScopeEqualFold(v string) predicate.User {
+	return predicate.User(sql.FieldEqualFold(FieldPackageScope, v))
+}
+
+// PackageScopeContainsFold applies the ContainsFold predicate on the "package_scope" field.
+func PackageScopeContainsFold(v string) predicate.User {
+	return predicate.User(sql.FieldContainsFold(FieldPackageScope, v))
 }
 
 // ConcurrencyEQ applies the EQ predicate on the "concurrency" field.
