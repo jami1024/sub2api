@@ -5917,7 +5917,7 @@ export default {
       forceSwitch: '强制切换模式',
       forceSwitchTitle: '切换余额模式？',
       forceSwitchCurrentBalance: '您当前仍有 {scope} 模式余额 ${amount}。',
-      forceSwitchTargetScope: '继续购买后，将切换为 {scope} 模式，新模式余额到账后旧模式余额会被清空。',
+      forceSwitchTargetScope: '购买后将启用 {scope} 余额模式，当前 {currentScope} 模式余额会被清空。',
       forceSwitchIrreversible: '此操作不可恢复。',
       forceSwitchConfirm: '确认切换并购买',
       modeGuideTitle: '模式说明与注意事项',

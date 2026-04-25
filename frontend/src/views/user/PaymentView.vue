@@ -395,12 +395,28 @@
                   <span :class="['px-2.5 py-1 text-[11px]', packageScopeBadgeClass(forceSwitchTarget.package_scope)]">
                     {{ t(packageScopeLabelKey(forceSwitchTarget.package_scope)) }}
                   </span>
+                </div>
+                <div class="mt-3 flex items-center justify-between gap-3">
+                  <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-gray-500">
+                    {{ t('payment.amountLabel') }}
+                  </p>
                   <span class="text-sm font-medium text-gray-900 dark:text-white">
                     ¥{{ forceSwitchTarget.price.toFixed(2) }}
                   </span>
                 </div>
+                <div class="mt-2 flex items-center justify-between gap-3">
+                  <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-gray-500">
+                    {{ t('payment.creditedBalance') }}
+                  </p>
+                  <span class="text-sm font-medium text-emerald-600 dark:text-emerald-300">
+                    ${{ forceSwitchTarget.credit_amount.toFixed(2) }}
+                  </span>
+                </div>
                 <p class="mt-3 text-xs leading-5 text-gray-500 dark:text-gray-400">
-                  {{ t('payment.balancePackages.forceSwitchTargetScope', { scope: t(packageScopeLabelKey(forceSwitchTarget.package_scope)) }) }}
+                  {{ t('payment.balancePackages.forceSwitchTargetScope', {
+                    scope: t(packageScopeLabelKey(forceSwitchTarget.package_scope)),
+                    currentScope: currentScopeLabel,
+                  }) }}
                 </p>
               </div>
             </div>

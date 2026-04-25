@@ -5731,7 +5731,7 @@ export default {
       forceSwitch: 'Force Switch Mode',
       forceSwitchTitle: 'Switch balance mode?',
       forceSwitchCurrentBalance: 'You still have ${amount} in {scope} mode balance.',
-      forceSwitchTargetScope: 'If you continue, your account will switch to {scope} mode and the old mode balance will be cleared before the new package credit is added.',
+      forceSwitchTargetScope: 'After purchase, {scope} balance mode will be enabled and your current {currentScope} mode balance will be cleared.',
       forceSwitchIrreversible: 'This action cannot be undone.',
       forceSwitchConfirm: 'Confirm switch and purchase',
       modeGuideTitle: 'Mode Guide & Notes',

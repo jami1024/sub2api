@@ -568,7 +568,9 @@ describe('PaymentView balance package storefront', () => {
     const card = wrapper.get('[data-testid="balance-package-card-9"]')
     expect(card.get('[data-testid="balance-package-card-support-9"]').text()).toContain('payment.balancePackages.supportsCodexOnly')
     expect(card.get('[data-testid="balance-package-card-price-9"]').text()).toContain('¥100.00')
-    expect(card.get('[data-testid="balance-package-select-9"]').text()).toContain('payment.balancePackages.buyNow')
+    const action = card.get('[data-testid="balance-package-select-9"]')
+    expect(action.text()).toContain('payment.balancePackages.buyNow')
+    expect(action.classes()).toContain('w-full')
   })
 
   it('renders only the first balance package display tag on cards', async () => {
@@ -646,8 +648,13 @@ describe('PaymentView balance package storefront', () => {
 
     await wrapper.find('[data-testid="balance-package-force-switch-10"]').trigger('click')
 
-    expect(wrapper.text()).toContain('payment.balancePackages.forceSwitchIrreversible')
-    expect(wrapper.text()).toContain('payment.balancePackages.unavailableCurrentScope')
+    const dialog = wrapper.get('[data-testid="force-switch-dialog"]')
+    expect(dialog.text()).toContain('payment.balancePackages.forceSwitchIrreversible')
+    expect(dialog.text()).toContain('payment.balancePackages.unavailableCurrentScope')
+    expect(dialog.text()).toContain('payment.creditedBalance')
+    expect(dialog.text()).toContain('$80.00')
+    expect(dialog.text()).toContain('¥88.00')
+    expect(dialog.text()).toContain('payment.balancePackages.forceSwitchTargetScope')
 
     await wrapper.find('[data-testid="confirm-force-switch"]').trigger('click')
 

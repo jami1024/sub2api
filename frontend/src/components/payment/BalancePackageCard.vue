@@ -53,8 +53,8 @@
       {{ disabledReason }}
     </p>
 
-    <div class="mt-5 flex items-end justify-between gap-3">
-      <div class="min-w-0 flex-1">
+    <div class="mt-5">
+      <div class="min-w-0">
         <div class="text-xs text-gray-400 dark:text-gray-500">{{ t('payment.amountLabel') }}</div>
         <div
           :data-testid="`balance-package-card-price-${pkg.id}`"
@@ -67,7 +67,7 @@
         type="button"
         :data-testid="disabled && canForceSwitch ? `balance-package-force-switch-${pkg.id}` : `balance-package-select-${pkg.id}`"
         :disabled="disabled && !canForceSwitch"
-        class="btn h-14 w-32 shrink-0 justify-center whitespace-nowrap px-4 text-sm"
+        class="btn mt-4 h-14 w-full justify-center whitespace-nowrap px-4 text-sm"
         :class="disabled && canForceSwitch ? 'btn-secondary' : 'btn-primary'"
         @click.stop="disabled ? handleForceSwitch() : handleSelect()"
       >
