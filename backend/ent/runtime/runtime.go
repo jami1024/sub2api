@@ -476,20 +476,24 @@ func init() {
 	balancepackage.DefaultProductName = balancepackageDescProductName.Default.(string)
 	// balancepackage.ProductNameValidator is a validator for the "product_name" field. It is called by the builders before save.
 	balancepackage.ProductNameValidator = balancepackageDescProductName.Validators[0].(func(string) error)
+	// balancepackageDescDisplayTags is the schema descriptor for display_tags field.
+	balancepackageDescDisplayTags := balancepackageFields[6].Descriptor()
+	// balancepackage.DefaultDisplayTags holds the default value on creation for the display_tags field.
+	balancepackage.DefaultDisplayTags = balancepackageDescDisplayTags.Default.([]string)
 	// balancepackageDescForSale is the schema descriptor for for_sale field.
-	balancepackageDescForSale := balancepackageFields[6].Descriptor()
+	balancepackageDescForSale := balancepackageFields[7].Descriptor()
 	// balancepackage.DefaultForSale holds the default value on creation for the for_sale field.
 	balancepackage.DefaultForSale = balancepackageDescForSale.Default.(bool)
 	// balancepackageDescSortOrder is the schema descriptor for sort_order field.
-	balancepackageDescSortOrder := balancepackageFields[7].Descriptor()
+	balancepackageDescSortOrder := balancepackageFields[8].Descriptor()
 	// balancepackage.DefaultSortOrder holds the default value on creation for the sort_order field.
 	balancepackage.DefaultSortOrder = balancepackageDescSortOrder.Default.(int)
 	// balancepackageDescCreatedAt is the schema descriptor for created_at field.
-	balancepackageDescCreatedAt := balancepackageFields[8].Descriptor()
+	balancepackageDescCreatedAt := balancepackageFields[9].Descriptor()
 	// balancepackage.DefaultCreatedAt holds the default value on creation for the created_at field.
 	balancepackage.DefaultCreatedAt = balancepackageDescCreatedAt.Default.(func() time.Time)
 	// balancepackageDescUpdatedAt is the schema descriptor for updated_at field.
-	balancepackageDescUpdatedAt := balancepackageFields[9].Descriptor()
+	balancepackageDescUpdatedAt := balancepackageFields[10].Descriptor()
 	// balancepackage.DefaultUpdatedAt holds the default value on creation for the updated_at field.
 	balancepackage.DefaultUpdatedAt = balancepackageDescUpdatedAt.Default.(func() time.Time)
 	// balancepackage.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.

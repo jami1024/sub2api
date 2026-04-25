@@ -25,6 +25,8 @@ const (
 	FieldPackageScope = "package_scope"
 	// FieldProductName holds the string denoting the product_name field in the database.
 	FieldProductName = "product_name"
+	// FieldDisplayTags holds the string denoting the display_tags field in the database.
+	FieldDisplayTags = "display_tags"
 	// FieldForSale holds the string denoting the for_sale field in the database.
 	FieldForSale = "for_sale"
 	// FieldSortOrder holds the string denoting the sort_order field in the database.
@@ -46,6 +48,7 @@ var Columns = []string{
 	FieldCreditAmount,
 	FieldPackageScope,
 	FieldProductName,
+	FieldDisplayTags,
 	FieldForSale,
 	FieldSortOrder,
 	FieldCreatedAt,
@@ -73,6 +76,8 @@ var (
 	DefaultProductName string
 	// ProductNameValidator is a validator for the "product_name" field. It is called by the builders before save.
 	ProductNameValidator func(string) error
+	// DefaultDisplayTags holds the default value on creation for the "display_tags" field.
+	DefaultDisplayTags []string
 	// DefaultForSale holds the default value on creation for the "for_sale" field.
 	DefaultForSale bool
 	// DefaultSortOrder holds the default value on creation for the "sort_order" field.

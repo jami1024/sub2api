@@ -352,6 +352,7 @@
           <div class="w-full max-w-lg rounded-2xl border border-gray-200 bg-white p-6 shadow-2xl dark:border-dark-700 dark:bg-dark-900">
             <h3 class="text-lg font-semibold text-gray-900 dark:text-white">{{ t('payment.balancePackages.forceSwitchTitle') }}</h3>
             <div class="mt-4 space-y-3 text-sm text-gray-600 dark:text-gray-300">
+              <p class="font-medium text-amber-700 dark:text-amber-300">{{ t('payment.balancePackages.unavailableCurrentScope') }}</p>
               <p>{{ t('payment.balancePackages.forceSwitchCurrentBalance', { amount: Number(user?.balance || 0).toFixed(2), scope: currentScopeLabel }) }}</p>
               <p>{{ t('payment.balancePackages.forceSwitchTargetScope', { scope: t(packageScopeLabelKey(forceSwitchTarget.package_scope)) }) }}</p>
               <p class="font-semibold text-red-600 dark:text-red-400">{{ t('payment.balancePackages.forceSwitchIrreversible') }}</p>

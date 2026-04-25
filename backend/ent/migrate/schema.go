@@ -430,6 +430,7 @@ var (
 		{Name: "credit_amount", Type: field.TypeFloat64, SchemaType: map[string]string{"postgres": "decimal(20,8)"}},
 		{Name: "package_scope", Type: field.TypeString, Size: 20},
 		{Name: "product_name", Type: field.TypeString, Size: 100, Default: ""},
+		{Name: "display_tags", Type: field.TypeJSON},
 		{Name: "for_sale", Type: field.TypeBool, Default: true},
 		{Name: "sort_order", Type: field.TypeInt, Default: 0},
 		{Name: "created_at", Type: field.TypeTime, SchemaType: map[string]string{"postgres": "timestamptz"}},
@@ -444,12 +445,12 @@ var (
 			{
 				Name:    "balancepackage_package_scope_for_sale",
 				Unique:  false,
-				Columns: []*schema.Column{BalancePackagesColumns[5], BalancePackagesColumns[7]},
+				Columns: []*schema.Column{BalancePackagesColumns[5], BalancePackagesColumns[8]},
 			},
 			{
 				Name:    "balancepackage_sort_order",
 				Unique:  false,
-				Columns: []*schema.Column{BalancePackagesColumns[8]},
+				Columns: []*schema.Column{BalancePackagesColumns[9]},
 			},
 		},
 	}

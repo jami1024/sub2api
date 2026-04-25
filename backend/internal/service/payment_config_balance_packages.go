@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"unicode/utf8"
 
 	dbent "github.com/Wei-Shaw/sub2api/ent"
 	"github.com/Wei-Shaw/sub2api/ent/balancepackage"
@@ -42,6 +43,32 @@ func validateBalancePackagePatch(req UpdateBalancePackageRequest) error {
 	return nil
 }
 
+func normalizeDisplayTags(tags []string) ([]string, error) {
+	if len(tags) == 0 {
+		return []string{}, nil
+	}
+	seen := make(map[string]struct{}, len(tags))
+	out := make([]string, 0, len(tags))
+	for _, raw := range tags {
+		tag := strings.TrimSpace(raw)
+		if tag == "" {
+			continue
+		}
+		if utf8.RuneCountInString(tag) > 10 {
+			return nil, infraerrors.BadRequest("BALANCE_PACKAGE_DISPLAY_TAGS_INVALID", "display tag must be <= 10 characters")
+		}
+		if _, ok := seen[tag]; ok {
+			continue
+		}
+		seen[tag] = struct{}{}
+		out = append(out, tag)
+	}
+	if len(out) > 3 {
+		return nil, infraerrors.BadRequest("BALANCE_PACKAGE_DISPLAY_TAGS_INVALID", "at most 3 display tags are allowed")
+	}
+	return out, nil
+}
+
 func (s *PaymentConfigService) ListBalancePackages(ctx context.Context, forSaleOnly bool) ([]*dbent.BalancePackage, error) {
 	q := s.entClient.BalancePackage.Query()
 	if forSaleOnly {
@@ -63,6 +90,10 @@ func (s *PaymentConfigService) CreateBalancePackage(ctx context.Context, req Cre
 		return nil, err
 	}
 	scope := NormalizePackageScope(req.PackageScope)
+	displayTags, err := normalizeDisplayTags(req.DisplayTags)
+	if err != nil {
+		return nil, err
+	}
 	return s.entClient.BalancePackage.Create().
 		SetName(req.Name).
 		SetDescription(req.Description).
@@ -70,6 +101,7 @@ func (s *PaymentConfigService) CreateBalancePackage(ctx context.Context, req Cre
 		SetCreditAmount(req.CreditAmount).
 		SetPackageScope(scope).
 		SetProductName(req.ProductName).
+		SetDisplayTags(displayTags).
 		SetForSale(req.ForSale).
 		SetSortOrder(req.SortOrder).
 		Save(ctx)
@@ -97,6 +129,13 @@ func (s *PaymentConfigService) UpdateBalancePackage(ctx context.Context, id int6
 	}
 	if req.ProductName != nil {
 		u.SetProductName(*req.ProductName)
+	}
+	if req.DisplayTags != nil {
+		displayTags, err := normalizeDisplayTags(*req.DisplayTags)
+		if err != nil {
+			return nil, err
+		}
+		u.SetDisplayTags(displayTags)
 	}
 	if req.ForSale != nil {
 		u.SetForSale(*req.ForSale)

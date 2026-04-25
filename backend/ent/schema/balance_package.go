@@ -44,6 +44,8 @@ func (BalancePackage) Fields() []ent.Field {
 		field.String("product_name").
 			MaxLen(100).
 			Default(""),
+		field.JSON("display_tags", []string{}).
+			Default([]string{}),
 		field.Bool("for_sale").
 			Default(true),
 		field.Int("sort_order").

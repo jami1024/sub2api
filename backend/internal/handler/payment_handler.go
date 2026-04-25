@@ -141,6 +141,7 @@ func (h *PaymentHandler) GetCheckoutInfo(c *gin.Context) {
 			CreditAmount: pkg.CreditAmount,
 			PackageScope: pkg.PackageScope,
 			ProductName:  pkg.ProductName,
+			DisplayTags:  pkg.DisplayTags,
 			ForSale:      pkg.ForSale,
 			SortOrder:    pkg.SortOrder,
 		})
@@ -196,15 +197,16 @@ type checkoutPlan struct {
 }
 
 type checkoutBalancePackage struct {
-	ID           int64   `json:"id"`
-	Name         string  `json:"name"`
-	Description  string  `json:"description"`
-	Price        float64 `json:"price"`
-	CreditAmount float64 `json:"credit_amount"`
-	PackageScope string  `json:"package_scope"`
-	ProductName  string  `json:"product_name"`
-	ForSale      bool    `json:"for_sale"`
-	SortOrder    int     `json:"sort_order"`
+	ID           int64    `json:"id"`
+	Name         string   `json:"name"`
+	Description  string   `json:"description"`
+	Price        float64  `json:"price"`
+	CreditAmount float64  `json:"credit_amount"`
+	PackageScope string   `json:"package_scope"`
+	ProductName  string   `json:"product_name"`
+	DisplayTags  []string `json:"display_tags"`
+	ForSale      bool     `json:"for_sale"`
+	SortOrder    int      `json:"sort_order"`
 }
 
 // parseFeatures splits a newline-separated features string into a string slice.

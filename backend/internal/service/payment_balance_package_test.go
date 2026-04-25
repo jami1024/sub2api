@@ -321,6 +321,10 @@ func TestCreateAndListBalancePackages(t *testing.T) {
 	require.Equal(t, PackageScopeCodex, items[0].PackageScope)
 }
 
+func ptrStringSlice(v []string) *[]string {
+	return &v
+}
+
 func TestCreateBalancePackageOrderStoresSnapshot(t *testing.T) {
 	client := newPackageScopeEntClient(t)
 	createdUser, err := client.User.Create().
@@ -363,6 +367,75 @@ func TestCreateBalancePackageOrderStoresSnapshot(t *testing.T) {
 	require.False(t, order.ForceSwitchScope)
 	require.Equal(t, pkg.CreditAmount, order.Amount)
 	require.Equal(t, pkg.Price, order.PayAmount)
+}
+
+func TestCreateBalancePackage_PersistsDisplayTags(t *testing.T) {
+	client := newPackageScopeEntClient(t)
+	svc := NewPaymentConfigService(client, &paymentConfigSettingRepoStub{values: map[string]string{}}, nil)
+
+	created, err := svc.CreateBalancePackage(context.Background(), CreateBalancePackageRequest{
+		Name:         "Codex 100 包",
+		Price:        100,
+		CreditAmount: 100,
+		PackageScope: PackageScopeCodex,
+		DisplayTags:  []string{"新手推荐", "1x 倍率", "适合 Codex"},
+		ForSale:      true,
+	})
+	require.NoError(t, err)
+	require.Equal(t, []string{"新手推荐", "1x 倍率", "适合 Codex"}, created.DisplayTags)
+}
+
+func TestUpdateBalancePackage_PersistsDisplayTags(t *testing.T) {
+	client := newPackageScopeEntClient(t)
+	svc := NewPaymentConfigService(client, &paymentConfigSettingRepoStub{values: map[string]string{}}, nil)
+
+	pkg, err := client.BalancePackage.Create().
+		SetName("Codex 100 包").
+		SetDescription("codex only").
+		SetPrice(100).
+		SetCreditAmount(100).
+		SetPackageScope(PackageScopeCodex).
+		SetForSale(true).
+		Save(context.Background())
+	require.NoError(t, err)
+
+	updated, err := svc.UpdateBalancePackage(context.Background(), pkg.ID, UpdateBalancePackageRequest{
+		DisplayTags: ptrStringSlice([]string{"高频使用", "适合编程"}),
+	})
+	require.NoError(t, err)
+	require.Equal(t, []string{"高频使用", "适合编程"}, updated.DisplayTags)
+}
+
+func TestCreateBalancePackage_RejectsMoreThanThreeDisplayTags(t *testing.T) {
+	client := newPackageScopeEntClient(t)
+	svc := NewPaymentConfigService(client, &paymentConfigSettingRepoStub{values: map[string]string{}}, nil)
+
+	_, err := svc.CreateBalancePackage(context.Background(), CreateBalancePackageRequest{
+		Name:         "Codex 100 包",
+		Price:        100,
+		CreditAmount: 100,
+		PackageScope: PackageScopeCodex,
+		DisplayTags:  []string{"新手", "1x", "编程", "多一个"},
+		ForSale:      true,
+	})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "BALANCE_PACKAGE_DISPLAY_TAGS_INVALID")
+}
+
+func TestCreateBalancePackage_NormalizesDisplayTags(t *testing.T) {
+	client := newPackageScopeEntClient(t)
+	svc := NewPaymentConfigService(client, &paymentConfigSettingRepoStub{values: map[string]string{}}, nil)
+
+	created, err := svc.CreateBalancePackage(context.Background(), CreateBalancePackageRequest{
+		Name:         "Codex 100 包",
+		Price:        100,
+		CreditAmount: 100,
+		PackageScope: PackageScopeCodex,
+		DisplayTags:  []string{" 新手推荐 ", "", "新手推荐", "1x 倍率"},
+		ForSale:      true,
+	})
+	require.NoError(t, err)
+	require.Equal(t, []string{"新手推荐", "1x 倍率"}, created.DisplayTags)
 }
 
 func TestCreateBalancePackageOrder_AllowsDifferentScopeWithForceSwitch(t *testing.T) {

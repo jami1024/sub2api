@@ -10,6 +10,7 @@ import (
 
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
+	"entgo.io/ent/dialect/sql/sqljson"
 	"entgo.io/ent/schema/field"
 	"github.com/Wei-Shaw/sub2api/ent/balancepackage"
 	"github.com/Wei-Shaw/sub2api/ent/predicate"
@@ -123,6 +124,18 @@ func (_u *BalancePackageUpdate) SetNillableProductName(v *string) *BalancePackag
 	if v != nil {
 		_u.SetProductName(*v)
 	}
+	return _u
+}
+
+// SetDisplayTags sets the "display_tags" field.
+func (_u *BalancePackageUpdate) SetDisplayTags(v []string) *BalancePackageUpdate {
+	_u.mutation.SetDisplayTags(v)
+	return _u
+}
+
+// AppendDisplayTags appends value to the "display_tags" field.
+func (_u *BalancePackageUpdate) AppendDisplayTags(v []string) *BalancePackageUpdate {
+	_u.mutation.AppendDisplayTags(v)
 	return _u
 }
 
@@ -264,6 +277,14 @@ func (_u *BalancePackageUpdate) sqlSave(ctx context.Context) (_node int, err err
 	if value, ok := _u.mutation.ProductName(); ok {
 		_spec.SetField(balancepackage.FieldProductName, field.TypeString, value)
 	}
+	if value, ok := _u.mutation.DisplayTags(); ok {
+		_spec.SetField(balancepackage.FieldDisplayTags, field.TypeJSON, value)
+	}
+	if value, ok := _u.mutation.AppendedDisplayTags(); ok {
+		_spec.AddModifier(func(u *sql.UpdateBuilder) {
+			sqljson.Append(u, balancepackage.FieldDisplayTags, value)
+		})
+	}
 	if value, ok := _u.mutation.ForSale(); ok {
 		_spec.SetField(balancepackage.FieldForSale, field.TypeBool, value)
 	}
@@ -391,6 +412,18 @@ func (_u *BalancePackageUpdateOne) SetNillableProductName(v *string) *BalancePac
 	if v != nil {
 		_u.SetProductName(*v)
 	}
+	return _u
+}
+
+// SetDisplayTags sets the "display_tags" field.
+func (_u *BalancePackageUpdateOne) SetDisplayTags(v []string) *BalancePackageUpdateOne {
+	_u.mutation.SetDisplayTags(v)
+	return _u
+}
+
+// AppendDisplayTags appends value to the "display_tags" field.
+func (_u *BalancePackageUpdateOne) AppendDisplayTags(v []string) *BalancePackageUpdateOne {
+	_u.mutation.AppendDisplayTags(v)
 	return _u
 }
 
@@ -561,6 +594,14 @@ func (_u *BalancePackageUpdateOne) sqlSave(ctx context.Context) (_node *BalanceP
 	}
 	if value, ok := _u.mutation.ProductName(); ok {
 		_spec.SetField(balancepackage.FieldProductName, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.DisplayTags(); ok {
+		_spec.SetField(balancepackage.FieldDisplayTags, field.TypeJSON, value)
+	}
+	if value, ok := _u.mutation.AppendedDisplayTags(); ok {
+		_spec.AddModifier(func(u *sql.UpdateBuilder) {
+			sqljson.Append(u, balancepackage.FieldDisplayTags, value)
+		})
 	}
 	if value, ok := _u.mutation.ForSale(); ok {
 		_spec.SetField(balancepackage.FieldForSale, field.TypeBool, value)

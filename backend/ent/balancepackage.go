@@ -3,6 +3,7 @@
 package ent
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -29,6 +30,8 @@ type BalancePackage struct {
 	PackageScope string `json:"package_scope,omitempty"`
 	// ProductName holds the value of the "product_name" field.
 	ProductName string `json:"product_name,omitempty"`
+	// DisplayTags holds the value of the "display_tags" field.
+	DisplayTags []string `json:"display_tags,omitempty"`
 	// ForSale holds the value of the "for_sale" field.
 	ForSale bool `json:"for_sale,omitempty"`
 	// SortOrder holds the value of the "sort_order" field.
@@ -45,6 +48,8 @@ func (*BalancePackage) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
+		case balancepackage.FieldDisplayTags:
+			values[i] = new([]byte)
 		case balancepackage.FieldForSale:
 			values[i] = new(sql.NullBool)
 		case balancepackage.FieldPrice, balancepackage.FieldCreditAmount:
@@ -111,6 +116,14 @@ func (_m *BalancePackage) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field product_name", values[i])
 			} else if value.Valid {
 				_m.ProductName = value.String
+			}
+		case balancepackage.FieldDisplayTags:
+			if value, ok := values[i].(*[]byte); !ok {
+				return fmt.Errorf("unexpected type %T for field display_tags", values[i])
+			} else if value != nil && len(*value) > 0 {
+				if err := json.Unmarshal(*value, &_m.DisplayTags); err != nil {
+					return fmt.Errorf("unmarshal field display_tags: %w", err)
+				}
 			}
 		case balancepackage.FieldForSale:
 			if value, ok := values[i].(*sql.NullBool); !ok {
@@ -189,6 +202,9 @@ func (_m *BalancePackage) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("product_name=")
 	builder.WriteString(_m.ProductName)
+	builder.WriteString(", ")
+	builder.WriteString("display_tags=")
+	builder.WriteString(fmt.Sprintf("%v", _m.DisplayTags))
 	builder.WriteString(", ")
 	builder.WriteString("for_sale=")
 	builder.WriteString(fmt.Sprintf("%v", _m.ForSale))

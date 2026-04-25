@@ -15,6 +15,34 @@
         <label class="input-label">{{ t('payment.admin.planDescription') }}</label>
         <textarea v-model="form.description" rows="2" class="input" />
       </div>
+      <div>
+        <label class="input-label">{{ t('payment.admin.balancePackageDisplayTags') }}</label>
+        <div class="space-y-2">
+          <div class="flex flex-wrap gap-2">
+            <span
+              v-for="(tag, index) in form.display_tags"
+              :key="`${tag}-${index}`"
+              class="inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 text-sm text-slate-700 dark:bg-dark-700 dark:text-slate-200"
+            >
+              {{ tag }}
+              <button type="button" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-100" @click="removeDisplayTag(index)">×</button>
+            </span>
+          </div>
+          <div class="flex gap-2">
+            <input
+              v-model="displayTagInput"
+              type="text"
+              class="input"
+              :placeholder="t('payment.admin.balancePackageDisplayTagsPlaceholder')"
+              @keydown.enter.prevent="addDisplayTag"
+            />
+            <button type="button" class="btn btn-secondary" :disabled="form.display_tags.length >= 3" @click="addDisplayTag">
+              {{ t('common.add') }}
+            </button>
+          </div>
+          <p class="input-hint">{{ t('payment.admin.balancePackageDisplayTagsHint') }}</p>
+        </div>
+      </div>
       <div class="grid grid-cols-2 gap-4">
         <div>
           <label class="input-label">{{ t('payment.admin.price') }} <span class="text-red-500">*</span></label>
@@ -84,6 +112,7 @@ const emit = defineEmits<{
 const { t } = useI18n()
 const appStore = useAppStore()
 const saving = ref(false)
+const displayTagInput = ref('')
 
 const form = reactive({
   name: '',
@@ -92,6 +121,7 @@ const form = reactive({
   credit_amount: 0,
   package_scope: 'codex' as 'codex' | 'general',
   product_name: '',
+  display_tags: [] as string[],
   sort_order: 0,
   for_sale: true,
 })
@@ -104,7 +134,10 @@ const packageScopeOptions = computed(() => [
 watch(() => props.show, (visible) => {
   if (!visible) return
   if (props.balancePackage) {
-    Object.assign(form, props.balancePackage)
+    Object.assign(form, {
+      ...props.balancePackage,
+      display_tags: props.balancePackage.display_tags || [],
+    })
   } else {
     Object.assign(form, {
       name: '',
@@ -113,11 +146,24 @@ watch(() => props.show, (visible) => {
       credit_amount: 0,
       package_scope: 'codex',
       product_name: '',
+      display_tags: [],
       sort_order: 0,
       for_sale: true,
     })
   }
+  displayTagInput.value = ''
 })
+
+function addDisplayTag() {
+  const tag = displayTagInput.value.trim()
+  if (!tag || form.display_tags.includes(tag) || form.display_tags.length >= 3) return
+  form.display_tags.push(tag)
+  displayTagInput.value = ''
+}
+
+function removeDisplayTag(index: number) {
+  form.display_tags.splice(index, 1)
+}
 
 async function handleSave() {
   if (!form.name.trim() || !form.price || form.price <= 0 || !form.credit_amount || form.credit_amount <= 0) {
@@ -126,7 +172,7 @@ async function handleSave() {
   }
   saving.value = true
   try {
-    const payload = { ...form }
+    const payload = { ...form, display_tags: [...form.display_tags] }
     if (props.balancePackage) {
       await adminPaymentAPI.updateBalancePackage(props.balancePackage.id, payload)
     } else {

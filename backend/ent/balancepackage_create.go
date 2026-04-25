@@ -74,6 +74,12 @@ func (_c *BalancePackageCreate) SetNillableProductName(v *string) *BalancePackag
 	return _c
 }
 
+// SetDisplayTags sets the "display_tags" field.
+func (_c *BalancePackageCreate) SetDisplayTags(v []string) *BalancePackageCreate {
+	_c.mutation.SetDisplayTags(v)
+	return _c
+}
+
 // SetForSale sets the "for_sale" field.
 func (_c *BalancePackageCreate) SetForSale(v bool) *BalancePackageCreate {
 	_c.mutation.SetForSale(v)
@@ -173,6 +179,10 @@ func (_c *BalancePackageCreate) defaults() {
 		v := balancepackage.DefaultProductName
 		_c.mutation.SetProductName(v)
 	}
+	if _, ok := _c.mutation.DisplayTags(); !ok {
+		v := balancepackage.DefaultDisplayTags
+		_c.mutation.SetDisplayTags(v)
+	}
 	if _, ok := _c.mutation.ForSale(); !ok {
 		v := balancepackage.DefaultForSale
 		_c.mutation.SetForSale(v)
@@ -225,6 +235,9 @@ func (_c *BalancePackageCreate) check() error {
 		if err := balancepackage.ProductNameValidator(v); err != nil {
 			return &ValidationError{Name: "product_name", err: fmt.Errorf(`ent: validator failed for field "BalancePackage.product_name": %w`, err)}
 		}
+	}
+	if _, ok := _c.mutation.DisplayTags(); !ok {
+		return &ValidationError{Name: "display_tags", err: errors.New(`ent: missing required field "BalancePackage.display_tags"`)}
 	}
 	if _, ok := _c.mutation.ForSale(); !ok {
 		return &ValidationError{Name: "for_sale", err: errors.New(`ent: missing required field "BalancePackage.for_sale"`)}
@@ -288,6 +301,10 @@ func (_c *BalancePackageCreate) createSpec() (*BalancePackage, *sqlgraph.CreateS
 	if value, ok := _c.mutation.ProductName(); ok {
 		_spec.SetField(balancepackage.FieldProductName, field.TypeString, value)
 		_node.ProductName = value
+	}
+	if value, ok := _c.mutation.DisplayTags(); ok {
+		_spec.SetField(balancepackage.FieldDisplayTags, field.TypeJSON, value)
+		_node.DisplayTags = value
 	}
 	if value, ok := _c.mutation.ForSale(); ok {
 		_spec.SetField(balancepackage.FieldForSale, field.TypeBool, value)
@@ -438,6 +455,18 @@ func (u *BalancePackageUpsert) SetProductName(v string) *BalancePackageUpsert {
 // UpdateProductName sets the "product_name" field to the value that was provided on create.
 func (u *BalancePackageUpsert) UpdateProductName() *BalancePackageUpsert {
 	u.SetExcluded(balancepackage.FieldProductName)
+	return u
+}
+
+// SetDisplayTags sets the "display_tags" field.
+func (u *BalancePackageUpsert) SetDisplayTags(v []string) *BalancePackageUpsert {
+	u.Set(balancepackage.FieldDisplayTags, v)
+	return u
+}
+
+// UpdateDisplayTags sets the "display_tags" field to the value that was provided on create.
+func (u *BalancePackageUpsert) UpdateDisplayTags() *BalancePackageUpsert {
+	u.SetExcluded(balancepackage.FieldDisplayTags)
 	return u
 }
 
@@ -623,6 +652,20 @@ func (u *BalancePackageUpsertOne) SetProductName(v string) *BalancePackageUpsert
 func (u *BalancePackageUpsertOne) UpdateProductName() *BalancePackageUpsertOne {
 	return u.Update(func(s *BalancePackageUpsert) {
 		s.UpdateProductName()
+	})
+}
+
+// SetDisplayTags sets the "display_tags" field.
+func (u *BalancePackageUpsertOne) SetDisplayTags(v []string) *BalancePackageUpsertOne {
+	return u.Update(func(s *BalancePackageUpsert) {
+		s.SetDisplayTags(v)
+	})
+}
+
+// UpdateDisplayTags sets the "display_tags" field to the value that was provided on create.
+func (u *BalancePackageUpsertOne) UpdateDisplayTags() *BalancePackageUpsertOne {
+	return u.Update(func(s *BalancePackageUpsert) {
+		s.UpdateDisplayTags()
 	})
 }
 
@@ -981,6 +1024,20 @@ func (u *BalancePackageUpsertBulk) SetProductName(v string) *BalancePackageUpser
 func (u *BalancePackageUpsertBulk) UpdateProductName() *BalancePackageUpsertBulk {
 	return u.Update(func(s *BalancePackageUpsert) {
 		s.UpdateProductName()
+	})
+}
+
+// SetDisplayTags sets the "display_tags" field.
+func (u *BalancePackageUpsertBulk) SetDisplayTags(v []string) *BalancePackageUpsertBulk {
+	return u.Update(func(s *BalancePackageUpsert) {
+		s.SetDisplayTags(v)
+	})
+}
+
+// UpdateDisplayTags sets the "display_tags" field to the value that was provided on create.
+func (u *BalancePackageUpsertBulk) UpdateDisplayTags() *BalancePackageUpsertBulk {
+	return u.Update(func(s *BalancePackageUpsert) {
+		s.UpdateDisplayTags()
 	})
 }
 

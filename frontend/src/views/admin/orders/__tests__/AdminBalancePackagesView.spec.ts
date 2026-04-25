@@ -48,6 +48,7 @@ describe('AdminBalancePackagesView', () => {
           price: 100,
           credit_amount: 100,
           package_scope: 'codex',
+          display_tags: ['新手推荐', '1x 倍率'],
           product_name: 'Codex 100',
           for_sale: true,
           sort_order: 1,

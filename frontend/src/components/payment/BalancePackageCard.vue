@@ -11,17 +11,26 @@
     @click="handleSelect"
   >
     <div class="flex items-start justify-between gap-3">
-      <div class="min-w-0">
+      <div class="min-w-0 flex-1">
         <span :class="['inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold', scopeBadgeClass]">
           {{ scopeLabel }}
         </span>
-        <h3 class="mt-4 truncate text-lg font-bold text-gray-900 dark:text-white">{{ pkg.name }}</h3>
-        <p
-          v-if="pkg.description"
-          class="mt-2 line-clamp-2 min-h-[2.5rem] text-sm leading-5 text-gray-500 dark:text-gray-400"
-        >
-          {{ pkg.description }}
-        </p>
+        <div v-if="pkg.display_tags?.length" class="mt-3 flex flex-wrap gap-2">
+          <span
+            v-for="(tag, index) in pkg.display_tags.slice(0, 1)"
+            :key="`${tag}-${index}`"
+            :data-testid="`balance-package-card-tag-${pkg.id}-${index}`"
+            :class="[
+              'inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-medium shadow-sm',
+              displayTagClass(tag),
+            ]"
+          >
+            {{ tag }}
+          </span>
+        </div>
+        <div class="mt-4 min-h-[3.5rem]">
+          <h3 class="line-clamp-2 text-lg font-bold leading-7 text-gray-900 dark:text-white">{{ pkg.name }}</h3>
+        </div>
       </div>
       <div class="shrink-0 text-right">
         <div class="text-xs text-gray-400 dark:text-gray-500">{{ t('payment.creditedBalance') }}</div>
@@ -40,7 +49,7 @@
       </div>
     </div>
 
-    <p v-if="disabled && disabledReason" class="mt-3 text-xs leading-5 text-amber-700/90 dark:text-amber-300/90">
+    <p v-if="disabled && disabledReason && !canForceSwitch" class="mt-3 text-xs leading-5 text-amber-700/90 dark:text-amber-300/90">
       {{ disabledReason }}
     </p>
 
@@ -100,6 +109,17 @@ const supportText = computed(() =>
 const scopeBadgeClass = computed(() =>
   packageScopeBadgeClass(props.pkg.package_scope),
 )
+
+function displayTagClass(tag: string) {
+  const normalized = tag.trim().toLowerCase()
+  if (normalized.includes('推荐') || normalized.includes('热销') || normalized.includes('popular')) {
+    return 'border-emerald-200/80 bg-emerald-50 text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/20 dark:text-emerald-300 dark:shadow-none'
+  }
+  if (normalized.includes('倍率') || normalized.includes('1x') || normalized.includes('2x') || normalized.includes('rate')) {
+    return 'border-amber-200/80 bg-amber-50 text-amber-700 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-300 dark:shadow-none'
+  }
+  return 'border-slate-200/80 bg-slate-50 text-slate-600 dark:border-dark-600 dark:bg-dark-800 dark:text-slate-300 dark:shadow-none'
+}
 
 function handleSelect() {
   if (props.disabled) return

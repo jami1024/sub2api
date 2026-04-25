@@ -155,6 +155,7 @@ function checkoutInfoWithBalancePackagesFixture() {
           price: 100,
           credit_amount: 100,
           package_scope: 'codex',
+          display_tags: ['新手推荐', '1x 倍率', '适合 Codex'],
           product_name: 'Codex 100',
           for_sale: true,
           sort_order: 1,
@@ -176,6 +177,7 @@ function checkoutInfoWithMixedBalancePackagesFixture() {
           price: 100,
           credit_amount: 100,
           package_scope: 'codex',
+          display_tags: ['新手推荐', '1x 倍率', '适合 Codex'],
           product_name: 'Codex 100',
           for_sale: true,
           sort_order: 1,
@@ -187,6 +189,7 @@ function checkoutInfoWithMixedBalancePackagesFixture() {
           price: 88,
           credit_amount: 80,
           package_scope: 'general',
+          display_tags: ['适合 General'],
           product_name: 'Universal 80',
           for_sale: true,
           sort_order: 2,
@@ -568,6 +571,15 @@ describe('PaymentView balance package storefront', () => {
     expect(card.get('[data-testid="balance-package-select-9"]').text()).toContain('payment.balancePackages.buyNow')
   })
 
+  it('renders only the first balance package display tag on cards', async () => {
+    const wrapper = mountPaymentView()
+    await flushPromises()
+
+    expect(wrapper.get('[data-testid="balance-package-card-tag-9-0"]').text()).toContain('新手推荐')
+    expect(wrapper.find('[data-testid="balance-package-card-tag-9-1"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="balance-package-card-tag-9-2"]').exists()).toBe(false)
+  })
+
   it('renders balance mode guide and notes above the package cards', async () => {
     const wrapper = mountPaymentView()
     await flushPromises()
@@ -589,7 +601,6 @@ describe('PaymentView balance package storefront', () => {
     expect(wrapper.text()).toContain('profile.balanceMode')
     expect(wrapper.text()).toContain('payment.balancePackages.codex')
     expect(wrapper.find('[data-testid="balance-package-card-10"]').attributes('aria-disabled')).toBe('true')
-    expect(wrapper.find('[data-testid="balance-package-card-10"]').text()).toContain('payment.balancePackages.unavailableCurrentScope')
   })
 
   it('renders conflicting cards as restrained unavailable products instead of warning cards', async () => {
@@ -601,7 +612,7 @@ describe('PaymentView balance package storefront', () => {
 
     const card = wrapper.get('[data-testid="balance-package-card-10"]')
     expect(card.attributes('aria-disabled')).toBe('true')
-    expect(card.text()).toContain('payment.balancePackages.unavailableCurrentScope')
+    expect(card.text()).not.toContain('payment.balancePackages.unavailableCurrentScope')
     expect(card.get('[data-testid="balance-package-force-switch-10"]').text()).toContain('payment.balancePackages.forceSwitch')
   })
 
@@ -636,6 +647,7 @@ describe('PaymentView balance package storefront', () => {
     await wrapper.find('[data-testid="balance-package-force-switch-10"]').trigger('click')
 
     expect(wrapper.text()).toContain('payment.balancePackages.forceSwitchIrreversible')
+    expect(wrapper.text()).toContain('payment.balancePackages.unavailableCurrentScope')
 
     await wrapper.find('[data-testid="confirm-force-switch"]').trigger('click')
 

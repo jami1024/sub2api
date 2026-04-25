@@ -8739,26 +8739,28 @@ func (m *AuthIdentityChannelMutation) ResetEdge(name string) error {
 // BalancePackageMutation represents an operation that mutates the BalancePackage nodes in the graph.
 type BalancePackageMutation struct {
 	config
-	op               Op
-	typ              string
-	id               *int64
-	name             *string
-	description      *string
-	price            *float64
-	addprice         *float64
-	credit_amount    *float64
-	addcredit_amount *float64
-	package_scope    *string
-	product_name     *string
-	for_sale         *bool
-	sort_order       *int
-	addsort_order    *int
-	created_at       *time.Time
-	updated_at       *time.Time
-	clearedFields    map[string]struct{}
-	done             bool
-	oldValue         func(context.Context) (*BalancePackage, error)
-	predicates       []predicate.BalancePackage
+	op                 Op
+	typ                string
+	id                 *int64
+	name               *string
+	description        *string
+	price              *float64
+	addprice           *float64
+	credit_amount      *float64
+	addcredit_amount   *float64
+	package_scope      *string
+	product_name       *string
+	display_tags       *[]string
+	appenddisplay_tags []string
+	for_sale           *bool
+	sort_order         *int
+	addsort_order      *int
+	created_at         *time.Time
+	updated_at         *time.Time
+	clearedFields      map[string]struct{}
+	done               bool
+	oldValue           func(context.Context) (*BalancePackage, error)
+	predicates         []predicate.BalancePackage
 }
 
 var _ ent.Mutation = (*BalancePackageMutation)(nil)
@@ -9115,6 +9117,57 @@ func (m *BalancePackageMutation) ResetProductName() {
 	m.product_name = nil
 }
 
+// SetDisplayTags sets the "display_tags" field.
+func (m *BalancePackageMutation) SetDisplayTags(s []string) {
+	m.display_tags = &s
+	m.appenddisplay_tags = nil
+}
+
+// DisplayTags returns the value of the "display_tags" field in the mutation.
+func (m *BalancePackageMutation) DisplayTags() (r []string, exists bool) {
+	v := m.display_tags
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDisplayTags returns the old "display_tags" field's value of the BalancePackage entity.
+// If the BalancePackage object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *BalancePackageMutation) OldDisplayTags(ctx context.Context) (v []string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDisplayTags is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDisplayTags requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDisplayTags: %w", err)
+	}
+	return oldValue.DisplayTags, nil
+}
+
+// AppendDisplayTags adds s to the "display_tags" field.
+func (m *BalancePackageMutation) AppendDisplayTags(s []string) {
+	m.appenddisplay_tags = append(m.appenddisplay_tags, s...)
+}
+
+// AppendedDisplayTags returns the list of values that were appended to the "display_tags" field in this mutation.
+func (m *BalancePackageMutation) AppendedDisplayTags() ([]string, bool) {
+	if len(m.appenddisplay_tags) == 0 {
+		return nil, false
+	}
+	return m.appenddisplay_tags, true
+}
+
+// ResetDisplayTags resets all changes to the "display_tags" field.
+func (m *BalancePackageMutation) ResetDisplayTags() {
+	m.display_tags = nil
+	m.appenddisplay_tags = nil
+}
+
 // SetForSale sets the "for_sale" field.
 func (m *BalancePackageMutation) SetForSale(b bool) {
 	m.for_sale = &b
@@ -9313,7 +9366,7 @@ func (m *BalancePackageMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *BalancePackageMutation) Fields() []string {
-	fields := make([]string, 0, 10)
+	fields := make([]string, 0, 11)
 	if m.name != nil {
 		fields = append(fields, balancepackage.FieldName)
 	}
@@ -9331,6 +9384,9 @@ func (m *BalancePackageMutation) Fields() []string {
 	}
 	if m.product_name != nil {
 		fields = append(fields, balancepackage.FieldProductName)
+	}
+	if m.display_tags != nil {
+		fields = append(fields, balancepackage.FieldDisplayTags)
 	}
 	if m.for_sale != nil {
 		fields = append(fields, balancepackage.FieldForSale)
@@ -9364,6 +9420,8 @@ func (m *BalancePackageMutation) Field(name string) (ent.Value, bool) {
 		return m.PackageScope()
 	case balancepackage.FieldProductName:
 		return m.ProductName()
+	case balancepackage.FieldDisplayTags:
+		return m.DisplayTags()
 	case balancepackage.FieldForSale:
 		return m.ForSale()
 	case balancepackage.FieldSortOrder:
@@ -9393,6 +9451,8 @@ func (m *BalancePackageMutation) OldField(ctx context.Context, name string) (ent
 		return m.OldPackageScope(ctx)
 	case balancepackage.FieldProductName:
 		return m.OldProductName(ctx)
+	case balancepackage.FieldDisplayTags:
+		return m.OldDisplayTags(ctx)
 	case balancepackage.FieldForSale:
 		return m.OldForSale(ctx)
 	case balancepackage.FieldSortOrder:
@@ -9451,6 +9511,13 @@ func (m *BalancePackageMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetProductName(v)
+		return nil
+	case balancepackage.FieldDisplayTags:
+		v, ok := value.([]string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDisplayTags(v)
 		return nil
 	case balancepackage.FieldForSale:
 		v, ok := value.(bool)
@@ -9585,6 +9652,9 @@ func (m *BalancePackageMutation) ResetField(name string) error {
 		return nil
 	case balancepackage.FieldProductName:
 		m.ResetProductName()
+		return nil
+	case balancepackage.FieldDisplayTags:
+		m.ResetDisplayTags()
 		return nil
 	case balancepackage.FieldForSale:
 		m.ResetForSale()

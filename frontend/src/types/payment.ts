@@ -128,6 +128,7 @@ export interface BalancePackage {
   credit_amount: number
   package_scope: 'codex' | 'general'
   product_name: string
+  display_tags?: string[]
   for_sale: boolean
   sort_order: number
 }
