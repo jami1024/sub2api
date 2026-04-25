@@ -1034,11 +1034,12 @@ export default {
       totalQuota: '历史返利额度'
     },
     transfer: {
-      title: '返利额度转余额',
-      description: '将当前可用返利额度一键转入账户余额',
-      button: '转入余额',
-      transferring: '转入中...',
-      empty: '当前没有可转入额度',
+      title: '返利额度提现',
+      description: '当前返利额度暂不支持页面直接提现',
+      button: '提现',
+      transferring: '提现处理中...',
+      empty: '当前没有可提现额度',
+      contactHint: '如需微信提现，请联系管理员。',
       success: '已转入余额：{amount}'
     },
     invitees: {

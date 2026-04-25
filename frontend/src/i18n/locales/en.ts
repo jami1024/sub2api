@@ -1030,11 +1030,12 @@ export default {
       totalQuota: 'Historical Rebate Quota'
     },
     transfer: {
-      title: 'Transfer Rebate Quota',
-      description: 'Move available rebate quota into your account balance',
-      button: 'Transfer to Balance',
-      transferring: 'Transferring...',
-      empty: 'No available rebate quota',
+      title: 'Withdraw Rebate Quota',
+      description: 'Direct withdrawals are not available on this page right now',
+      button: 'Withdraw',
+      transferring: 'Processing withdrawal...',
+      empty: 'No available rebate quota to withdraw',
+      contactHint: 'For WeChat withdrawals, please contact the administrator.',
       success: '{amount} has been transferred to your balance'
     },
     invitees: {
