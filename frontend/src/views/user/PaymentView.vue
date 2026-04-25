@@ -349,17 +349,69 @@
           class="fixed inset-0 z-[55] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
           @click.self="closeForceSwitchDialog"
         >
-          <div class="w-full max-w-lg rounded-2xl border border-gray-200 bg-white p-6 shadow-2xl dark:border-dark-700 dark:bg-dark-900">
-            <h3 class="text-lg font-semibold text-gray-900 dark:text-white">{{ t('payment.balancePackages.forceSwitchTitle') }}</h3>
-            <div class="mt-4 space-y-3 text-sm text-gray-600 dark:text-gray-300">
-              <p class="font-medium text-amber-700 dark:text-amber-300">{{ t('payment.balancePackages.unavailableCurrentScope') }}</p>
-              <p>{{ t('payment.balancePackages.forceSwitchCurrentBalance', { amount: Number(user?.balance || 0).toFixed(2), scope: currentScopeLabel }) }}</p>
-              <p>{{ t('payment.balancePackages.forceSwitchTargetScope', { scope: t(packageScopeLabelKey(forceSwitchTarget.package_scope)) }) }}</p>
-              <p class="font-semibold text-red-600 dark:text-red-400">{{ t('payment.balancePackages.forceSwitchIrreversible') }}</p>
+          <div
+            data-testid="force-switch-dialog"
+            class="w-full max-w-xl rounded-[28px] border border-gray-200/80 bg-white p-6 shadow-2xl shadow-black/10 dark:border-dark-700 dark:bg-dark-900"
+          >
+            <div class="flex items-start gap-4">
+              <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-amber-50 text-amber-600 dark:bg-amber-950/30 dark:text-amber-300">
+                <Icon name="exclamationTriangle" class="h-5 w-5" />
+              </div>
+              <div class="min-w-0 flex-1">
+                <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-600 dark:text-amber-300">
+                  {{ t('payment.balancePackages.forceSwitch') }}
+                </p>
+                <h3 class="mt-1 text-lg font-semibold text-gray-900 dark:text-white">{{ t('payment.balancePackages.forceSwitchTitle') }}</h3>
+              </div>
             </div>
-            <div class="mt-6 flex justify-end gap-3">
-              <button class="btn btn-secondary" @click="closeForceSwitchDialog">{{ t('common.cancel') }}</button>
-              <button data-testid="confirm-force-switch" class="btn btn-primary" @click="confirmForceSwitch">{{ t('payment.balancePackages.forceSwitchConfirm') }}</button>
+
+            <p class="mt-5 rounded-2xl bg-amber-50/80 px-4 py-3 text-sm leading-6 text-amber-800 dark:bg-amber-950/20 dark:text-amber-200">
+              {{ t('payment.balancePackages.unavailableCurrentScope') }}
+            </p>
+
+            <div class="mt-5 grid gap-3 sm:grid-cols-2">
+              <div class="rounded-2xl border border-gray-200/80 bg-slate-50/80 p-4 dark:border-dark-700 dark:bg-dark-800/60">
+                <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-gray-500">
+                  {{ t('profile.balanceMode') }}
+                </p>
+                <div class="mt-2 flex items-center gap-2">
+                  <span :class="['px-2.5 py-1 text-[11px]', currentScopeBadgeClass]">
+                    {{ currentScopeLabel }}
+                  </span>
+                  <span class="text-sm font-medium text-gray-900 dark:text-white">
+                    ${{ Number(user?.balance || 0).toFixed(2) }}
+                  </span>
+                </div>
+                <p class="mt-3 text-xs leading-5 text-gray-500 dark:text-gray-400">
+                  {{ t('payment.balancePackages.forceSwitchCurrentBalance', { amount: Number(user?.balance || 0).toFixed(2), scope: currentScopeLabel }) }}
+                </p>
+              </div>
+
+              <div class="rounded-2xl border border-gray-200/80 bg-slate-50/80 p-4 dark:border-dark-700 dark:bg-dark-800/60">
+                <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-gray-500">
+                  {{ t('payment.balancePackages.buyNow') }}
+                </p>
+                <div class="mt-2 flex flex-wrap items-center gap-2">
+                  <span :class="['px-2.5 py-1 text-[11px]', packageScopeBadgeClass(forceSwitchTarget.package_scope)]">
+                    {{ t(packageScopeLabelKey(forceSwitchTarget.package_scope)) }}
+                  </span>
+                  <span class="text-sm font-medium text-gray-900 dark:text-white">
+                    ¥{{ forceSwitchTarget.price.toFixed(2) }}
+                  </span>
+                </div>
+                <p class="mt-3 text-xs leading-5 text-gray-500 dark:text-gray-400">
+                  {{ t('payment.balancePackages.forceSwitchTargetScope', { scope: t(packageScopeLabelKey(forceSwitchTarget.package_scope)) }) }}
+                </p>
+              </div>
+            </div>
+
+            <div class="mt-4 rounded-2xl border border-red-100 bg-red-50/80 px-4 py-3 text-sm leading-6 text-red-700 dark:border-red-950/40 dark:bg-red-950/20 dark:text-red-300">
+              {{ t('payment.balancePackages.forceSwitchIrreversible') }}
+            </div>
+
+            <div class="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+              <button class="btn btn-secondary w-full sm:w-auto" @click="closeForceSwitchDialog">{{ t('common.cancel') }}</button>
+              <button data-testid="confirm-force-switch" class="btn btn-primary w-full sm:w-auto" @click="confirmForceSwitch">{{ t('payment.balancePackages.forceSwitchConfirm') }}</button>
             </div>
           </div>
         </div>

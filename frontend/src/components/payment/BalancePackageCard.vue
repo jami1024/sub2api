@@ -54,15 +54,20 @@
     </p>
 
     <div class="mt-5 flex items-end justify-between gap-3">
-      <div>
+      <div class="min-w-0 flex-1">
         <div class="text-xs text-gray-400 dark:text-gray-500">{{ t('payment.amountLabel') }}</div>
-        <div :data-testid="`balance-package-card-price-${pkg.id}`" class="mt-1 text-3xl font-bold text-gray-900 dark:text-white">¥{{ pkg.price.toFixed(2) }}</div>
+        <div
+          :data-testid="`balance-package-card-price-${pkg.id}`"
+          class="mt-1 truncate text-3xl font-bold text-gray-900 dark:text-white"
+        >
+          ¥{{ pkg.price.toFixed(2) }}
+        </div>
       </div>
       <button
         type="button"
         :data-testid="disabled && canForceSwitch ? `balance-package-force-switch-${pkg.id}` : `balance-package-select-${pkg.id}`"
         :disabled="disabled && !canForceSwitch"
-        class="btn shrink-0"
+        class="btn h-14 w-32 shrink-0 justify-center whitespace-nowrap px-4 text-sm"
         :class="disabled && canForceSwitch ? 'btn-secondary' : 'btn-primary'"
         @click.stop="disabled ? handleForceSwitch() : handleSelect()"
       >
