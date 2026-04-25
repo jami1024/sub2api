@@ -37,8 +37,8 @@ const (
 
 // Order types distinguish balance recharges from subscription purchases.
 const (
-	OrderTypeBalance      = "balance"
-	OrderTypeSubscription = "subscription"
+	OrderTypeBalance        = "balance"
+	OrderTypeSubscription   = "subscription"
 	OrderTypeBalancePackage = "balance_package"
 )
 

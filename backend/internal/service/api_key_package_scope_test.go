@@ -11,7 +11,7 @@ import (
 )
 
 type apiKeyPackageScopeRepoStub struct {
-	exists bool
+	exists  bool
 	created *APIKey
 }
 
@@ -19,7 +19,9 @@ func (s *apiKeyPackageScopeRepoStub) Create(ctx context.Context, key *APIKey) er
 	s.created = key
 	return nil
 }
-func (s *apiKeyPackageScopeRepoStub) GetByID(ctx context.Context, id int64) (*APIKey, error) { panic("unexpected GetByID call") }
+func (s *apiKeyPackageScopeRepoStub) GetByID(ctx context.Context, id int64) (*APIKey, error) {
+	panic("unexpected GetByID call")
+}
 func (s *apiKeyPackageScopeRepoStub) GetKeyAndOwnerID(ctx context.Context, id int64) (string, int64, error) {
 	panic("unexpected GetKeyAndOwnerID call")
 }
@@ -29,8 +31,12 @@ func (s *apiKeyPackageScopeRepoStub) GetByKey(ctx context.Context, key string) (
 func (s *apiKeyPackageScopeRepoStub) GetByKeyForAuth(ctx context.Context, key string) (*APIKey, error) {
 	panic("unexpected GetByKeyForAuth call")
 }
-func (s *apiKeyPackageScopeRepoStub) Update(ctx context.Context, key *APIKey) error { panic("unexpected Update call") }
-func (s *apiKeyPackageScopeRepoStub) Delete(ctx context.Context, id int64) error { panic("unexpected Delete call") }
+func (s *apiKeyPackageScopeRepoStub) Update(ctx context.Context, key *APIKey) error {
+	panic("unexpected Update call")
+}
+func (s *apiKeyPackageScopeRepoStub) Delete(ctx context.Context, id int64) error {
+	panic("unexpected Delete call")
+}
 func (s *apiKeyPackageScopeRepoStub) ListByUserID(ctx context.Context, userID int64, params pagination.PaginationParams, filters APIKeyListFilters) ([]APIKey, *pagination.PaginationResult, error) {
 	panic("unexpected ListByUserID call")
 }
@@ -81,32 +87,46 @@ func (s *apiKeyPackageScopeRepoStub) GetRateLimitData(ctx context.Context, id in
 }
 
 type apiKeyPackageScopeGroupRepoStub struct {
-	byID map[int64]*Group
+	byID   map[int64]*Group
 	active []Group
 }
 
-func (s *apiKeyPackageScopeGroupRepoStub) Create(ctx context.Context, group *Group) error { panic("unexpected Create call") }
+func (s *apiKeyPackageScopeGroupRepoStub) Create(ctx context.Context, group *Group) error {
+	panic("unexpected Create call")
+}
 func (s *apiKeyPackageScopeGroupRepoStub) GetByID(ctx context.Context, id int64) (*Group, error) {
 	if g, ok := s.byID[id]; ok {
 		return g, nil
 	}
 	return nil, ErrGroupNotFound
 }
-func (s *apiKeyPackageScopeGroupRepoStub) GetByIDLite(ctx context.Context, id int64) (*Group, error) { return s.GetByID(ctx, id) }
-func (s *apiKeyPackageScopeGroupRepoStub) Update(ctx context.Context, group *Group) error { panic("unexpected Update call") }
-func (s *apiKeyPackageScopeGroupRepoStub) Delete(ctx context.Context, id int64) error { panic("unexpected Delete call") }
-func (s *apiKeyPackageScopeGroupRepoStub) DeleteCascade(ctx context.Context, id int64) ([]int64, error) { panic("unexpected DeleteCascade call") }
+func (s *apiKeyPackageScopeGroupRepoStub) GetByIDLite(ctx context.Context, id int64) (*Group, error) {
+	return s.GetByID(ctx, id)
+}
+func (s *apiKeyPackageScopeGroupRepoStub) Update(ctx context.Context, group *Group) error {
+	panic("unexpected Update call")
+}
+func (s *apiKeyPackageScopeGroupRepoStub) Delete(ctx context.Context, id int64) error {
+	panic("unexpected Delete call")
+}
+func (s *apiKeyPackageScopeGroupRepoStub) DeleteCascade(ctx context.Context, id int64) ([]int64, error) {
+	panic("unexpected DeleteCascade call")
+}
 func (s *apiKeyPackageScopeGroupRepoStub) List(ctx context.Context, params pagination.PaginationParams) ([]Group, *pagination.PaginationResult, error) {
 	panic("unexpected List call")
 }
 func (s *apiKeyPackageScopeGroupRepoStub) ListWithFilters(ctx context.Context, params pagination.PaginationParams, platform, status, search string, isExclusive *bool) ([]Group, *pagination.PaginationResult, error) {
 	panic("unexpected ListWithFilters call")
 }
-func (s *apiKeyPackageScopeGroupRepoStub) ListActive(ctx context.Context) ([]Group, error) { return s.active, nil }
+func (s *apiKeyPackageScopeGroupRepoStub) ListActive(ctx context.Context) ([]Group, error) {
+	return s.active, nil
+}
 func (s *apiKeyPackageScopeGroupRepoStub) ListActiveByPlatform(ctx context.Context, platform string) ([]Group, error) {
 	panic("unexpected ListActiveByPlatform call")
 }
-func (s *apiKeyPackageScopeGroupRepoStub) ExistsByName(ctx context.Context, name string) (bool, error) { panic("unexpected ExistsByName call") }
+func (s *apiKeyPackageScopeGroupRepoStub) ExistsByName(ctx context.Context, name string) (bool, error) {
+	panic("unexpected ExistsByName call")
+}
 func (s *apiKeyPackageScopeGroupRepoStub) GetAccountCount(ctx context.Context, groupID int64) (int64, int64, error) {
 	panic("unexpected GetAccountCount call")
 }
@@ -127,18 +147,30 @@ type apiKeyPackageScopeSubRepoStub struct {
 	activeByGroup map[int64]bool
 }
 
-func (s *apiKeyPackageScopeSubRepoStub) Create(ctx context.Context, sub *UserSubscription) error { panic("unexpected Create call") }
-func (s *apiKeyPackageScopeSubRepoStub) GetByID(ctx context.Context, id int64) (*UserSubscription, error) { panic("unexpected GetByID call") }
-func (s *apiKeyPackageScopeSubRepoStub) GetByUserIDAndGroupID(ctx context.Context, userID, groupID int64) (*UserSubscription, error) { panic("unexpected GetByUserIDAndGroupID call") }
+func (s *apiKeyPackageScopeSubRepoStub) Create(ctx context.Context, sub *UserSubscription) error {
+	panic("unexpected Create call")
+}
+func (s *apiKeyPackageScopeSubRepoStub) GetByID(ctx context.Context, id int64) (*UserSubscription, error) {
+	panic("unexpected GetByID call")
+}
+func (s *apiKeyPackageScopeSubRepoStub) GetByUserIDAndGroupID(ctx context.Context, userID, groupID int64) (*UserSubscription, error) {
+	panic("unexpected GetByUserIDAndGroupID call")
+}
 func (s *apiKeyPackageScopeSubRepoStub) GetActiveByUserIDAndGroupID(ctx context.Context, userID, groupID int64) (*UserSubscription, error) {
 	if s.activeByGroup[groupID] {
 		return &UserSubscription{UserID: userID, GroupID: groupID, Status: SubscriptionStatusActive}, nil
 	}
 	return nil, ErrSubscriptionNotFound
 }
-func (s *apiKeyPackageScopeSubRepoStub) Update(ctx context.Context, sub *UserSubscription) error { panic("unexpected Update call") }
-func (s *apiKeyPackageScopeSubRepoStub) Delete(ctx context.Context, id int64) error { panic("unexpected Delete call") }
-func (s *apiKeyPackageScopeSubRepoStub) ListByUserID(ctx context.Context, userID int64) ([]UserSubscription, error) { panic("unexpected ListByUserID call") }
+func (s *apiKeyPackageScopeSubRepoStub) Update(ctx context.Context, sub *UserSubscription) error {
+	panic("unexpected Update call")
+}
+func (s *apiKeyPackageScopeSubRepoStub) Delete(ctx context.Context, id int64) error {
+	panic("unexpected Delete call")
+}
+func (s *apiKeyPackageScopeSubRepoStub) ListByUserID(ctx context.Context, userID int64) ([]UserSubscription, error) {
+	panic("unexpected ListByUserID call")
+}
 func (s *apiKeyPackageScopeSubRepoStub) ListActiveByUserID(ctx context.Context, userID int64) ([]UserSubscription, error) {
 	var subs []UserSubscription
 	for gid, ok := range s.activeByGroup {
@@ -154,16 +186,36 @@ func (s *apiKeyPackageScopeSubRepoStub) ListByGroupID(ctx context.Context, group
 func (s *apiKeyPackageScopeSubRepoStub) List(ctx context.Context, params pagination.PaginationParams, userID, groupID *int64, status, platform, sortBy, sortOrder string) ([]UserSubscription, *pagination.PaginationResult, error) {
 	panic("unexpected List call")
 }
-func (s *apiKeyPackageScopeSubRepoStub) ExistsByUserIDAndGroupID(ctx context.Context, userID, groupID int64) (bool, error) { panic("unexpected ExistsByUserIDAndGroupID call") }
-func (s *apiKeyPackageScopeSubRepoStub) ExtendExpiry(ctx context.Context, subscriptionID int64, newExpiresAt time.Time) error { panic("unexpected ExtendExpiry call") }
-func (s *apiKeyPackageScopeSubRepoStub) UpdateStatus(ctx context.Context, subscriptionID int64, status string) error { panic("unexpected UpdateStatus call") }
-func (s *apiKeyPackageScopeSubRepoStub) UpdateNotes(ctx context.Context, subscriptionID int64, notes string) error { panic("unexpected UpdateNotes call") }
-func (s *apiKeyPackageScopeSubRepoStub) ActivateWindows(ctx context.Context, id int64, start time.Time) error { panic("unexpected ActivateWindows call") }
-func (s *apiKeyPackageScopeSubRepoStub) ResetDailyUsage(ctx context.Context, id int64, newWindowStart time.Time) error { panic("unexpected ResetDailyUsage call") }
-func (s *apiKeyPackageScopeSubRepoStub) ResetWeeklyUsage(ctx context.Context, id int64, newWindowStart time.Time) error { panic("unexpected ResetWeeklyUsage call") }
-func (s *apiKeyPackageScopeSubRepoStub) ResetMonthlyUsage(ctx context.Context, id int64, newWindowStart time.Time) error { panic("unexpected ResetMonthlyUsage call") }
-func (s *apiKeyPackageScopeSubRepoStub) IncrementUsage(ctx context.Context, id int64, costUSD float64) error { panic("unexpected IncrementUsage call") }
-func (s *apiKeyPackageScopeSubRepoStub) BatchUpdateExpiredStatus(ctx context.Context) (int64, error) { panic("unexpected BatchUpdateExpiredStatus call") }
+func (s *apiKeyPackageScopeSubRepoStub) ExistsByUserIDAndGroupID(ctx context.Context, userID, groupID int64) (bool, error) {
+	panic("unexpected ExistsByUserIDAndGroupID call")
+}
+func (s *apiKeyPackageScopeSubRepoStub) ExtendExpiry(ctx context.Context, subscriptionID int64, newExpiresAt time.Time) error {
+	panic("unexpected ExtendExpiry call")
+}
+func (s *apiKeyPackageScopeSubRepoStub) UpdateStatus(ctx context.Context, subscriptionID int64, status string) error {
+	panic("unexpected UpdateStatus call")
+}
+func (s *apiKeyPackageScopeSubRepoStub) UpdateNotes(ctx context.Context, subscriptionID int64, notes string) error {
+	panic("unexpected UpdateNotes call")
+}
+func (s *apiKeyPackageScopeSubRepoStub) ActivateWindows(ctx context.Context, id int64, start time.Time) error {
+	panic("unexpected ActivateWindows call")
+}
+func (s *apiKeyPackageScopeSubRepoStub) ResetDailyUsage(ctx context.Context, id int64, newWindowStart time.Time) error {
+	panic("unexpected ResetDailyUsage call")
+}
+func (s *apiKeyPackageScopeSubRepoStub) ResetWeeklyUsage(ctx context.Context, id int64, newWindowStart time.Time) error {
+	panic("unexpected ResetWeeklyUsage call")
+}
+func (s *apiKeyPackageScopeSubRepoStub) ResetMonthlyUsage(ctx context.Context, id int64, newWindowStart time.Time) error {
+	panic("unexpected ResetMonthlyUsage call")
+}
+func (s *apiKeyPackageScopeSubRepoStub) IncrementUsage(ctx context.Context, id int64, costUSD float64) error {
+	panic("unexpected IncrementUsage call")
+}
+func (s *apiKeyPackageScopeSubRepoStub) BatchUpdateExpiredStatus(ctx context.Context) (int64, error) {
+	panic("unexpected BatchUpdateExpiredStatus call")
+}
 
 func TestCreateAPIKeyRejectsDifferentPackageScope(t *testing.T) {
 	scope := PackageScopeCodex

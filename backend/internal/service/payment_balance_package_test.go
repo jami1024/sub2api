@@ -221,12 +221,6 @@ func (s *packageScopeAuthCacheInvalidatorStub) InvalidateAuthCacheByUserID(ctx c
 func (s *packageScopeAuthCacheInvalidatorStub) InvalidateAuthCacheByGroupID(ctx context.Context, groupID int64) {
 }
 
-type packageScopeBillingCacheStub struct{}
-
-func (s *packageScopeBillingCacheStub) InvalidateUserBalance(ctx context.Context, userID int64) error {
-	return nil
-}
-
 func newPackageScopeEntClient(t *testing.T) *dbent.Client {
 	t.Helper()
 	db, err := sql.Open("sqlite", "file:package_scope_service?mode=memory&cache=shared&_fk=1")
