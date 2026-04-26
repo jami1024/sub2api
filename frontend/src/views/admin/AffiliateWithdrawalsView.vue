@@ -36,7 +36,7 @@
               <tr v-for="item in withdrawals" :key="item.id" class="border-t border-gray-100 dark:border-dark-800">
                 <td class="px-4 py-3">{{ item.id }}</td>
                 <td class="px-4 py-3">{{ item.user_id }}</td>
-                <td class="px-4 py-3">{{ formatCurrency(item.amount) }}</td>
+                <td class="px-4 py-3">{{ formatRebateCurrency(item.amount) }}</td>
                 <td class="px-4 py-3">{{ item.status }}</td>
                 <td class="px-4 py-3">{{ formatDateTime(item.created_at) }}</td>
                 <td class="px-4 py-3">
@@ -71,7 +71,7 @@ import { onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import { useAppStore } from '@/stores/app'
-import { formatCurrency, formatDateTime } from '@/utils/format'
+import { formatDateTime } from '@/utils/format'
 import { extractApiErrorMessage } from '@/utils/apiError'
 import { adminAffiliateAPI } from '@/api/admin/affiliate'
 import type { AffiliateWithdrawalRequest } from '@/types'
@@ -80,6 +80,10 @@ const { t } = useI18n()
 const appStore = useAppStore()
 
 const loading = ref(false)
+
+function formatRebateCurrency(value: number): string {
+  return `¥${Number(value || 0).toFixed(2)}`
+}
 const actionLoadingId = ref<number | null>(null)
 const withdrawals = ref<AffiliateWithdrawalRequest[]>([])
 

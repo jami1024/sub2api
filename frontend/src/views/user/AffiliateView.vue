@@ -6,22 +6,26 @@
       </div>
 
       <template v-else-if="detail">
-        <div class="grid gap-4 md:grid-cols-4">
+        <div class="grid gap-4 md:grid-cols-5">
           <div class="card p-5">
             <p class="text-sm text-gray-500 dark:text-dark-400">{{ t('affiliate.stats.invitedUsers') }}</p>
             <p class="mt-2 text-2xl font-semibold text-gray-900 dark:text-white">{{ formatCount(detail.aff_count) }}</p>
           </div>
           <div class="card p-5">
+            <p class="text-sm text-gray-500 dark:text-dark-400">{{ t('affiliate.stats.pendingQuota') }}</p>
+            <p class="mt-2 text-2xl font-semibold text-amber-600 dark:text-amber-400">{{ formatRebateCurrency(detail.pending_quota || 0) }}</p>
+          </div>
+          <div class="card p-5">
             <p class="text-sm text-gray-500 dark:text-dark-400">{{ t('affiliate.stats.availableQuota') }}</p>
-            <p class="mt-2 text-2xl font-semibold text-emerald-600 dark:text-emerald-400">{{ formatCurrency(detail.aff_quota) }}</p>
+            <p class="mt-2 text-2xl font-semibold text-emerald-600 dark:text-emerald-400">{{ formatRebateCurrency(detail.aff_quota) }}</p>
           </div>
           <div class="card p-5">
             <p class="text-sm text-gray-500 dark:text-dark-400">{{ t('affiliate.stats.totalQuota') }}</p>
-            <p class="mt-2 text-2xl font-semibold text-gray-900 dark:text-white">{{ formatCurrency(detail.aff_history_quota) }}</p>
+            <p class="mt-2 text-2xl font-semibold text-gray-900 dark:text-white">{{ formatRebateCurrency(detail.aff_history_quota) }}</p>
           </div>
           <div class="card p-5">
             <p class="text-sm text-gray-500 dark:text-dark-400">{{ t('affiliate.stats.debtQuota') }}</p>
-            <p class="mt-2 text-2xl font-semibold text-red-600 dark:text-red-400">{{ formatCurrency(detail.debt_quota || 0) }}</p>
+            <p class="mt-2 text-2xl font-semibold text-red-600 dark:text-red-400">{{ formatRebateCurrency(detail.debt_quota || 0) }}</p>
           </div>
         </div>
 
@@ -64,6 +68,60 @@
         </div>
 
         <div class="card p-6">
+          <h3 class="text-base font-semibold text-gray-900 dark:text-white">{{ t('affiliate.rules.title') }}</h3>
+          <div class="mt-4 rounded-xl border border-primary-200 bg-primary-50 p-4 dark:border-primary-900/40 dark:bg-primary-900/20">
+            <ul class="space-y-2 text-sm text-primary-800 dark:text-primary-200">
+              <li>1. {{ t('affiliate.rules.line1') }}</li>
+              <li>2. {{ t('affiliate.rules.line2') }}</li>
+              <li>3. {{ t('affiliate.rules.line3') }}</li>
+              <li>4. {{ t('affiliate.rules.line4') }}</li>
+              <li>5. {{ t('affiliate.rules.line5') }}</li>
+              <li>6. {{ t('affiliate.rules.line6') }}</li>
+            </ul>
+          </div>
+
+          <div class="mt-4 rounded-xl border border-primary-200/80 bg-white/70 p-4 dark:border-primary-900/30 dark:bg-dark-900/30">
+            <p class="text-sm font-semibold text-primary-900 dark:text-primary-100">{{ t('affiliate.rules.exampleTitle') }}</p>
+            <p class="mt-2 text-sm text-primary-800 dark:text-primary-200">{{ t('affiliate.rules.exampleChain') }}</p>
+            <ul class="mt-3 space-y-2 text-sm text-primary-800 dark:text-primary-200">
+              <li>{{ t('affiliate.rules.exampleLevel1') }}</li>
+              <li>{{ t('affiliate.rules.exampleLevel2') }}</li>
+              <li>{{ t('affiliate.rules.exampleLevel3') }}</li>
+            </ul>
+            <p class="mt-3 text-sm text-primary-800 dark:text-primary-200">{{ t('affiliate.rules.exampleNote') }}</p>
+          </div>
+        </div>
+
+        <div class="card p-6">
+          <h3 class="text-base font-semibold text-gray-900 dark:text-white">{{ t('affiliate.rebates.title') }}</h3>
+          <div v-if="rebateRecords.length === 0" class="mt-4 text-sm text-gray-500 dark:text-dark-400">{{ t('affiliate.rebates.empty') }}</div>
+          <div v-else class="mt-4 overflow-x-auto">
+            <table class="w-full min-w-[640px] text-left text-sm">
+              <thead>
+                <tr class="border-b border-gray-200 text-gray-500 dark:border-dark-700 dark:text-dark-400">
+                  <th class="px-3 py-2 font-medium">{{ t('affiliate.rebates.columns.level') }}</th>
+                  <th class="px-3 py-2 font-medium">{{ t('affiliate.rebates.columns.sourceUser') }}</th>
+                  <th class="px-3 py-2 font-medium">{{ t('affiliate.rebates.columns.sourceOrder') }}</th>
+                  <th class="px-3 py-2 font-medium">{{ t('common.amount') }}</th>
+                  <th class="px-3 py-2 font-medium">{{ t('common.status') }}</th>
+                  <th class="px-3 py-2 font-medium">{{ t('common.createdAt') }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="item in rebateRecords" :key="item.id" class="border-b border-gray-100 last:border-b-0 dark:border-dark-800">
+                  <td class="px-3 py-3">{{ rebateLevelLabel(item.level) }}</td>
+                  <td class="px-3 py-3">{{ rebateSourceUserLabel(item) }}</td>
+                  <td class="px-3 py-3">#{{ item.source_order_id }}</td>
+                  <td class="px-3 py-3">{{ formatRebateCurrency(item.rebate_amount) }}</td>
+                  <td class="px-3 py-3">{{ rebateStatusLabel(item.status) }}</td>
+                  <td class="px-3 py-3">{{ formatDateTime(item.created_at) }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card p-6">
           <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h3 class="text-base font-semibold text-gray-900 dark:text-white">{{ t('affiliate.transfer.title') }}</h3>
@@ -102,8 +160,8 @@
               </thead>
               <tbody>
                 <tr v-for="item in withdrawals" :key="item.id" class="border-b border-gray-100 last:border-b-0 dark:border-dark-800">
-                  <td class="px-3 py-3">{{ formatCurrency(item.amount) }}</td>
-                  <td class="px-3 py-3">{{ item.status }}</td>
+                  <td class="px-3 py-3">{{ formatRebateCurrency(item.amount) }}</td>
+                  <td class="px-3 py-3">{{ rebateStatusLabel(item.status) }}</td>
                   <td class="px-3 py-3">{{ formatDateTime(item.created_at) }}</td>
                 </tr>
               </tbody>
@@ -169,10 +227,10 @@ import AppLayout from '@/components/layout/AppLayout.vue'
 import Icon from '@/components/icons/Icon.vue'
 import BaseDialog from '@/components/common/BaseDialog.vue'
 import userAPI from '@/api/user'
-import type { AffiliateWithdrawalRequest, UserAffiliateDetail } from '@/types'
+import type { AffiliateRebateRecord, AffiliateWithdrawalRequest, UserAffiliateDetail } from '@/types'
 import { useAppStore } from '@/stores/app'
 import { useClipboard } from '@/composables/useClipboard'
-import { formatCurrency, formatDateTime } from '@/utils/format'
+import { formatDateTime } from '@/utils/format'
 import { extractApiErrorMessage } from '@/utils/apiError'
 
 const { t } = useI18n()
@@ -181,6 +239,7 @@ const { copyToClipboard } = useClipboard()
 
 const loading = ref(true)
 const detail = ref<UserAffiliateDetail | null>(null)
+const rebateRecords = ref<AffiliateRebateRecord[]>([])
 const withdrawals = ref<AffiliateWithdrawalRequest[]>([])
 const requestingWithdrawal = ref(false)
 const withdrawalThreshold = 100
@@ -208,14 +267,35 @@ function formatCount(value: number): string {
   return value.toLocaleString()
 }
 
+function formatRebateCurrency(value: number): string {
+  return `¥${Number(value || 0).toFixed(2)}`
+}
+
+function rebateLevelLabel(level: number): string {
+  if (level === 1) return t('affiliate.rebates.level1')
+  if (level === 2) return t('affiliate.rebates.level2')
+  if (level === 3) return t('affiliate.rebates.level3')
+  return t('affiliate.rebates.levelUnknown', { level })
+}
+
+function rebateSourceUserLabel(item: AffiliateRebateRecord): string {
+  return item.source_username?.trim() || item.source_email?.trim() || '-'
+}
+
+function rebateStatusLabel(status: string): string {
+  return t(`affiliate.rebates.status.${status}`)
+}
+
 async function loadAffiliateDetail(silent = false): Promise<void> {
   if (!silent) loading.value = true
   try {
-    const [affiliateDetail, withdrawalItems] = await Promise.all([
+    const [affiliateDetail, rebateItems, withdrawalItems] = await Promise.all([
       userAPI.getAffiliateDetail(),
+      userAPI.getAffiliateRebateRecords(),
       userAPI.getAffiliateWithdrawalRequests(),
     ])
     detail.value = affiliateDetail
+    rebateRecords.value = rebateItems
     withdrawals.value = withdrawalItems
     if (affiliateDetail.aff_quota >= withdrawalThreshold) {
       withdrawAmount.value = Math.floor(affiliateDetail.aff_quota * 100) / 100

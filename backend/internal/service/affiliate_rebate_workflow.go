@@ -113,6 +113,16 @@ func (s *AffiliateService) ListUserWithdrawalRequests(ctx context.Context, userI
 	return s.repo.ListUserWithdrawalRequests(ctx, userID, limit)
 }
 
+func (s *AffiliateService) ListUserRebateRecords(ctx context.Context, userID int64, limit int) ([]AffiliateRebateRecord, error) {
+	if s == nil || s.repo == nil {
+		return nil, infraerrors.ServiceUnavailable("SERVICE_UNAVAILABLE", "affiliate service unavailable")
+	}
+	if userID <= 0 {
+		return nil, infraerrors.BadRequest("INVALID_USER", "invalid user")
+	}
+	return s.repo.ListUserRebateRecords(ctx, userID, limit)
+}
+
 func (s *AffiliateService) RejectWithdrawalRequest(ctx context.Context, requestID, reviewerID int64, adminNote string) (*AffiliateWithdrawalRequest, error) {
 	if s == nil || s.repo == nil {
 		return nil, infraerrors.ServiceUnavailable("SERVICE_UNAVAILABLE", "affiliate service unavailable")

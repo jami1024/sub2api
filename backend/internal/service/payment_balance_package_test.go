@@ -291,6 +291,12 @@ func (s *packageScopeAffiliateRepoStub) MarkWithdrawalPaid(ctx context.Context, 
 func (s *packageScopeAffiliateRepoStub) ReverseRebatesForOrder(ctx context.Context, sourceOrderID int64) error {
 	panic("unexpected ReverseRebatesForOrder call")
 }
+func (s *packageScopeAffiliateRepoStub) SumPendingRebateByUser(ctx context.Context, userID int64) (float64, error) {
+	panic("unexpected SumPendingRebateByUser call")
+}
+func (s *packageScopeAffiliateRepoStub) ListUserRebateRecords(ctx context.Context, userID int64, limit int) ([]AffiliateRebateRecord, error) {
+	panic("unexpected ListUserRebateRecords call")
+}
 
 func newPackageScopeEntClient(t *testing.T) *dbent.Client {
 	t.Helper()

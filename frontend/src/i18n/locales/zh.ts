@@ -404,7 +404,8 @@ export default {
     logout: '退出登录',
     github: 'GitHub',
     mySubscriptions: '我的订阅',
-    buySubscription: '充值/订阅',
+    buySubscription: '前往充值订阅',
+    purchaseSubscriptionMenu: '充值订阅',
     docs: '文档',
     myOrders: '我的订单',
     orderManagement: '订单管理',
@@ -1031,6 +1032,7 @@ export default {
     transferFailed: '转入余额失败',
     stats: {
       invitedUsers: '邀请人数',
+      pendingQuota: '待解冻返利',
       availableQuota: '可转返利额度',
       totalQuota: '历史返利额度',
       debtQuota: '返利负债'
@@ -1057,6 +1059,28 @@ export default {
       title: '提现申请记录',
       empty: '暂无提现申请记录',
     },
+    rebates: {
+      title: '返利明细',
+      empty: '暂无返利明细',
+      level1: '一级返利',
+      level2: '二级返利',
+      level3: '三级返利',
+      levelUnknown: '第 {level} 级返利',
+      columns: {
+        level: '返利来源',
+        sourceUser: '来源用户',
+        sourceOrder: '来源订单',
+      },
+      status: {
+        pending: '待解冻',
+        available: '可提现',
+        withdraw_requested: '提现申请中',
+        withdraw_paid: '已打款',
+        reversed: '已冲正',
+        cancelled: '已取消',
+        debt_offset: '负债抵扣中',
+      },
+    },
     invitees: {
       title: '已邀请用户',
       empty: '暂无邀请记录',
@@ -1071,6 +1095,21 @@ export default {
       line1: '将邀请码或邀请链接分享给新用户。',
       line2: '被邀请用户充值后，你可获得对应比例的返利额度。',
       line3: '返利额度可随时转入账户余额。'
+    },
+    rules: {
+      title: '新返利模式说明',
+      line1: '邀请用户购买余额包后，可获得三级返利。',
+      line2: '一级返利 6%，二级返利 3%，三级返利 1%。',
+      line3: '被邀请人后续每次购买余额包，都会按规则继续返利。',
+      line4: '返利会先冻结，T+7 后转为可提现。',
+      line5: '可提现返利满 100 元后，可申请人工提现。',
+      line6: '若相关订单退款，返利会按状态取消、冲正或转为负债；有负债时暂时无法提现。',
+      exampleTitle: '返利链路示例',
+      exampleChain: 'A 邀请 B，B 邀请 C，C 邀请 D。',
+      exampleLevel1: '当 D 购买余额包后，C 获得一级返利 6%。',
+      exampleLevel2: '当 D 购买余额包后，B 获得二级返利 3%。',
+      exampleLevel3: '当 D 购买余额包后，A 获得三级返利 1%。',
+      exampleNote: '后续每次符合条件的余额包购买，都会继续按这条链路返利。'
     }
   },
 
@@ -5920,7 +5959,7 @@ export default {
 
   // Subscription Progress (Header component)
   subscriptionProgress: {
-    title: '我的订阅',
+    title: '去充值订阅',
     viewDetails: '查看订阅详情',
     activeCount: '{count} 个有效订阅',
     daily: '每日',
@@ -6006,8 +6045,8 @@ export default {
 
   // User Subscriptions Page
   userSubscriptions: {
-    title: '我的订阅',
-    description: '查看您的订阅计划和用量',
+    title: '去充值订阅',
+    description: '请前往充值订阅页面完成充值、订阅或续费',
     noActiveSubscriptions: '暂无有效订阅',
     noActiveSubscriptionsDesc: '您没有任何有效订阅。请联系管理员获取订阅。',
     failedToLoad: '加载订阅失败',
@@ -6028,7 +6067,10 @@ export default {
     expiresOn: '{date} 到期',
     resetIn: '{time} 后重置',
     windowNotActive: '等待首次使用',
-    usageOf: '已用 {used} / {limit}'
+    usageOf: '已用 {used} / {limit}',
+    redirectTitle: '请前往充值订阅',
+    redirectDescription: '“我的订阅”页面不再展示订阅内容，请前往充值订阅页面完成充值、订阅或续费。',
+    redirectAction: '前往充值订阅'
   },
 
   // Onboarding Tour

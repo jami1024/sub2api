@@ -17,6 +17,7 @@ import type {
   UserAffiliateDetail,
   AffiliateTransferResponse,
   AffiliateWithdrawalRequest,
+  AffiliateRebateRecord,
 } from '@/types'
 
 /**
@@ -199,6 +200,11 @@ export async function getAffiliateWithdrawalRequests(): Promise<AffiliateWithdra
   return data
 }
 
+export async function getAffiliateRebateRecords(): Promise<AffiliateRebateRecord[]> {
+  const { data } = await apiClient.get<AffiliateRebateRecord[]>('/user/aff/rebates')
+  return data
+}
+
 export const userAPI = {
   getProfile,
   updateProfile,
@@ -216,6 +222,7 @@ export const userAPI = {
   transferAffiliateQuota,
   createAffiliateWithdrawalRequest,
   getAffiliateWithdrawalRequests,
+  getAffiliateRebateRecords,
 }
 
 export default userAPI

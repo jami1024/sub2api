@@ -317,6 +317,34 @@ RETURNING id
 	return created, nil
 }
 
+func (r *affiliateRepository) SumPendingRebateByUser(ctx context.Context, userID int64) (float64, error) {
+	if userID <= 0 {
+		return 0, nil
+	}
+	client := clientFromContext(ctx, r.client)
+	rows, err := client.QueryContext(ctx, `
+SELECT COALESCE(SUM(rebate_amount)::double precision, 0)
+FROM affiliate_rebate_records
+WHERE user_id = $1
+  AND status = 'pending'
+`, userID)
+	if err != nil {
+		return 0, err
+	}
+	defer func() { _ = rows.Close() }()
+	if !rows.Next() {
+		if err := rows.Err(); err != nil {
+			return 0, err
+		}
+		return 0, nil
+	}
+	var total float64
+	if err := rows.Scan(&total); err != nil {
+		return 0, err
+	}
+	return total, nil
+}
+
 func (r *affiliateRepository) ReleaseDuePendingRebateRecords(ctx context.Context, now time.Time) (int, error) {
 	updatedCount := 0
 	creditsByUser := make(map[int64]float64)
@@ -579,6 +607,70 @@ LIMIT $2
 			return nil, err
 		}
 		items = append(items, *item)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+func (r *affiliateRepository) ListUserRebateRecords(ctx context.Context, userID int64, limit int) ([]service.AffiliateRebateRecord, error) {
+	if limit <= 0 {
+		limit = 100
+	}
+	client := clientFromContext(ctx, r.client)
+	rows, err := client.QueryContext(ctx, `
+SELECT affiliate_rebate_records.id,
+       affiliate_rebate_records.source_order_id,
+       affiliate_rebate_records.user_id,
+       affiliate_rebate_records.source_user_id,
+       COALESCE(u.email, ''),
+       COALESCE(u.username, ''),
+       affiliate_rebate_records.level,
+       affiliate_rebate_records.rate::double precision,
+       affiliate_rebate_records.base_amount::double precision,
+       affiliate_rebate_records.rebate_amount::double precision,
+       affiliate_rebate_records.status,
+       affiliate_rebate_records.available_at,
+       affiliate_rebate_records.created_at,
+       affiliate_rebate_records.updated_at
+FROM affiliate_rebate_records
+LEFT JOIN users u ON u.id = affiliate_rebate_records.source_user_id
+WHERE user_id = $1
+ORDER BY created_at DESC, id DESC
+LIMIT $2
+`, userID, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+
+	items := make([]service.AffiliateRebateRecord, 0)
+	for rows.Next() {
+		item := service.AffiliateRebateRecord{}
+		var availableAt sql.NullTime
+		if err := rows.Scan(
+			&item.ID,
+			&item.SourceOrderID,
+			&item.UserID,
+			&item.SourceUserID,
+			&item.SourceEmail,
+			&item.SourceUsername,
+			&item.Level,
+			&item.Rate,
+			&item.BaseAmount,
+			&item.RebateAmount,
+			&item.Status,
+			&availableAt,
+			&item.CreatedAt,
+			&item.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		if availableAt.Valid {
+			item.AvailableAt = &availableAt.Time
+		}
+		items = append(items, item)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err

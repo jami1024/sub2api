@@ -34,7 +34,7 @@ vi.mock('@/api/admin/affiliate', () => ({
 }))
 
 vi.mock('@/utils/format', () => ({
-  formatCurrency: (value: number) => `¥${value.toFixed(2)}`,
+  formatCurrency: (value: number) => `$${value.toFixed(2)}`,
   formatDateTime: (value: string) => value,
 }))
 

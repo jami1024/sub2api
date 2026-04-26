@@ -9,11 +9,12 @@ import (
 )
 
 type affiliateWorkflowRepoStub struct {
-	summaries    map[int64]*AffiliateSummary
-	records      []AffiliateRebateRecordInput
-	released     int
-	withdrawn    *AffiliateWithdrawalRequest
-	withdrawList []AffiliateWithdrawalRequest
+	summaries     map[int64]*AffiliateSummary
+	records       []AffiliateRebateRecordInput
+	rebateRecords []AffiliateRebateRecord
+	released      int
+	withdrawn     *AffiliateWithdrawalRequest
+	withdrawList  []AffiliateWithdrawalRequest
 }
 
 func (s *affiliateWorkflowRepoStub) EnsureUserAffiliate(ctx context.Context, userID int64) (*AffiliateSummary, error) {
@@ -83,6 +84,15 @@ func (s *affiliateWorkflowRepoStub) MarkWithdrawalPaid(ctx context.Context, requ
 }
 func (s *affiliateWorkflowRepoStub) ReverseRebatesForOrder(ctx context.Context, sourceOrderID int64) error {
 	return nil
+}
+func (s *affiliateWorkflowRepoStub) SumPendingRebateByUser(ctx context.Context, userID int64) (float64, error) {
+	if summary, ok := s.summaries[userID]; ok {
+		return summary.PendingQuota, nil
+	}
+	return 0, nil
+}
+func (s *affiliateWorkflowRepoStub) ListUserRebateRecords(ctx context.Context, userID int64, limit int) ([]AffiliateRebateRecord, error) {
+	return s.rebateRecords, nil
 }
 
 func TestCreatePendingRebatesForOrderCreatesThreeLevels(t *testing.T) {

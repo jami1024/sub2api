@@ -539,6 +539,15 @@ describe('PaymentView balance package storefront', () => {
     expect(wrapper.find('[data-testid="payment-tab-recharge"]').attributes('disabled')).toBeDefined()
   })
 
+  it('keeps the subscription tab visible but disabled', async () => {
+    const wrapper = mountPaymentView()
+    await flushPromises()
+
+    const subscriptionTab = wrapper.get('[data-testid="payment-tab-subscription"]')
+    expect(subscriptionTab.attributes('disabled')).toBeDefined()
+    expect(subscriptionTab.classes()).toContain('cursor-not-allowed')
+  })
+
   it('renders balance package cards with scope badge, credited amount and support hint', async () => {
     const wrapper = mountPaymentView()
     await flushPromises()

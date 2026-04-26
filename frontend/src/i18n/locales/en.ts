@@ -404,7 +404,8 @@ export default {
     logout: 'Logout',
     github: 'GitHub',
     mySubscriptions: 'My Subscriptions',
-    buySubscription: 'Recharge / Subscription',
+    buySubscription: 'Go to Purchase',
+    purchaseSubscriptionMenu: 'Purchase Subscription',
     docs: 'Docs',
     myOrders: 'My Orders',
     orderManagement: 'Orders',
@@ -1027,6 +1028,7 @@ export default {
     transferFailed: 'Failed to transfer affiliate quota',
     stats: {
       invitedUsers: 'Invited Users',
+      pendingQuota: 'Pending Rebates',
       availableQuota: 'Available Rebate Quota',
       totalQuota: 'Historical Rebate Quota',
       debtQuota: 'Affiliate Debt'
@@ -1053,6 +1055,28 @@ export default {
       title: 'Withdrawal Requests',
       empty: 'No withdrawal requests yet',
     },
+    rebates: {
+      title: 'Rebate Records',
+      empty: 'No rebate records yet',
+      level1: 'Level 1 Rebate',
+      level2: 'Level 2 Rebate',
+      level3: 'Level 3 Rebate',
+      levelUnknown: 'Level {level} Rebate',
+      columns: {
+        level: 'Rebate Source',
+        sourceUser: 'Source User',
+        sourceOrder: 'Source Order',
+      },
+      status: {
+        pending: 'Pending Release',
+        available: 'Withdrawable',
+        withdraw_requested: 'Withdrawal Requested',
+        withdraw_paid: 'Paid Out',
+        reversed: 'Reversed',
+        cancelled: 'Cancelled',
+        debt_offset: 'Debt Offset',
+      },
+    },
     invitees: {
       title: 'Invited Users',
       empty: 'No invited users yet',
@@ -1067,6 +1091,21 @@ export default {
       line1: 'Share your affiliate code or invite link with new users.',
       line2: 'When invitees recharge, you receive rebate quota based on the configured rate.',
       line3: 'Transfer rebate quota to balance at any time.'
+    },
+    rules: {
+      title: 'New rebate mode',
+      line1: 'When invited users purchase balance packages, up to three levels of inviters can receive rebates.',
+      line2: 'Level 1 gets 6%, level 2 gets 3%, and level 3 gets 1%.',
+      line3: 'Every eligible balance package purchase continues to generate rebates, not just the first one.',
+      line4: 'Rebates are frozen first and become withdrawable after T+7.',
+      line5: 'Withdrawals can be requested once available rebates reach 100.',
+      line6: 'If the related order is refunded, rebates may be cancelled, reversed, or converted into debt; users with debt cannot withdraw.',
+      exampleTitle: 'Example rebate chain',
+      exampleChain: 'A invites B, B invites C, and C invites D.',
+      exampleLevel1: 'When D purchases a balance package, C receives the level-1 rebate of 6%.',
+      exampleLevel2: 'When D purchases a balance package, B receives the level-2 rebate of 3%.',
+      exampleLevel3: 'When D purchases a balance package, A receives the level-3 rebate of 1%.',
+      exampleNote: 'Every later eligible balance package purchase continues to generate rebates along the same chain.'
     }
   },
 
@@ -5760,7 +5799,7 @@ export default {
 
   // Subscription Progress (Header component)
   subscriptionProgress: {
-    title: 'My Subscriptions',
+    title: 'Go to Purchase',
     viewDetails: 'View subscription details',
     activeCount: '{count} active subscription(s)',
     daily: 'Daily',
@@ -5847,8 +5886,8 @@ export default {
 
   // User Subscriptions Page
   userSubscriptions: {
-    title: 'My Subscriptions',
-    description: 'View your subscription plans and usage',
+    title: 'Go to Purchase',
+    description: 'Go to the purchase page to recharge, subscribe, or renew',
     noActiveSubscriptions: 'No Active Subscriptions',
     noActiveSubscriptionsDesc:
       "You don't have any active subscriptions. Contact administrator to get one.",
@@ -5870,7 +5909,10 @@ export default {
     expiresOn: 'Expires on {date}',
     resetIn: 'Resets in {time}',
     windowNotActive: 'Awaiting first use',
-    usageOf: '{used} of {limit}'
+    usageOf: '{used} of {limit}',
+    redirectTitle: 'Go to purchase',
+    redirectDescription: 'The My Subscriptions page no longer shows subscription details. Please go to the purchase page to recharge, subscribe, or renew.',
+    redirectAction: 'Open purchase page'
   },
 
   // Onboarding Tour

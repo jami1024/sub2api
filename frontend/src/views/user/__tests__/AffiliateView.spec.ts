@@ -7,6 +7,7 @@ const {
   transferAffiliateQuota,
   createAffiliateWithdrawalRequest,
   getAffiliateWithdrawalRequests,
+  getAffiliateRebateRecords,
   showError,
   showSuccess,
   refreshUser,
@@ -16,6 +17,7 @@ const {
   transferAffiliateQuota: vi.fn(),
   createAffiliateWithdrawalRequest: vi.fn(),
   getAffiliateWithdrawalRequests: vi.fn(),
+  getAffiliateRebateRecords: vi.fn(),
   showError: vi.fn(),
   showSuccess: vi.fn(),
   refreshUser: vi.fn(),
@@ -28,6 +30,7 @@ vi.mock('@/api/user', () => ({
     transferAffiliateQuota,
     createAffiliateWithdrawalRequest,
     getAffiliateWithdrawalRequests,
+    getAffiliateRebateRecords,
   },
 }))
 
@@ -79,6 +82,16 @@ vi.mock('vue-i18n', async (importOriginal) => {
     'affiliate.transfer.confirm': '确认申请',
     'affiliate.withdrawals.title': '提现申请记录',
     'affiliate.withdrawals.empty': '暂无提现申请记录',
+    'affiliate.rebates.title': '返利明细',
+    'affiliate.rebates.empty': '暂无返利明细',
+    'affiliate.rebates.level1': '一级返利',
+    'affiliate.rebates.level2': '二级返利',
+    'affiliate.rebates.level3': '三级返利',
+    'affiliate.rebates.columns.level': '返利来源',
+    'affiliate.rebates.columns.sourceUser': '来源用户',
+    'affiliate.rebates.columns.sourceOrder': '来源订单',
+    'affiliate.rebates.status.pending': '待解冻',
+    'affiliate.stats.pendingQuota': '待解冻返利',
     'affiliate.stats.debtQuota': '返利负债',
   }
   return {
@@ -89,12 +102,13 @@ vi.mock('vue-i18n', async (importOriginal) => {
   }
 })
 
-function buildDetail(overrides: Partial<{ aff_quota: number; debt_quota: number }> = {}) {
+function buildDetail(overrides: Partial<{ pending_quota: number; aff_quota: number; debt_quota: number }> = {}) {
   return {
     user_id: 1,
     aff_code: 'AFFCODE123',
     inviter_id: null,
     aff_count: 3,
+    pending_quota: 0,
     aff_quota: 0,
     aff_history_quota: 18.5,
     debt_quota: 0,
@@ -117,6 +131,7 @@ describe('AffiliateView', () => {
       created_at: '2026-04-25T00:00:00Z',
       updated_at: '2026-04-25T00:00:00Z',
     })
+    getAffiliateRebateRecords.mockReset().mockResolvedValue([])
     getAffiliateWithdrawalRequests.mockReset().mockResolvedValue([])
     showError.mockReset()
     showSuccess.mockReset()
@@ -192,5 +207,65 @@ describe('AffiliateView', () => {
     const button = wrapper.get('[data-testid="affiliate-withdraw-open"]')
     expect(button.attributes('disabled')).toBeDefined()
     expect(wrapper.text()).toContain('当前存在返利负债，请先等待后续返利抵扣完成。')
+  })
+
+  it('shows pending rebate quota separately from available quota', async () => {
+    getAffiliateDetail.mockResolvedValue(buildDetail({ pending_quota: 0.06, aff_quota: 0, debt_quota: 0 }))
+
+    const wrapper = mount(AffiliateView, {
+      global: {
+        stubs: {
+          AppLayout: { template: '<div><slot /></div>' },
+          Icon: true,
+          BaseDialog: { template: '<div class="modal-content"><slot /><slot name="footer" /></div>', props: ['show', 'title', 'width'] },
+        },
+      },
+    })
+
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('待解冻返利')
+    expect(wrapper.text()).toContain('¥0.06')
+  })
+
+  it('shows rebate record levels in the rebate detail list', async () => {
+    getAffiliateDetail.mockResolvedValue(buildDetail({ aff_quota: 0 }))
+    getAffiliateRebateRecords.mockResolvedValue([
+      {
+        id: 1,
+        source_order_id: 14,
+        user_id: 5,
+        source_user_id: 6,
+        source_email: 'test3@qq.com',
+        source_username: '',
+        level: 1,
+        rate: 6,
+        base_amount: 1,
+        rebate_amount: 0.06,
+        status: 'pending',
+        created_at: '2026-04-26T09:28:27Z',
+        updated_at: '2026-04-26T09:28:27Z',
+      },
+    ])
+
+    const wrapper = mount(AffiliateView, {
+      global: {
+        stubs: {
+          AppLayout: { template: '<div><slot /></div>' },
+          Icon: true,
+          BaseDialog: { template: '<div class="modal-content"><slot /><slot name="footer" /></div>', props: ['show', 'title', 'width'] },
+        },
+      },
+    })
+
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('返利明细')
+    expect(wrapper.text()).toContain('一级返利')
+    expect(wrapper.text()).toContain('test3@qq.com')
+    expect(wrapper.text()).toContain('来源订单')
+    expect(wrapper.text()).toContain('#14')
+    expect(wrapper.text()).toContain('¥0.06')
+    expect(wrapper.text()).toContain('待解冻')
   })
 })

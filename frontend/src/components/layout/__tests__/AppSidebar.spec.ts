@@ -30,3 +30,16 @@ describe('AppSidebar header styles', () => {
     expect(sidebarBrandBlockMatch?.[0]).not.toContain('overflow: hidden;')
   })
 })
+
+
+describe('AppSidebar user navigation', () => {
+  it('does not expose the legacy my subscriptions entry in the sidebar list', () => {
+    expect(componentSource).not.toContain("path: '/subscriptions'")
+  })
+})
+
+describe('AppSidebar purchase menu label', () => {
+  it('uses a dedicated sidebar copy key for the purchase entry', () => {
+    expect(componentSource).toContain("t('nav.purchaseSubscriptionMenu')")
+  })
+})

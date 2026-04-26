@@ -687,7 +687,7 @@ const tabs = computed(() => {
   const result: { key: 'recharge' | 'package' | 'subscription'; label: string; disabled?: boolean }[] = []
   if (!checkout.value.balance_disabled) result.push({ key: 'recharge', label: t('payment.tabTopUp'), disabled: true })
   if (checkout.value.balance_packages.length > 0) result.push({ key: 'package', label: t('payment.balancePackages.title') })
-  result.push({ key: 'subscription', label: t('payment.tabSubscribe') })
+  result.push({ key: 'subscription', label: t('payment.tabSubscribe'), disabled: true })
   return result
 })
 

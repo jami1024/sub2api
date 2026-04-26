@@ -248,6 +248,24 @@ func (h *UserHandler) ListAffiliateWithdrawalRequests(c *gin.Context) {
 	response.Success(c, items)
 }
 
+// ListAffiliateRebateRecords returns the current user's affiliate rebate records.
+// GET /api/v1/user/aff/rebates
+func (h *UserHandler) ListAffiliateRebateRecords(c *gin.Context) {
+	subject, ok := middleware2.GetAuthSubjectFromContext(c)
+	if !ok {
+		response.Unauthorized(c, "User not authenticated")
+		return
+	}
+
+	items, err := h.affiliateService.ListUserRebateRecords(c.Request.Context(), subject.UserID, 100)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+
+	response.Success(c, items)
+}
+
 type StartIdentityBindingRequest struct {
 	Provider   string `json:"provider" binding:"required"`
 	RedirectTo string `json:"redirect_to"`

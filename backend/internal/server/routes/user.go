@@ -26,6 +26,7 @@ func RegisterUserRoutes(
 			user.PUT("/password", h.User.ChangePassword)
 			user.PUT("", h.User.UpdateProfile)
 			user.GET("/aff", h.User.GetAffiliate)
+			user.GET("/aff/rebates", h.User.ListAffiliateRebateRecords)
 			user.POST("/aff/transfer", h.User.TransferAffiliateQuota)
 			user.GET("/aff/withdrawals", h.User.ListAffiliateWithdrawalRequests)
 			user.POST("/aff/withdrawals", h.User.CreateAffiliateWithdrawalRequest)
