@@ -5,8 +5,50 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Wei-Shaw/sub2api/internal/config"
 	"github.com/stretchr/testify/require"
 )
+
+type affiliateWorkflowSettingRepoStub struct {
+	values map[string]string
+}
+
+func (s *affiliateWorkflowSettingRepoStub) Get(ctx context.Context, key string) (*Setting, error) {
+	panic("unexpected Get call")
+}
+
+func (s *affiliateWorkflowSettingRepoStub) GetValue(ctx context.Context, key string) (string, error) {
+	if v, ok := s.values[key]; ok {
+		return v, nil
+	}
+	return "", ErrSettingNotFound
+}
+
+func (s *affiliateWorkflowSettingRepoStub) Set(ctx context.Context, key, value string) error {
+	panic("unexpected Set call")
+}
+
+func (s *affiliateWorkflowSettingRepoStub) GetMultiple(ctx context.Context, keys []string) (map[string]string, error) {
+	out := make(map[string]string, len(keys))
+	for _, key := range keys {
+		if v, ok := s.values[key]; ok {
+			out[key] = v
+		}
+	}
+	return out, nil
+}
+
+func (s *affiliateWorkflowSettingRepoStub) SetMultiple(ctx context.Context, settings map[string]string) error {
+	panic("unexpected SetMultiple call")
+}
+
+func (s *affiliateWorkflowSettingRepoStub) GetAll(ctx context.Context) (map[string]string, error) {
+	return s.values, nil
+}
+
+func (s *affiliateWorkflowSettingRepoStub) Delete(ctx context.Context, key string) error {
+	panic("unexpected Delete call")
+}
 
 type affiliateWorkflowRepoStub struct {
 	summaries     map[int64]*AffiliateSummary
@@ -115,6 +157,27 @@ func (s *affiliateWorkflowRepoStub) BatchSetUserRebateRate(ctx context.Context, 
 }
 func (s *affiliateWorkflowRepoStub) ListUsersWithCustomSettings(ctx context.Context, filter AffiliateAdminFilter) ([]AffiliateAdminEntry, int64, error) {
 	return nil, 0, nil
+}
+
+func TestCreatePendingRebatesForOrderSkipsWhenAffiliateDisabled(t *testing.T) {
+	ctx := context.Background()
+	inviterID, buyerID := int64(1), int64(2)
+	repo := &affiliateWorkflowRepoStub{
+		summaries: map[int64]*AffiliateSummary{
+			inviterID: {UserID: inviterID},
+			buyerID:   {UserID: buyerID, InviterID: &inviterID},
+		},
+	}
+	settingSvc := NewSettingService(&affiliateWorkflowSettingRepoStub{values: map[string]string{
+		SettingKeyAffiliateEnabled: "false",
+	}}, &config.Config{})
+	svc := &AffiliateService{repo: repo, settingService: settingSvc}
+
+	total, err := svc.CreatePendingRebatesForOrder(ctx, 99, buyerID, 100, time.Now())
+
+	require.NoError(t, err)
+	require.Zero(t, total)
+	require.Empty(t, repo.records)
 }
 
 func TestCreatePendingRebatesForOrderCreatesThreeLevels(t *testing.T) {

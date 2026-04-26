@@ -23,6 +23,9 @@ func (s *AffiliateService) CreatePendingRebatesForOrder(ctx context.Context, sou
 	if s == nil || s.repo == nil || sourceOrderID <= 0 || sourceUserID <= 0 || baseAmount <= 0 {
 		return 0, nil
 	}
+	if s.settingService != nil && !s.IsEnabled(ctx) {
+		return 0, nil
+	}
 
 	ancestors, err := s.ResolveAffiliateAncestors(ctx, sourceUserID, len(affiliateLevelRates))
 	if err != nil || len(ancestors) == 0 {
