@@ -91,6 +91,18 @@ func RegisterAdminRoutes(
 
 		// 渠道监控
 		registerChannelMonitorRoutes(admin, h)
+
+		// 邀请返利提现审核
+		registerAffiliateRoutes(admin, h)
+	}
+}
+
+func registerAffiliateRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
+	affiliate := admin.Group("/affiliate")
+	{
+		affiliate.GET("/withdrawals", h.Admin.Affiliate.ListWithdrawalRequests)
+		affiliate.POST("/withdrawals/:id/reject", h.Admin.Affiliate.RejectWithdrawalRequest)
+		affiliate.POST("/withdrawals/:id/mark-paid", h.Admin.Affiliate.MarkWithdrawalPaid)
 	}
 }
 

@@ -221,6 +221,77 @@ func (s *packageScopeAuthCacheInvalidatorStub) InvalidateAuthCacheByUserID(ctx c
 func (s *packageScopeAuthCacheInvalidatorStub) InvalidateAuthCacheByGroupID(ctx context.Context, groupID int64) {
 }
 
+type packageScopeAffiliateRepoStub struct {
+	summaries map[int64]*AffiliateSummary
+	records   []AffiliateRebateRecordInput
+}
+
+func (s *packageScopeAffiliateRepoStub) EnsureUserAffiliate(ctx context.Context, userID int64) (*AffiliateSummary, error) {
+	if summary, ok := s.summaries[userID]; ok {
+		return summary, nil
+	}
+	return nil, ErrAffiliateProfileNotFound
+}
+func (s *packageScopeAffiliateRepoStub) GetAffiliateByCode(ctx context.Context, code string) (*AffiliateSummary, error) {
+	panic("unexpected GetAffiliateByCode call")
+}
+func (s *packageScopeAffiliateRepoStub) BindInviter(ctx context.Context, userID, inviterID int64) (bool, error) {
+	panic("unexpected BindInviter call")
+}
+func (s *packageScopeAffiliateRepoStub) AccrueQuota(ctx context.Context, inviterID, inviteeUserID int64, amount float64) (bool, error) {
+	panic("unexpected AccrueQuota call")
+}
+func (s *packageScopeAffiliateRepoStub) TransferQuotaToBalance(ctx context.Context, userID int64) (float64, float64, error) {
+	panic("unexpected TransferQuotaToBalance call")
+}
+func (s *packageScopeAffiliateRepoStub) ListInvitees(ctx context.Context, inviterID int64, limit int) ([]AffiliateInvitee, error) {
+	panic("unexpected ListInvitees call")
+}
+func (s *packageScopeAffiliateRepoStub) ListAncestors(ctx context.Context, userID int64, maxDepth int) ([]AffiliateAncestor, error) {
+	current := userID
+	out := make([]AffiliateAncestor, 0, maxDepth)
+	visited := map[int64]struct{}{userID: {}}
+	for level := 1; level <= maxDepth; level++ {
+		summary, ok := s.summaries[current]
+		if !ok || summary.InviterID == nil {
+			break
+		}
+		inviterID := *summary.InviterID
+		if _, seen := visited[inviterID]; seen {
+			break
+		}
+		visited[inviterID] = struct{}{}
+		out = append(out, AffiliateAncestor{UserID: inviterID, Level: level})
+		current = inviterID
+	}
+	return out, nil
+}
+func (s *packageScopeAffiliateRepoStub) CreatePendingRebateRecords(ctx context.Context, records []AffiliateRebateRecordInput) (int, error) {
+	s.records = append(s.records, records...)
+	return len(records), nil
+}
+func (s *packageScopeAffiliateRepoStub) ReleaseDuePendingRebateRecords(ctx context.Context, now time.Time) (int, error) {
+	panic("unexpected ReleaseDuePendingRebateRecords call")
+}
+func (s *packageScopeAffiliateRepoStub) CreateWithdrawalRequest(ctx context.Context, userID int64, amount float64, applicantNote string) (*AffiliateWithdrawalRequest, error) {
+	panic("unexpected CreateWithdrawalRequest call")
+}
+func (s *packageScopeAffiliateRepoStub) ListWithdrawalRequests(ctx context.Context, status string, limit int) ([]AffiliateWithdrawalRequest, error) {
+	panic("unexpected ListWithdrawalRequests call")
+}
+func (s *packageScopeAffiliateRepoStub) ListUserWithdrawalRequests(ctx context.Context, userID int64, limit int) ([]AffiliateWithdrawalRequest, error) {
+	panic("unexpected ListUserWithdrawalRequests call")
+}
+func (s *packageScopeAffiliateRepoStub) RejectWithdrawalRequest(ctx context.Context, requestID int64, reviewerID int64, adminNote string) (*AffiliateWithdrawalRequest, error) {
+	panic("unexpected RejectWithdrawalRequest call")
+}
+func (s *packageScopeAffiliateRepoStub) MarkWithdrawalPaid(ctx context.Context, requestID int64, reviewerID int64, adminNote string) (*AffiliateWithdrawalRequest, error) {
+	panic("unexpected MarkWithdrawalPaid call")
+}
+func (s *packageScopeAffiliateRepoStub) ReverseRebatesForOrder(ctx context.Context, sourceOrderID int64) error {
+	panic("unexpected ReverseRebatesForOrder call")
+}
+
 func newPackageScopeEntClient(t *testing.T) *dbent.Client {
 	t.Helper()
 	db, err := sql.Open("sqlite", "file:package_scope_service?mode=memory&cache=shared&_fk=1")
@@ -520,7 +591,20 @@ func TestExecuteBalancePackageFulfillmentCreditsUserBalance(t *testing.T) {
 		PackageScope: nil,
 		Status:       StatusActive,
 	}}
-	svc := &PaymentService{entClient: client, userRepo: userRepo}
+	inviter1, inviter2, inviter3 := int64(101), int64(102), int64(103)
+	affiliateRepo := &packageScopeAffiliateRepoStub{
+		summaries: map[int64]*AffiliateSummary{
+			userEntity.ID: {UserID: userEntity.ID, InviterID: &inviter1},
+			inviter1:      {UserID: inviter1, InviterID: &inviter2},
+			inviter2:      {UserID: inviter2, InviterID: &inviter3},
+			inviter3:      {UserID: inviter3},
+		},
+	}
+	svc := &PaymentService{
+		entClient:        client,
+		userRepo:         userRepo,
+		affiliateService: &AffiliateService{repo: affiliateRepo},
+	}
 
 	err = svc.ExecuteBalancePackageFulfillment(ctx, order.ID)
 	require.NoError(t, err)
@@ -533,6 +617,10 @@ func TestExecuteBalancePackageFulfillmentCreditsUserBalance(t *testing.T) {
 	reloaded, err := client.PaymentOrder.Get(ctx, order.ID)
 	require.NoError(t, err)
 	require.Equal(t, OrderStatusCompleted, reloaded.Status)
+	require.Len(t, affiliateRepo.records, 3)
+	require.InDelta(t, 6.0, affiliateRepo.records[0].RebateAmount, 1e-9)
+	require.InDelta(t, 3.0, affiliateRepo.records[1].RebateAmount, 1e-9)
+	require.InDelta(t, 1.0, affiliateRepo.records[2].RebateAmount, 1e-9)
 }
 
 func TestExecuteBalancePackageFulfillmentMarksFailedAfterPaidConflict(t *testing.T) {

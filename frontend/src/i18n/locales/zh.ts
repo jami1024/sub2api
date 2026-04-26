@@ -412,6 +412,7 @@ export default {
     paymentConfig: '支付配置',
     paymentPlans: '订阅套餐',
     balancePackages: '余额包',
+    affiliateWithdrawals: '返利提现审核',
     channelManagement: '渠道管理',
     channelPricing: '渠道定价',
     channelMonitor: '渠道监控',
@@ -1031,16 +1032,30 @@ export default {
     stats: {
       invitedUsers: '邀请人数',
       availableQuota: '可转返利额度',
-      totalQuota: '历史返利额度'
+      totalQuota: '历史返利额度',
+      debtQuota: '返利负债'
     },
     transfer: {
       title: '返利额度提现',
-      description: '当前返利额度暂不支持页面直接提现',
+      description: '满 100 元后可申请人工提现',
       button: '提现',
-      transferring: '提现处理中...',
+      requesting: '申请中...',
+      dialogTitle: '申请提现',
+      dialogDescription: '请确认本次申请金额和备注信息。',
+      requestAmount: '申请金额',
+      requestNote: '备注',
+      confirm: '确认申请',
       empty: '当前没有可提现额度',
-      contactHint: '如需微信提现，请联系管理员。',
+      thresholdHint: '可提现返利满 {amount} 元后才可申请',
+      debtHint: '当前存在返利负债，请先等待后续返利抵扣完成。',
+      manualHint: '提交申请后，管理员会线下手动打款。',
+      requestSuccess: '提现申请已提交',
+      requestFailed: '提现申请提交失败',
       success: '已转入余额：{amount}'
+    },
+    withdrawals: {
+      title: '提现申请记录',
+      empty: '暂无提现申请记录',
     },
     invitees: {
       title: '已邀请用户',
@@ -1057,6 +1072,17 @@ export default {
       line2: '被邀请用户充值后，你可获得对应比例的返利额度。',
       line3: '返利额度可随时转入账户余额。'
     }
+  },
+
+  affiliateWithdrawals: {
+    title: '邀请返利提现审核',
+    description: '审核用户提交的人工提现申请并标记打款状态',
+    empty: '暂无提现申请',
+    loadFailed: '加载提现申请失败',
+    actionFailed: '处理提现申请失败',
+    rejectSuccess: '已驳回提现申请',
+    markPaid: '标记已打款',
+    markPaidSuccess: '已标记为打款完成',
   },
 
   // Redeem

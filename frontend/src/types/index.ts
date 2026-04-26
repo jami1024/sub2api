@@ -140,12 +140,27 @@ export interface UserAffiliateDetail {
   aff_count: number
   aff_quota: number
   aff_history_quota: number
+  debt_quota: number
   invitees: AffiliateInvitee[]
 }
 
 export interface AffiliateTransferResponse {
   transferred_quota: number
   balance: number
+}
+
+export interface AffiliateWithdrawalRequest {
+  id: number
+  user_id: number
+  amount: number
+  status: string
+  applicant_note: string
+  admin_note: string
+  reviewed_by?: number | null
+  reviewed_at?: string | null
+  paid_at?: string | null
+  created_at: string
+  updated_at: string
 }
 
 export interface SendVerifyCodeRequest {

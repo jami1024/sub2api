@@ -412,6 +412,7 @@ export default {
     paymentConfig: 'Payment Config',
     paymentPlans: 'Plans',
     balancePackages: 'Balance Packages',
+    affiliateWithdrawals: 'Affiliate Withdrawals',
     channelManagement: 'Channels',
     channelPricing: 'Channel Pricing',
     channelMonitor: 'Channel Monitor',
@@ -1027,16 +1028,30 @@ export default {
     stats: {
       invitedUsers: 'Invited Users',
       availableQuota: 'Available Rebate Quota',
-      totalQuota: 'Historical Rebate Quota'
+      totalQuota: 'Historical Rebate Quota',
+      debtQuota: 'Affiliate Debt'
     },
     transfer: {
       title: 'Withdraw Rebate Quota',
-      description: 'Direct withdrawals are not available on this page right now',
+      description: 'Manual withdrawals are available once you reach 100',
       button: 'Withdraw',
-      transferring: 'Processing withdrawal...',
+      requesting: 'Submitting...',
+      dialogTitle: 'Request Withdrawal',
+      dialogDescription: 'Please confirm the amount and note for this withdrawal request.',
+      requestAmount: 'Request Amount',
+      requestNote: 'Note',
+      confirm: 'Submit Request',
       empty: 'No available rebate quota to withdraw',
-      contactHint: 'For WeChat withdrawals, please contact the administrator.',
+      thresholdHint: 'You can request a withdrawal after available rebates reach {amount}',
+      debtHint: 'Outstanding affiliate debt must be cleared before submitting another withdrawal.',
+      manualHint: 'After submission, the administrator will transfer the funds manually offline.',
+      requestSuccess: 'Withdrawal request submitted',
+      requestFailed: 'Failed to submit withdrawal request',
       success: '{amount} has been transferred to your balance'
+    },
+    withdrawals: {
+      title: 'Withdrawal Requests',
+      empty: 'No withdrawal requests yet',
     },
     invitees: {
       title: 'Invited Users',
@@ -1053,6 +1068,17 @@ export default {
       line2: 'When invitees recharge, you receive rebate quota based on the configured rate.',
       line3: 'Transfer rebate quota to balance at any time.'
     }
+  },
+
+  affiliateWithdrawals: {
+    title: 'Affiliate Withdrawal Reviews',
+    description: 'Review manual affiliate withdrawal requests and mark payout status',
+    empty: 'No withdrawal requests yet',
+    loadFailed: 'Failed to load withdrawal requests',
+    actionFailed: 'Failed to process withdrawal request',
+    rejectSuccess: 'Withdrawal request rejected',
+    markPaid: 'Mark as Paid',
+    markPaidSuccess: 'Withdrawal marked as paid',
   },
 
   // Redeem

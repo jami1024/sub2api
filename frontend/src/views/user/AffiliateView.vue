@@ -2,30 +2,26 @@
   <AppLayout>
     <div class="space-y-6">
       <div v-if="loading" class="flex justify-center py-12">
-        <div
-          class="h-8 w-8 animate-spin rounded-full border-2 border-primary-500 border-t-transparent"
-        ></div>
+        <div class="h-8 w-8 animate-spin rounded-full border-2 border-primary-500 border-t-transparent"></div>
       </div>
 
       <template v-else-if="detail">
-        <div class="grid gap-4 md:grid-cols-3">
+        <div class="grid gap-4 md:grid-cols-4">
           <div class="card p-5">
             <p class="text-sm text-gray-500 dark:text-dark-400">{{ t('affiliate.stats.invitedUsers') }}</p>
-            <p class="mt-2 text-2xl font-semibold text-gray-900 dark:text-white">
-              {{ formatCount(detail.aff_count) }}
-            </p>
+            <p class="mt-2 text-2xl font-semibold text-gray-900 dark:text-white">{{ formatCount(detail.aff_count) }}</p>
           </div>
           <div class="card p-5">
             <p class="text-sm text-gray-500 dark:text-dark-400">{{ t('affiliate.stats.availableQuota') }}</p>
-            <p class="mt-2 text-2xl font-semibold text-emerald-600 dark:text-emerald-400">
-              {{ formatCurrency(detail.aff_quota) }}
-            </p>
+            <p class="mt-2 text-2xl font-semibold text-emerald-600 dark:text-emerald-400">{{ formatCurrency(detail.aff_quota) }}</p>
           </div>
           <div class="card p-5">
             <p class="text-sm text-gray-500 dark:text-dark-400">{{ t('affiliate.stats.totalQuota') }}</p>
-            <p class="mt-2 text-2xl font-semibold text-gray-900 dark:text-white">
-              {{ formatCurrency(detail.aff_history_quota) }}
-            </p>
+            <p class="mt-2 text-2xl font-semibold text-gray-900 dark:text-white">{{ formatCurrency(detail.aff_history_quota) }}</p>
+          </div>
+          <div class="card p-5">
+            <p class="text-sm text-gray-500 dark:text-dark-400">{{ t('affiliate.stats.debtQuota') }}</p>
+            <p class="mt-2 text-2xl font-semibold text-red-600 dark:text-red-400">{{ formatCurrency(detail.debt_quota || 0) }}</p>
           </div>
         </div>
 
@@ -74,20 +70,45 @@
               <p class="mt-1 text-sm text-gray-500 dark:text-dark-400">{{ t('affiliate.transfer.description') }}</p>
             </div>
             <button
+              data-testid="affiliate-withdraw-open"
               class="btn btn-primary"
-              disabled
-              aria-disabled="true"
+              :disabled="!canRequestWithdrawal || requestingWithdrawal"
+              :aria-disabled="!canRequestWithdrawal || requestingWithdrawal"
+              @click="showWithdrawDialog = true"
             >
               <Icon name="dollar" size="sm" />
-              <span>{{ t('affiliate.transfer.button') }}</span>
+              <span>{{ requestingWithdrawal ? t('affiliate.transfer.requesting') : t('affiliate.transfer.button') }}</span>
             </button>
           </div>
-          <p v-if="detail.aff_quota <= 0" class="mt-3 text-sm text-amber-600 dark:text-amber-400">
-            {{ t('affiliate.transfer.empty') }}
+          <p v-if="detail.aff_quota <= 0" class="mt-3 text-sm text-amber-600 dark:text-amber-400">{{ t('affiliate.transfer.empty') }}</p>
+          <p v-else-if="detail.aff_quota < withdrawalThreshold" class="mt-3 text-sm text-amber-600 dark:text-amber-400">
+            {{ t('affiliate.transfer.thresholdHint', { amount: withdrawalThreshold.toFixed(0) }) }}
           </p>
-          <p class="mt-2 text-sm text-gray-500 dark:text-dark-400">
-            {{ t('affiliate.transfer.contactHint') }}
-          </p>
+          <p v-else-if="detail.debt_quota > 0" class="mt-3 text-sm text-red-600 dark:text-red-400">{{ t('affiliate.transfer.debtHint') }}</p>
+          <p class="mt-2 text-sm text-gray-500 dark:text-dark-400">{{ t('affiliate.transfer.manualHint') }}</p>
+        </div>
+
+        <div class="card p-6">
+          <h3 class="text-base font-semibold text-gray-900 dark:text-white">{{ t('affiliate.withdrawals.title') }}</h3>
+          <div v-if="withdrawals.length === 0" class="mt-4 text-sm text-gray-500 dark:text-dark-400">{{ t('affiliate.withdrawals.empty') }}</div>
+          <div v-else class="mt-4 overflow-x-auto">
+            <table class="w-full min-w-[560px] text-left text-sm">
+              <thead>
+                <tr class="border-b border-gray-200 text-gray-500 dark:border-dark-700 dark:text-dark-400">
+                  <th class="px-3 py-2 font-medium">{{ t('common.amount') }}</th>
+                  <th class="px-3 py-2 font-medium">{{ t('common.status') }}</th>
+                  <th class="px-3 py-2 font-medium">{{ t('common.createdAt') }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="item in withdrawals" :key="item.id" class="border-b border-gray-100 last:border-b-0 dark:border-dark-800">
+                  <td class="px-3 py-3">{{ formatCurrency(item.amount) }}</td>
+                  <td class="px-3 py-3">{{ item.status }}</td>
+                  <td class="px-3 py-3">{{ formatDateTime(item.created_at) }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
 
         <div class="card p-6">
@@ -105,11 +126,7 @@
                 </tr>
               </thead>
               <tbody>
-                <tr
-                  v-for="item in detail.invitees"
-                  :key="item.user_id"
-                  class="border-b border-gray-100 last:border-b-0 dark:border-dark-800"
-                >
+                <tr v-for="item in detail.invitees" :key="item.user_id" class="border-b border-gray-100 last:border-b-0 dark:border-dark-800">
                   <td class="px-3 py-3 text-gray-900 dark:text-white">{{ item.email || '-' }}</td>
                   <td class="px-3 py-3 text-gray-700 dark:text-gray-300">{{ item.username || '-' }}</td>
                   <td class="px-3 py-3 text-gray-700 dark:text-gray-300">{{ formatDateTime(item.created_at) || '-' }}</td>
@@ -120,6 +137,28 @@
         </div>
       </template>
     </div>
+
+    <BaseDialog :show="showWithdrawDialog" :title="t('affiliate.transfer.dialogTitle')" width="normal" @close="showWithdrawDialog = false">
+      <div class="space-y-4">
+        <p class="text-sm text-gray-500 dark:text-dark-400">{{ t('affiliate.transfer.dialogDescription') }}</p>
+        <div>
+          <label class="input-label">{{ t('affiliate.transfer.requestAmount') }}</label>
+          <input v-model.number="withdrawAmount" type="number" min="100" step="0.01" class="input" />
+        </div>
+        <div>
+          <label class="input-label">{{ t('affiliate.transfer.requestNote') }}</label>
+          <textarea v-model="withdrawNote" class="input min-h-[96px]" />
+        </div>
+      </div>
+      <template #footer>
+        <div class="flex justify-end gap-3">
+          <button class="btn btn-secondary" @click="showWithdrawDialog = false">{{ t('common.cancel') }}</button>
+          <button class="btn btn-primary" :disabled="!canSubmitWithdrawDialog || requestingWithdrawal" @click="requestWithdrawal">
+            {{ requestingWithdrawal ? t('affiliate.transfer.requesting') : t('affiliate.transfer.confirm') }}
+          </button>
+        </div>
+      </template>
+    </BaseDialog>
   </AppLayout>
 </template>
 
@@ -128,8 +167,9 @@ import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import Icon from '@/components/icons/Icon.vue'
+import BaseDialog from '@/components/common/BaseDialog.vue'
 import userAPI from '@/api/user'
-import type { UserAffiliateDetail } from '@/types'
+import type { AffiliateWithdrawalRequest, UserAffiliateDetail } from '@/types'
 import { useAppStore } from '@/stores/app'
 import { useClipboard } from '@/composables/useClipboard'
 import { formatCurrency, formatDateTime } from '@/utils/format'
@@ -141,6 +181,22 @@ const { copyToClipboard } = useClipboard()
 
 const loading = ref(true)
 const detail = ref<UserAffiliateDetail | null>(null)
+const withdrawals = ref<AffiliateWithdrawalRequest[]>([])
+const requestingWithdrawal = ref(false)
+const withdrawalThreshold = 100
+const showWithdrawDialog = ref(false)
+const withdrawAmount = ref(100)
+const withdrawNote = ref('')
+
+const canRequestWithdrawal = computed(() => {
+  if (!detail.value) return false
+  return detail.value.aff_quota >= withdrawalThreshold && (detail.value.debt_quota || 0) <= 0
+})
+
+const canSubmitWithdrawDialog = computed(() => {
+  if (!detail.value) return false
+  return withdrawAmount.value >= withdrawalThreshold && withdrawAmount.value <= detail.value.aff_quota && (detail.value.debt_quota || 0) <= 0
+})
 
 const inviteLink = computed(() => {
   if (!detail.value) return ''
@@ -153,17 +209,21 @@ function formatCount(value: number): string {
 }
 
 async function loadAffiliateDetail(silent = false): Promise<void> {
-  if (!silent) {
-    loading.value = true
-  }
+  if (!silent) loading.value = true
   try {
-    detail.value = await userAPI.getAffiliateDetail()
+    const [affiliateDetail, withdrawalItems] = await Promise.all([
+      userAPI.getAffiliateDetail(),
+      userAPI.getAffiliateWithdrawalRequests(),
+    ])
+    detail.value = affiliateDetail
+    withdrawals.value = withdrawalItems
+    if (affiliateDetail.aff_quota >= withdrawalThreshold) {
+      withdrawAmount.value = Math.floor(affiliateDetail.aff_quota * 100) / 100
+    }
   } catch (error) {
     appStore.showError(extractApiErrorMessage(error, t('affiliate.loadFailed')))
   } finally {
-    if (!silent) {
-      loading.value = false
-    }
+    if (!silent) loading.value = false
   }
 }
 
@@ -175,6 +235,25 @@ async function copyCode(): Promise<void> {
 async function copyInviteLink(): Promise<void> {
   if (!inviteLink.value) return
   await copyToClipboard(inviteLink.value, t('affiliate.linkCopied'))
+}
+
+async function requestWithdrawal(): Promise<void> {
+  if (!detail.value || !canSubmitWithdrawDialog.value || requestingWithdrawal.value) return
+  requestingWithdrawal.value = true
+  try {
+    await userAPI.createAffiliateWithdrawalRequest({
+      amount: withdrawAmount.value,
+      applicant_note: withdrawNote.value.trim() || undefined,
+    })
+    appStore.showSuccess(t('affiliate.transfer.requestSuccess'))
+    showWithdrawDialog.value = false
+    withdrawNote.value = ''
+    await loadAffiliateDetail(true)
+  } catch (error) {
+    appStore.showError(extractApiErrorMessage(error, t('affiliate.transfer.requestFailed')))
+  } finally {
+    requestingWithdrawal.value = false
+  }
 }
 
 onMounted(() => {

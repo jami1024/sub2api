@@ -732,6 +732,7 @@ const adminNavItems = computed((): NavItem[] => {
         { path: '/admin/orders', label: t('nav.orderManagement'), icon: OrderIcon },
         { path: '/admin/orders/plans', label: t('nav.paymentPlans'), icon: CreditCardIcon },
         { path: '/admin/orders/balance-packages', label: t('nav.balancePackages'), icon: GiftIcon },
+        { path: '/admin/affiliate-withdrawals', label: t('nav.affiliateWithdrawals'), icon: UsersIcon },
       ],
     },
     { path: '/admin/usage', label: t('nav.usage'), icon: ChartIcon }

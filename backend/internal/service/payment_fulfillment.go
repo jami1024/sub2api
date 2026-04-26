@@ -409,6 +409,7 @@ func (s *PaymentService) doBalancePackage(ctx context.Context, o *dbent.PaymentO
 	if err := s.userRepo.UpdateBalance(ctx, o.UserID, o.Amount); err != nil {
 		return fmt.Errorf("update user balance: %w", err)
 	}
+	s.applyAffiliateRebateForOrder(ctx, o)
 	return s.markCompleted(ctx, o, "BALANCE_PACKAGE_SUCCESS")
 }
 
@@ -442,10 +443,41 @@ func (s *PaymentService) hasAuditLog(ctx context.Context, orderID int64, action 
 }
 
 func (s *PaymentService) applyAffiliateRebateForOrder(ctx context.Context, o *dbent.PaymentOrder) {
-	if o == nil || o.OrderType != payment.OrderTypeBalance || o.Amount <= 0 {
+	if o == nil || o.Amount <= 0 {
 		return
 	}
 	if s.affiliateService == nil {
+		return
+	}
+
+	if o.OrderType == payment.OrderTypeBalancePackage {
+		paidAt := time.Now()
+		if o.PaidAt != nil {
+			paidAt = *o.PaidAt
+		}
+		totalRebate, err := s.affiliateService.CreatePendingRebatesForOrder(ctx, o.ID, o.UserID, o.PayAmount, paidAt)
+		if err != nil {
+			s.writeAuditLog(ctx, o.ID, "AFFILIATE_REBATE_FAILED", "system", map[string]any{
+				"error": err.Error(),
+			})
+			return
+		}
+		if totalRebate <= 0 {
+			s.writeAuditLog(ctx, o.ID, "AFFILIATE_REBATE_SKIPPED", "system", map[string]any{
+				"baseAmount": o.PayAmount,
+				"reason":     "no inviter chain or rebate amount <= 0",
+			})
+			return
+		}
+		s.writeAuditLog(ctx, o.ID, "AFFILIATE_REBATE_APPLIED", "system", map[string]any{
+			"baseAmount":   o.PayAmount,
+			"rebateAmount": totalRebate,
+			"mode":         "pending_multi_level_balance_package",
+		})
+		return
+	}
+
+	if o.OrderType != payment.OrderTypeBalance {
 		return
 	}
 
