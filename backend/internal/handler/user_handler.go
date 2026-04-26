@@ -200,6 +200,72 @@ func (h *UserHandler) TransferAffiliateQuota(c *gin.Context) {
 	})
 }
 
+// CreateAffiliateWithdrawalRequestBody represents a manual affiliate withdrawal request payload.
+type CreateAffiliateWithdrawalRequestBody struct {
+	Amount        float64 `json:"amount" binding:"required"`
+	ApplicantNote string  `json:"applicant_note"`
+}
+
+// CreateAffiliateWithdrawalRequest creates a manual affiliate withdrawal request.
+// POST /api/v1/user/aff/withdrawals
+func (h *UserHandler) CreateAffiliateWithdrawalRequest(c *gin.Context) {
+	subject, ok := middleware2.GetAuthSubjectFromContext(c)
+	if !ok {
+		response.Unauthorized(c, "User not authenticated")
+		return
+	}
+
+	var req CreateAffiliateWithdrawalRequestBody
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "Invalid request: "+err.Error())
+		return
+	}
+
+	item, err := h.affiliateService.CreateWithdrawalRequest(c.Request.Context(), subject.UserID, req.Amount, req.ApplicantNote)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+
+	response.Success(c, item)
+}
+
+// ListAffiliateWithdrawalRequests returns the current user's affiliate withdrawal history.
+// GET /api/v1/user/aff/withdrawals
+func (h *UserHandler) ListAffiliateWithdrawalRequests(c *gin.Context) {
+	subject, ok := middleware2.GetAuthSubjectFromContext(c)
+	if !ok {
+		response.Unauthorized(c, "User not authenticated")
+		return
+	}
+
+	items, err := h.affiliateService.ListUserWithdrawalRequests(c.Request.Context(), subject.UserID, 100)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+
+	response.Success(c, items)
+}
+
+// ListAffiliateRebateRecords returns the current user's affiliate rebate records.
+// GET /api/v1/user/aff/rebates
+func (h *UserHandler) ListAffiliateRebateRecords(c *gin.Context) {
+	subject, ok := middleware2.GetAuthSubjectFromContext(c)
+	if !ok {
+		response.Unauthorized(c, "User not authenticated")
+		return
+	}
+
+	items, err := h.affiliateService.ListUserRebateRecords(c.Request.Context(), subject.UserID, 100)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+
+	response.Success(c, items)
+}
+
 type StartIdentityBindingRequest struct {
 	Provider   string `json:"provider" binding:"required"`
 	RedirectTo string `json:"redirect_to"`

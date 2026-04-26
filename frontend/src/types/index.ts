@@ -138,14 +138,47 @@ export interface UserAffiliateDetail {
   aff_code: string
   inviter_id?: number | null
   aff_count: number
+  pending_quota: number
   aff_quota: number
   aff_history_quota: number
+  debt_quota: number
   invitees: AffiliateInvitee[]
 }
 
 export interface AffiliateTransferResponse {
   transferred_quota: number
   balance: number
+}
+
+export interface AffiliateWithdrawalRequest {
+  id: number
+  user_id: number
+  amount: number
+  status: string
+  applicant_note: string
+  admin_note: string
+  reviewed_by?: number | null
+  reviewed_at?: string | null
+  paid_at?: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface AffiliateRebateRecord {
+  id: number
+  source_order_id: number
+  user_id: number
+  source_user_id: number
+  source_email: string
+  source_username: string
+  level: number
+  rate: number
+  base_amount: number
+  rebate_amount: number
+  status: string
+  available_at?: string | null
+  created_at: string
+  updated_at: string
 }
 
 export interface SendVerifyCodeRequest {

@@ -13,10 +13,15 @@ import (
 )
 
 var (
-	ErrAffiliateProfileNotFound = infraerrors.NotFound("AFFILIATE_PROFILE_NOT_FOUND", "affiliate profile not found")
-	ErrAffiliateCodeInvalid     = infraerrors.BadRequest("AFFILIATE_CODE_INVALID", "invalid affiliate code")
-	ErrAffiliateAlreadyBound    = infraerrors.Conflict("AFFILIATE_ALREADY_BOUND", "affiliate inviter already bound")
-	ErrAffiliateQuotaEmpty      = infraerrors.BadRequest("AFFILIATE_QUOTA_EMPTY", "no affiliate quota available to transfer")
+	ErrAffiliateProfileNotFound    = infraerrors.NotFound("AFFILIATE_PROFILE_NOT_FOUND", "affiliate profile not found")
+	ErrAffiliateCodeInvalid        = infraerrors.BadRequest("AFFILIATE_CODE_INVALID", "invalid affiliate code")
+	ErrAffiliateAlreadyBound       = infraerrors.Conflict("AFFILIATE_ALREADY_BOUND", "affiliate inviter already bound")
+	ErrAffiliateQuotaEmpty         = infraerrors.BadRequest("AFFILIATE_QUOTA_EMPTY", "no affiliate quota available to transfer")
+	ErrAffiliateWithdrawThreshold  = infraerrors.BadRequest("AFFILIATE_WITHDRAW_THRESHOLD", "affiliate withdrawal requires at least 100 available")
+	ErrAffiliateWithdrawAmount     = infraerrors.BadRequest("AFFILIATE_WITHDRAW_AMOUNT_INVALID", "invalid affiliate withdrawal amount")
+	ErrAffiliateWithdrawalNotFound = infraerrors.NotFound("AFFILIATE_WITHDRAWAL_NOT_FOUND", "affiliate withdrawal request not found")
+	ErrAffiliateWithdrawalStatus   = infraerrors.BadRequest("AFFILIATE_WITHDRAWAL_STATUS_INVALID", "affiliate withdrawal request status invalid")
+	ErrAffiliateDebtOutstanding    = infraerrors.BadRequest("AFFILIATE_DEBT_OUTSTANDING", "affiliate debt must be cleared before withdrawal")
 )
 
 const (
@@ -52,8 +57,10 @@ type AffiliateSummary struct {
 	AffCode         string    `json:"aff_code"`
 	InviterID       *int64    `json:"inviter_id,omitempty"`
 	AffCount        int       `json:"aff_count"`
+	PendingQuota    float64   `json:"pending_quota"`
 	AffQuota        float64   `json:"aff_quota"`
 	AffHistoryQuota float64   `json:"aff_history_quota"`
+	DebtQuota       float64   `json:"debt_quota"`
 	CreatedAt       time.Time `json:"created_at"`
 	UpdatedAt       time.Time `json:"updated_at"`
 }
@@ -70,9 +77,59 @@ type AffiliateDetail struct {
 	AffCode         string             `json:"aff_code"`
 	InviterID       *int64             `json:"inviter_id,omitempty"`
 	AffCount        int                `json:"aff_count"`
+	PendingQuota    float64            `json:"pending_quota"`
 	AffQuota        float64            `json:"aff_quota"`
 	AffHistoryQuota float64            `json:"aff_history_quota"`
+	DebtQuota       float64            `json:"debt_quota"`
 	Invitees        []AffiliateInvitee `json:"invitees"`
+}
+
+type AffiliateAncestor struct {
+	UserID int64 `json:"user_id"`
+	Level  int   `json:"level"`
+}
+
+type AffiliateRebateRecordInput struct {
+	UserID        int64
+	SourceUserID  int64
+	SourceOrderID int64
+	Level         int
+	Rate          float64
+	BaseAmount    float64
+	RebateAmount  float64
+	Status        string
+	AvailableAt   time.Time
+}
+
+type AffiliateRebateRecord struct {
+	ID             int64      `json:"id"`
+	SourceOrderID  int64      `json:"source_order_id"`
+	UserID         int64      `json:"user_id"`
+	SourceUserID   int64      `json:"source_user_id"`
+	SourceEmail    string     `json:"source_email"`
+	SourceUsername string     `json:"source_username"`
+	Level          int        `json:"level"`
+	Rate           float64    `json:"rate"`
+	BaseAmount     float64    `json:"base_amount"`
+	RebateAmount   float64    `json:"rebate_amount"`
+	Status         string     `json:"status"`
+	AvailableAt    *time.Time `json:"available_at,omitempty"`
+	CreatedAt      time.Time  `json:"created_at"`
+	UpdatedAt      time.Time  `json:"updated_at"`
+}
+
+type AffiliateWithdrawalRequest struct {
+	ID            int64      `json:"id"`
+	UserID        int64      `json:"user_id"`
+	Amount        float64    `json:"amount"`
+	Status        string     `json:"status"`
+	ApplicantNote string     `json:"applicant_note"`
+	AdminNote     string     `json:"admin_note"`
+	ReviewedBy    *int64     `json:"reviewed_by,omitempty"`
+	ReviewedAt    *time.Time `json:"reviewed_at,omitempty"`
+	PaidAt        *time.Time `json:"paid_at,omitempty"`
+	CreatedAt     time.Time  `json:"created_at"`
+	UpdatedAt     time.Time  `json:"updated_at"`
 }
 
 type AffiliateRepository interface {
@@ -82,6 +139,17 @@ type AffiliateRepository interface {
 	AccrueQuota(ctx context.Context, inviterID, inviteeUserID int64, amount float64) (bool, error)
 	TransferQuotaToBalance(ctx context.Context, userID int64) (float64, float64, error)
 	ListInvitees(ctx context.Context, inviterID int64, limit int) ([]AffiliateInvitee, error)
+	ListAncestors(ctx context.Context, userID int64, maxDepth int) ([]AffiliateAncestor, error)
+	CreatePendingRebateRecords(ctx context.Context, records []AffiliateRebateRecordInput) (int, error)
+	ReleaseDuePendingRebateRecords(ctx context.Context, now time.Time) (int, error)
+	CreateWithdrawalRequest(ctx context.Context, userID int64, amount float64, applicantNote string) (*AffiliateWithdrawalRequest, error)
+	ListWithdrawalRequests(ctx context.Context, status string, limit int) ([]AffiliateWithdrawalRequest, error)
+	ListUserWithdrawalRequests(ctx context.Context, userID int64, limit int) ([]AffiliateWithdrawalRequest, error)
+	RejectWithdrawalRequest(ctx context.Context, requestID int64, reviewerID int64, adminNote string) (*AffiliateWithdrawalRequest, error)
+	MarkWithdrawalPaid(ctx context.Context, requestID int64, reviewerID int64, adminNote string) (*AffiliateWithdrawalRequest, error)
+	ReverseRebatesForOrder(ctx context.Context, sourceOrderID int64) error
+	SumPendingRebateByUser(ctx context.Context, userID int64) (float64, error)
+	ListUserRebateRecords(ctx context.Context, userID int64, limit int) ([]AffiliateRebateRecord, error)
 }
 
 type AffiliateService struct {
@@ -115,6 +183,11 @@ func (s *AffiliateService) GetAffiliateDetail(ctx context.Context, userID int64)
 	if err != nil {
 		return nil, err
 	}
+	pendingQuota, err := s.repo.SumPendingRebateByUser(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	summary.PendingQuota = pendingQuota
 	invitees, err := s.listInvitees(ctx, userID)
 	if err != nil {
 		return nil, err
@@ -124,8 +197,10 @@ func (s *AffiliateService) GetAffiliateDetail(ctx context.Context, userID int64)
 		AffCode:         summary.AffCode,
 		InviterID:       summary.InviterID,
 		AffCount:        summary.AffCount,
+		PendingQuota:    summary.PendingQuota,
 		AffQuota:        summary.AffQuota,
 		AffHistoryQuota: summary.AffHistoryQuota,
+		DebtQuota:       summary.DebtQuota,
 		Invitees:        invitees,
 	}, nil
 }

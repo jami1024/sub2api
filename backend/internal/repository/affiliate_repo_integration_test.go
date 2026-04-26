@@ -39,6 +39,31 @@ func querySingleInt(t *testing.T, ctx context.Context, client *dbent.Client, que
 	return value
 }
 
+func mustCreatePaymentOrder(t *testing.T, ctx context.Context, client *dbent.Client, user *service.User, outTradeNo string) int64 {
+	t.Helper()
+	order, err := client.PaymentOrder.Create().
+		SetUserID(user.ID).
+		SetUserEmail(user.Email).
+		SetUserName(user.Username).
+		SetAmount(100).
+		SetPayAmount(100).
+		SetFeeRate(0).
+		SetRechargeCode("TEST-ORDER-" + outTradeNo).
+		SetOutTradeNo(outTradeNo).
+		SetPaymentType("alipay").
+		SetPaymentTradeNo("trade-" + outTradeNo).
+		SetOrderType("balance_package").
+		SetStatus("COMPLETED").
+		SetPaidAt(time.Now()).
+		SetCompletedAt(time.Now()).
+		SetExpiresAt(time.Now().Add(time.Hour)).
+		SetClientIP("127.0.0.1").
+		SetSrcHost("example.com").
+		Save(ctx)
+	require.NoError(t, err)
+	return order.ID
+}
+
 func TestAffiliateRepository_TransferQuotaToBalance_UsesClaimedQuotaBeforeClear(t *testing.T) {
 	ctx := context.Background()
 	tx := testEntTx(t)
@@ -181,4 +206,246 @@ VALUES ($1, $2, 0, 0, NOW(), NOW())`, u.ID, affCode)
 	persistedBalance := querySingleFloat(t, txCtx, client,
 		"SELECT balance::double precision FROM users WHERE id = $1", u.ID)
 	require.InDelta(t, 3.21, persistedBalance, 1e-9)
+}
+
+func TestAffiliateRepository_ReleaseDuePendingRebateRecords(t *testing.T) {
+	ctx := context.Background()
+	tx := testEntTx(t)
+	txCtx := dbent.NewTxContext(ctx, tx)
+	client := tx.Client()
+
+	repo := NewAffiliateRepository(client, integrationDB)
+
+	u := mustCreateUser(t, client, &service.User{
+		Email:        fmt.Sprintf("affiliate-release-%d@example.com", time.Now().UnixNano()),
+		PasswordHash: "hash",
+		Role:         service.RoleUser,
+		Status:       service.StatusActive,
+		Balance:      0,
+		Concurrency:  5,
+	})
+
+	affCode := fmt.Sprintf("REL%09d", time.Now().UnixNano()%1_000_000_000)
+	_, err := client.ExecContext(txCtx, `
+INSERT INTO user_affiliates (user_id, aff_code, aff_quota, aff_history_quota, created_at, updated_at)
+VALUES ($1, $2, 0, 0, NOW(), NOW())`, u.ID, affCode)
+	require.NoError(t, err)
+
+	orderID1 := mustCreatePaymentOrder(t, txCtx, client, u, fmt.Sprintf("release-1-%d", time.Now().UnixNano()))
+	orderID2 := mustCreatePaymentOrder(t, txCtx, client, u, fmt.Sprintf("release-2-%d", time.Now().UnixNano()))
+	orderID3 := mustCreatePaymentOrder(t, txCtx, client, u, fmt.Sprintf("release-3-%d", time.Now().UnixNano()))
+
+	_, err = client.ExecContext(txCtx, `
+INSERT INTO affiliate_rebate_records (user_id, source_user_id, source_order_id, level, rate, base_amount, rebate_amount, status, available_at, created_at, updated_at)
+VALUES
+  ($1, $1, $2, 1, 6, 100, 6, 'pending', NOW() - INTERVAL '1 hour', NOW(), NOW()),
+  ($1, $1, $3, 2, 3, 100, 3, 'pending', NOW() - INTERVAL '2 hour', NOW(), NOW()),
+  ($1, $1, $4, 3, 1, 100, 1, 'pending', NOW() + INTERVAL '2 hour', NOW(), NOW())
+`, u.ID, orderID1, orderID2, orderID3)
+	require.NoError(t, err)
+
+	released, err := repo.ReleaseDuePendingRebateRecords(txCtx, time.Now())
+	require.NoError(t, err)
+	require.Equal(t, 2, released)
+
+	affQuota := querySingleFloat(t, txCtx, client,
+		"SELECT aff_quota::double precision FROM user_affiliates WHERE user_id = $1", u.ID)
+	require.InDelta(t, 9.0, affQuota, 1e-9)
+
+	affHistoryQuota := querySingleFloat(t, txCtx, client,
+		"SELECT aff_history_quota::double precision FROM user_affiliates WHERE user_id = $1", u.ID)
+	require.InDelta(t, 9.0, affHistoryQuota, 1e-9)
+
+	availableCount := querySingleInt(t, txCtx, client,
+		"SELECT COUNT(*) FROM affiliate_rebate_records WHERE user_id = $1 AND status = 'available'", u.ID)
+	require.Equal(t, 2, availableCount)
+
+	pendingCount := querySingleInt(t, txCtx, client,
+		"SELECT COUNT(*) FROM affiliate_rebate_records WHERE user_id = $1 AND status = 'pending'", u.ID)
+	require.Equal(t, 1, pendingCount)
+}
+
+func TestAffiliateRepository_CreateWithdrawalRequest(t *testing.T) {
+	ctx := context.Background()
+	tx := testEntTx(t)
+	txCtx := dbent.NewTxContext(ctx, tx)
+	client := tx.Client()
+
+	repo := NewAffiliateRepository(client, integrationDB)
+
+	u := mustCreateUser(t, client, &service.User{
+		Email:        fmt.Sprintf("affiliate-withdraw-%d@example.com", time.Now().UnixNano()),
+		PasswordHash: "hash",
+		Role:         service.RoleUser,
+		Status:       service.StatusActive,
+		Balance:      0,
+		Concurrency:  5,
+	})
+
+	affCode := fmt.Sprintf("WD%010d", time.Now().UnixNano()%10_000_000_000)
+	_, err := client.ExecContext(txCtx, `
+INSERT INTO user_affiliates (user_id, aff_code, aff_quota, aff_history_quota, created_at, updated_at)
+VALUES ($1, $2, 180, 220, NOW(), NOW())`, u.ID, affCode)
+	require.NoError(t, err)
+
+	orderID1 := mustCreatePaymentOrder(t, txCtx, client, u, fmt.Sprintf("withdraw-1-%d", time.Now().UnixNano()))
+	orderID2 := mustCreatePaymentOrder(t, txCtx, client, u, fmt.Sprintf("withdraw-2-%d", time.Now().UnixNano()))
+
+	_, err = client.ExecContext(txCtx, `
+INSERT INTO affiliate_rebate_records (user_id, source_user_id, source_order_id, level, rate, base_amount, rebate_amount, status, available_at, created_at, updated_at)
+VALUES
+  ($1, $1, $2, 1, 6, 100, 60, 'available', NOW() - INTERVAL '1 day', NOW(), NOW()),
+  ($1, $1, $3, 2, 3, 100, 60, 'available', NOW() - INTERVAL '2 day', NOW(), NOW())
+`, u.ID, orderID1, orderID2)
+	require.NoError(t, err)
+
+	item, err := repo.CreateWithdrawalRequest(txCtx, u.ID, 120, "manual payout")
+	require.NoError(t, err)
+	require.NotNil(t, item)
+	require.Equal(t, u.ID, item.UserID)
+	require.InDelta(t, 120.0, item.Amount, 1e-9)
+	require.Equal(t, "pending", item.Status)
+
+	affQuota := querySingleFloat(t, txCtx, client,
+		"SELECT aff_quota::double precision FROM user_affiliates WHERE user_id = $1", u.ID)
+	require.InDelta(t, 60.0, affQuota, 1e-9)
+
+	requestCount := querySingleInt(t, txCtx, client,
+		"SELECT COUNT(*) FROM affiliate_withdrawal_requests WHERE user_id = $1 AND status = 'pending'", u.ID)
+	require.Equal(t, 1, requestCount)
+
+	withdrawRequestedCount := querySingleInt(t, txCtx, client,
+		"SELECT COUNT(*) FROM affiliate_rebate_records WHERE user_id = $1 AND status = 'withdraw_requested'", u.ID)
+	require.Equal(t, 2, withdrawRequestedCount)
+
+	requestItemCount := querySingleInt(t, txCtx, client,
+		"SELECT COUNT(*) FROM affiliate_withdrawal_request_items WHERE withdrawal_request_id = $1", item.ID)
+	require.Equal(t, 2, requestItemCount)
+}
+
+func TestAffiliateRepository_ReviewWithdrawalRequest(t *testing.T) {
+	ctx := context.Background()
+	tx := testEntTx(t)
+	txCtx := dbent.NewTxContext(ctx, tx)
+	client := tx.Client()
+
+	repo := NewAffiliateRepository(client, integrationDB)
+
+	u := mustCreateUser(t, client, &service.User{
+		Email:        fmt.Sprintf("affiliate-review-%d@example.com", time.Now().UnixNano()),
+		PasswordHash: "hash",
+		Role:         service.RoleUser,
+		Status:       service.StatusActive,
+		Balance:      0,
+		Concurrency:  5,
+	})
+
+	affCode := fmt.Sprintf("RV%010d", time.Now().UnixNano()%10_000_000_000)
+	_, err := client.ExecContext(txCtx, `
+INSERT INTO user_affiliates (user_id, aff_code, aff_quota, aff_history_quota, created_at, updated_at)
+VALUES ($1, $2, 240, 240, NOW(), NOW())`, u.ID, affCode)
+	require.NoError(t, err)
+
+	orderID1 := mustCreatePaymentOrder(t, txCtx, client, u, fmt.Sprintf("review-1-%d", time.Now().UnixNano()))
+	orderID2 := mustCreatePaymentOrder(t, txCtx, client, u, fmt.Sprintf("review-2-%d", time.Now().UnixNano()))
+
+	_, err = client.ExecContext(txCtx, `
+INSERT INTO affiliate_rebate_records (user_id, source_user_id, source_order_id, level, rate, base_amount, rebate_amount, status, available_at, created_at, updated_at)
+VALUES
+  ($1, $1, $2, 1, 6, 100, 120, 'available', NOW() - INTERVAL '1 day', NOW(), NOW()),
+  ($1, $1, $3, 2, 3, 100, 120, 'available', NOW() - INTERVAL '2 day', NOW(), NOW())
+`, u.ID, orderID1, orderID2)
+	require.NoError(t, err)
+
+	req, err := repo.CreateWithdrawalRequest(txCtx, u.ID, 120, "manual payout")
+	require.NoError(t, err)
+
+	rejected, err := repo.RejectWithdrawalRequest(txCtx, req.ID, 9001, "reject")
+	require.NoError(t, err)
+	require.Equal(t, "rejected", rejected.Status)
+
+	affQuota := querySingleFloat(t, txCtx, client,
+		"SELECT aff_quota::double precision FROM user_affiliates WHERE user_id = $1", u.ID)
+	require.InDelta(t, 240.0, affQuota, 1e-9)
+
+	availableCount := querySingleInt(t, txCtx, client,
+		"SELECT COUNT(*) FROM affiliate_rebate_records WHERE user_id = $1 AND status = 'available'", u.ID)
+	require.Equal(t, 2, availableCount)
+
+	_, err = client.ExecContext(txCtx, `
+UPDATE affiliate_rebate_records
+SET status = 'available', updated_at = NOW()
+WHERE user_id = $1
+`, u.ID)
+	require.NoError(t, err)
+
+	req2, err := repo.CreateWithdrawalRequest(txCtx, u.ID, 120, "manual payout 2")
+	require.NoError(t, err)
+
+	paid, err := repo.MarkWithdrawalPaid(txCtx, req2.ID, 9002, "paid")
+	require.NoError(t, err)
+	require.Equal(t, "paid", paid.Status)
+	require.NotNil(t, paid.PaidAt)
+
+	withdrawPaidCount := querySingleInt(t, txCtx, client,
+		"SELECT COUNT(*) FROM affiliate_rebate_records WHERE user_id = $1 AND status = 'withdraw_paid'", u.ID)
+	require.Equal(t, 1, withdrawPaidCount)
+}
+
+func TestAffiliateRepository_ReverseRebatesForOrder(t *testing.T) {
+	ctx := context.Background()
+	tx := testEntTx(t)
+	txCtx := dbent.NewTxContext(ctx, tx)
+	client := tx.Client()
+
+	repo := NewAffiliateRepository(client, integrationDB)
+
+	u := mustCreateUser(t, client, &service.User{
+		Email:        fmt.Sprintf("affiliate-reverse-%d@example.com", time.Now().UnixNano()),
+		PasswordHash: "hash",
+		Role:         service.RoleUser,
+		Status:       service.StatusActive,
+		Balance:      0,
+		Concurrency:  5,
+	})
+
+	affCode := fmt.Sprintf("RB%010d", time.Now().UnixNano()%10_000_000_000)
+	_, err := client.ExecContext(txCtx, `
+INSERT INTO user_affiliates (user_id, aff_code, aff_quota, aff_history_quota, debt_quota, created_at, updated_at)
+VALUES ($1, $2, 80, 200, 0, NOW(), NOW())`, u.ID, affCode)
+	require.NoError(t, err)
+
+	orderID := mustCreatePaymentOrder(t, txCtx, client, u, fmt.Sprintf("reverse-%d", time.Now().UnixNano()))
+
+	_, err = client.ExecContext(txCtx, `
+INSERT INTO affiliate_rebate_records (user_id, source_user_id, source_order_id, level, rate, base_amount, rebate_amount, status, available_at, created_at, updated_at)
+VALUES
+  ($1, $1, $2, 1, 6, 100, 20, 'pending', NOW() + INTERVAL '1 day', NOW(), NOW()),
+  ($1, $1, $2, 2, 3, 100, 30, 'available', NOW() - INTERVAL '1 day', NOW(), NOW()),
+  ($1, $1, $2, 3, 1, 100, 50, 'withdraw_paid', NOW() - INTERVAL '2 day', NOW(), NOW())
+`, u.ID, orderID)
+	require.NoError(t, err)
+
+	err = repo.ReverseRebatesForOrder(txCtx, orderID)
+	require.NoError(t, err)
+
+	cancelledCount := querySingleInt(t, txCtx, client,
+		"SELECT COUNT(*) FROM affiliate_rebate_records WHERE source_order_id = $1 AND status = 'cancelled'", orderID)
+	require.Equal(t, 1, cancelledCount)
+
+	reversedCount := querySingleInt(t, txCtx, client,
+		"SELECT COUNT(*) FROM affiliate_rebate_records WHERE source_order_id = $1 AND status = 'reversed'", orderID)
+	require.Equal(t, 1, reversedCount)
+
+	debtOffsetCount := querySingleInt(t, txCtx, client,
+		"SELECT COUNT(*) FROM affiliate_rebate_records WHERE source_order_id = $1 AND status = 'debt_offset'", orderID)
+	require.Equal(t, 1, debtOffsetCount)
+
+	affQuota := querySingleFloat(t, txCtx, client,
+		"SELECT aff_quota::double precision FROM user_affiliates WHERE user_id = $1", u.ID)
+	require.InDelta(t, 50.0, affQuota, 1e-9)
+
+	debtQuota := querySingleFloat(t, txCtx, client,
+		"SELECT debt_quota::double precision FROM user_affiliates WHERE user_id = $1", u.ID)
+	require.InDelta(t, 50.0, debtQuota, 1e-9)
 }

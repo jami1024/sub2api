@@ -568,6 +568,17 @@ const routes: RouteRecordRaw[] = [
       requiresPayment: true
     }
   },
+  {
+    path: '/admin/affiliate-withdrawals',
+    name: 'AdminAffiliateWithdrawals',
+    component: () => import('@/views/admin/AffiliateWithdrawalsView.vue'),
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: true,
+      title: 'Affiliate Withdrawals',
+      titleKey: 'affiliateWithdrawals.title',
+    }
+  },
 
   // ==================== 404 Not Found ====================
   {
