@@ -29,7 +29,7 @@ func (s *affiliateWorkflowRepoStub) GetAffiliateByCode(ctx context.Context, code
 func (s *affiliateWorkflowRepoStub) BindInviter(ctx context.Context, userID, inviterID int64) (bool, error) {
 	panic("unexpected BindInviter call")
 }
-func (s *affiliateWorkflowRepoStub) AccrueQuota(ctx context.Context, inviterID, inviteeUserID int64, amount float64) (bool, error) {
+func (s *affiliateWorkflowRepoStub) AccrueQuota(ctx context.Context, inviterID, inviteeUserID int64, amount float64, freezeHours int) (bool, error) {
 	panic("unexpected AccrueQuota call")
 }
 func (s *affiliateWorkflowRepoStub) TransferQuotaToBalance(ctx context.Context, userID int64) (float64, float64, error) {
@@ -93,6 +93,28 @@ func (s *affiliateWorkflowRepoStub) SumPendingRebateByUser(ctx context.Context, 
 }
 func (s *affiliateWorkflowRepoStub) ListUserRebateRecords(ctx context.Context, userID int64, limit int) ([]AffiliateRebateRecord, error) {
 	return s.rebateRecords, nil
+}
+
+func (s *affiliateWorkflowRepoStub) GetAccruedRebateFromInvitee(ctx context.Context, inviterID, inviteeUserID int64) (float64, error) {
+	return 0, nil
+}
+func (s *affiliateWorkflowRepoStub) ThawFrozenQuota(ctx context.Context, userID int64) (float64, error) {
+	return 0, nil
+}
+func (s *affiliateWorkflowRepoStub) UpdateUserAffCode(ctx context.Context, userID int64, newCode string) error {
+	return nil
+}
+func (s *affiliateWorkflowRepoStub) ResetUserAffCode(ctx context.Context, userID int64) (string, error) {
+	return "", nil
+}
+func (s *affiliateWorkflowRepoStub) SetUserRebateRate(ctx context.Context, userID int64, ratePercent *float64) error {
+	return nil
+}
+func (s *affiliateWorkflowRepoStub) BatchSetUserRebateRate(ctx context.Context, userIDs []int64, ratePercent *float64) error {
+	return nil
+}
+func (s *affiliateWorkflowRepoStub) ListUsersWithCustomSettings(ctx context.Context, filter AffiliateAdminFilter) ([]AffiliateAdminEntry, int64, error) {
+	return nil, 0, nil
 }
 
 func TestCreatePendingRebatesForOrderCreatesThreeLevels(t *testing.T) {

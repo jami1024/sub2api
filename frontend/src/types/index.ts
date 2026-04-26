@@ -2,8 +2,7 @@
  * Core Type Definitions for Sub2API Frontend
  */
 
-// ==================== Common Types ====================
-
+// ==================== Common Types =============
 export interface SelectOption {
   value: string | number | boolean | null
   label: string
@@ -22,8 +21,7 @@ export interface FetchOptions {
   signal?: AbortSignal
 }
 
-// ==================== Notification Types ====================
-
+// ==================== Notification Types =============
 /** Notification email entry with enable/disable and verification state.
  *  email="" is a placeholder for the primary email (user's registration email or admin email). */
 export interface NotifyEmailEntry {
@@ -32,8 +30,7 @@ export interface NotifyEmailEntry {
   verified: boolean
 }
 
-// ==================== User & Auth Types ====================
-
+// ==================== User & Auth Types =============
 export type UserAuthProvider = 'email' | 'linuxdo' | 'oidc' | 'wechat'
 
 export interface UserAuthBindingStatus {
@@ -131,6 +128,7 @@ export interface AffiliateInvitee {
   email: string
   username: string
   created_at?: string
+  total_rebate: number
 }
 
 export interface UserAffiliateDetail {
@@ -140,8 +138,11 @@ export interface UserAffiliateDetail {
   aff_count: number
   pending_quota: number
   aff_quota: number
+  aff_frozen_quota: number
   aff_history_quota: number
   debt_quota: number
+  /** 当前用户作为邀请人时实际生效的返利比例（专属覆盖全局）。0-100。 */
+  effective_rebate_rate_percent: number
   invitees: AffiliateInvitee[]
 }
 
@@ -246,6 +247,7 @@ export interface PublicSettings {
   channel_monitor_enabled: boolean
   channel_monitor_default_interval_seconds: number
   available_channels_enabled: boolean
+  affiliate_enabled: boolean
 }
 
 export interface AuthResponse {
@@ -260,8 +262,7 @@ export interface CurrentUserResponse extends User {
   run_mode?: 'standard' | 'simple'
 }
 
-// ==================== Subscription Types ====================
-
+// ==================== Subscription Types =============
 export interface Subscription {
   id: number
   user_id: number
@@ -291,8 +292,7 @@ export interface UpdateSubscriptionRequest {
   is_active?: boolean
 }
 
-// ==================== Announcement Types ====================
-
+// ==================== Announcement Types =============
 export type AnnouncementStatus = 'draft' | 'active' | 'archived'
 export type AnnouncementNotifyMode = 'silent' | 'popup'
 
@@ -371,8 +371,7 @@ export interface AnnouncementUserReadStatus {
   read_at?: string
 }
 
-// ==================== Proxy Node Types ====================
-
+// ==================== Proxy Node Types =============
 export interface ProxyNode {
   id: number
   subscription_id: number
@@ -388,8 +387,7 @@ export interface ProxyNode {
   updated_at: string
 }
 
-// ==================== Conversion Types ====================
-
+// ==================== Conversion Types =============
 export interface ConversionRequest {
   subscription_ids: number[]
   target_type: 'clash' | 'v2ray' | 'surge' | 'quantumult' | 'shadowrocket'
@@ -412,8 +410,7 @@ export interface ConversionResult {
   node_count: number
 }
 
-// ==================== Statistics Types ====================
-
+// ==================== Statistics Types =============
 export interface SubscriptionStats {
   subscription_id: number
   total_nodes: number
@@ -431,8 +428,7 @@ export interface UserStats {
   last_conversion: string | null
 }
 
-// ==================== API Response Types ====================
-
+// ==================== API Response Types =============
 export interface ApiResponse<T = unknown> {
   code: number
   message: string
@@ -453,8 +449,7 @@ export interface PaginatedResponse<T> {
   pages: number
 }
 
-// ==================== UI State Types ====================
-
+// ==================== UI State Types =============
 export type ToastType = 'success' | 'error' | 'info' | 'warning'
 
 export interface Toast {
@@ -472,15 +467,13 @@ export interface AppState {
   toasts: Toast[]
 }
 
-// ==================== Validation Types ====================
-
+// ==================== Validation Types =============
 export interface ValidationError {
   field: string
   message: string
 }
 
-// ==================== Table/List Types ====================
-
+// ==================== Table/List Types =============
 export interface SortConfig {
   key: string
   order: 'asc' | 'desc'
@@ -495,8 +488,7 @@ export interface PaginationConfig {
   page_size: number
 }
 
-// ==================== API Key & Group Types ====================
-
+// ==================== API Key & Group Types =============
 export type GroupPlatform = 'anthropic' | 'openai' | 'gemini' | 'antigravity'
 
 export type SubscriptionType = 'standard' | 'subscription'
@@ -671,8 +663,7 @@ export interface UpdateGroupRequest {
   copy_accounts_from_group_ids?: number[]
 }
 
-// ==================== Account & Proxy Types ====================
-
+// ==================== Account & Proxy Types =============
 export type AccountPlatform = 'anthropic' | 'openai' | 'gemini' | 'antigravity'
 export type AccountType = 'oauth' | 'setup-token' | 'apikey' | 'upstream' | 'bedrock'
 export type OAuthAddMethod = 'oauth' | 'setup-token'
@@ -1112,8 +1103,7 @@ export interface AdminDataImportResult {
   errors?: AdminDataImportError[]
 }
 
-// ==================== Usage & Redeem Types ====================
-
+// ==================== Usage & Redeem Types =============
 export type RedeemCodeType = 'balance' | 'concurrency' | 'subscription' | 'invitation'
 export type UsageRequestType = 'unknown' | 'sync' | 'stream' | 'ws_v2'
 
@@ -1256,8 +1246,7 @@ export interface RedeemCodeRequest {
   code: string
 }
 
-// ==================== Dashboard & Statistics ====================
-
+// ==================== Dashboard & Statistics =============
 export interface DashboardStats {
   // 用户统计
   total_users: number
@@ -1322,8 +1311,7 @@ export interface UsageStatsResponse {
   models?: Record<string, number>
 }
 
-// ==================== Trend & Chart Types ====================
-
+// ==================== Trend & Chart Types =============
 export interface TrendDataPoint {
   date: string
   requests: number
@@ -1413,8 +1401,7 @@ export interface ApiKeyUsageTrendPoint {
   tokens: number
 }
 
-// ==================== Admin User Management ====================
-
+// ==================== Admin User Management =============
 export interface UpdateUserRequest {
   email?: string
   password?: string
@@ -1435,8 +1422,7 @@ export interface ChangePasswordRequest {
   new_password: string
 }
 
-// ==================== User Subscription Types ====================
-
+// ==================== User Subscription Types =============
 export interface UserSubscription {
   id: number
   user_id: number
@@ -1495,8 +1481,7 @@ export interface ExtendSubscriptionRequest {
   days: number
 }
 
-// ==================== Query Parameters ====================
-
+// ==================== Query Parameters =============
 export interface UsageQueryParams {
   page?: number
   page_size?: number
@@ -1514,8 +1499,7 @@ export interface UsageQueryParams {
   sort_order?: 'asc' | 'desc'
 }
 
-// ==================== Account Usage Statistics ====================
-
+// ==================== Account Usage Statistics =============
 export interface AccountUsageHistory {
   date: string
   label: string
@@ -1570,8 +1554,7 @@ export interface AccountUsageStatsResponse {
   upstream_endpoints: EndpointStat[]
 }
 
-// ==================== User Attribute Types ====================
-
+// ==================== User Attribute Types =============
 export type UserAttributeType = 'text' | 'textarea' | 'number' | 'email' | 'url' | 'date' | 'select' | 'multi_select'
 
 export interface UserAttributeOption {
@@ -1644,8 +1627,7 @@ export interface UserAttributeValuesMap {
   [attributeId: number]: string
 }
 
-// ==================== Promo Code Types ====================
-
+// ==================== Promo Code Types =============
 export interface PromoCode {
   id: number
   code: string
@@ -1685,8 +1667,7 @@ export interface UpdatePromoCodeRequest {
   notes?: string
 }
 
-// ==================== TOTP (2FA) Types ====================
-
+// ==================== TOTP (2FA) Types =============
 export interface TotpStatus {
   enabled: boolean
   enabled_at: number | null  // Unix timestamp in seconds
@@ -1734,8 +1715,7 @@ export interface TotpLogin2FARequest {
   totp_code: string
 }
 
-// ==================== Scheduled Test Types ====================
-
+// ==================== Scheduled Test Types =============
 export interface ScheduledTestPlan {
   id: number
   account_id: number

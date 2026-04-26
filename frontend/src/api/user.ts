@@ -17,7 +17,7 @@ import type {
   UserAffiliateDetail,
   AffiliateTransferResponse,
   AffiliateWithdrawalRequest,
-  AffiliateRebateRecord,
+  AffiliateRebateRecord
 } from '@/types'
 
 /**
@@ -222,7 +222,7 @@ export const userAPI = {
   transferAffiliateQuota,
   createAffiliateWithdrawalRequest,
   getAffiliateWithdrawalRequests,
-  getAffiliateRebateRecords,
+  getAffiliateRebateRecords
 }
 
 export default userAPI

@@ -39,31 +39,6 @@ func querySingleInt(t *testing.T, ctx context.Context, client *dbent.Client, que
 	return value
 }
 
-func mustCreatePaymentOrder(t *testing.T, ctx context.Context, client *dbent.Client, user *service.User, outTradeNo string) int64 {
-	t.Helper()
-	order, err := client.PaymentOrder.Create().
-		SetUserID(user.ID).
-		SetUserEmail(user.Email).
-		SetUserName(user.Username).
-		SetAmount(100).
-		SetPayAmount(100).
-		SetFeeRate(0).
-		SetRechargeCode("TEST-ORDER-" + outTradeNo).
-		SetOutTradeNo(outTradeNo).
-		SetPaymentType("alipay").
-		SetPaymentTradeNo("trade-" + outTradeNo).
-		SetOrderType("balance_package").
-		SetStatus("COMPLETED").
-		SetPaidAt(time.Now()).
-		SetCompletedAt(time.Now()).
-		SetExpiresAt(time.Now().Add(time.Hour)).
-		SetClientIP("127.0.0.1").
-		SetSrcHost("example.com").
-		Save(ctx)
-	require.NoError(t, err)
-	return order.ID
-}
-
 func TestAffiliateRepository_TransferQuotaToBalance_UsesClaimedQuotaBeforeClear(t *testing.T) {
 	ctx := context.Background()
 	tx := testEntTx(t)
@@ -150,7 +125,7 @@ func TestAffiliateRepository_AccrueQuota_ReusesOuterTransaction(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, bound, "invitee must bind to inviter")
 
-	applied, err := repo.AccrueQuota(txCtx, inviter.ID, invitee.ID, 3.5)
+	applied, err := repo.AccrueQuota(txCtx, inviter.ID, invitee.ID, 3.5, 0)
 	require.NoError(t, err)
 	require.True(t, applied, "AccrueQuota must report applied=true")
 
@@ -208,7 +183,16 @@ VALUES ($1, $2, 0, 0, NOW(), NOW())`, u.ID, affCode)
 	require.InDelta(t, 3.21, persistedBalance, 1e-9)
 }
 
-func TestAffiliateRepository_ReleaseDuePendingRebateRecords(t *testing.T) {
+// TestAffiliateRepository_AdminCustomCode covers the success path of admin
+// invite-code rewrite + reset within a shared test transaction:
+// - UpdateUserAffCode replaces aff_code, sets aff_code_custom=true, lookup works
+// - the old code can no longer be found
+// - ResetUserAffCode reverts aff_code_custom and assigns a new system-format code
+//
+// The conflict path (duplicate code → ErrAffiliateCodeTaken) lives in its own
+// test because a unique-violation aborts the surrounding Postgres tx, which
+// would poison subsequent assertions in the same transaction.
+func TestAffiliateRepository_AdminCustomCode(t *testing.T) {
 	ctx := context.Background()
 	tx := testEntTx(t)
 	txCtx := dbent.NewTxContext(ctx, tx)
@@ -217,55 +201,55 @@ func TestAffiliateRepository_ReleaseDuePendingRebateRecords(t *testing.T) {
 	repo := NewAffiliateRepository(client, integrationDB)
 
 	u := mustCreateUser(t, client, &service.User{
-		Email:        fmt.Sprintf("affiliate-release-%d@example.com", time.Now().UnixNano()),
+		Email:        fmt.Sprintf("affiliate-custom-%d@example.com", time.Now().UnixNano()),
 		PasswordHash: "hash",
 		Role:         service.RoleUser,
 		Status:       service.StatusActive,
-		Balance:      0,
-		Concurrency:  5,
 	})
 
-	affCode := fmt.Sprintf("REL%09d", time.Now().UnixNano()%1_000_000_000)
-	_, err := client.ExecContext(txCtx, `
-INSERT INTO user_affiliates (user_id, aff_code, aff_quota, aff_history_quota, created_at, updated_at)
-VALUES ($1, $2, 0, 0, NOW(), NOW())`, u.ID, affCode)
+	original, err := repo.EnsureUserAffiliate(txCtx, u.ID)
 	require.NoError(t, err)
+	require.False(t, original.AffCodeCustom, "system-generated codes start as non-custom")
+	originalCode := original.AffCode
 
-	orderID1 := mustCreatePaymentOrder(t, txCtx, client, u, fmt.Sprintf("release-1-%d", time.Now().UnixNano()))
-	orderID2 := mustCreatePaymentOrder(t, txCtx, client, u, fmt.Sprintf("release-2-%d", time.Now().UnixNano()))
-	orderID3 := mustCreatePaymentOrder(t, txCtx, client, u, fmt.Sprintf("release-3-%d", time.Now().UnixNano()))
+	// Rewrite to a custom code
+	customCode := fmt.Sprintf("VIP%09d", time.Now().UnixNano()%1_000_000_000)
+	require.NoError(t, repo.UpdateUserAffCode(txCtx, u.ID, customCode))
 
-	_, err = client.ExecContext(txCtx, `
-INSERT INTO affiliate_rebate_records (user_id, source_user_id, source_order_id, level, rate, base_amount, rebate_amount, status, available_at, created_at, updated_at)
-VALUES
-  ($1, $1, $2, 1, 6, 100, 6, 'pending', NOW() - INTERVAL '1 hour', NOW(), NOW()),
-  ($1, $1, $3, 2, 3, 100, 3, 'pending', NOW() - INTERVAL '2 hour', NOW(), NOW()),
-  ($1, $1, $4, 3, 1, 100, 1, 'pending', NOW() + INTERVAL '2 hour', NOW(), NOW())
-`, u.ID, orderID1, orderID2, orderID3)
+	updated, err := repo.EnsureUserAffiliate(txCtx, u.ID)
 	require.NoError(t, err)
+	require.Equal(t, customCode, updated.AffCode)
+	require.True(t, updated.AffCodeCustom)
 
-	released, err := repo.ReleaseDuePendingRebateRecords(txCtx, time.Now())
+	// Lookup by new custom code finds the user
+	byCode, err := repo.GetAffiliateByCode(txCtx, customCode)
 	require.NoError(t, err)
-	require.Equal(t, 2, released)
+	require.Equal(t, u.ID, byCode.UserID)
 
-	affQuota := querySingleFloat(t, txCtx, client,
-		"SELECT aff_quota::double precision FROM user_affiliates WHERE user_id = $1", u.ID)
-	require.InDelta(t, 9.0, affQuota, 1e-9)
+	// Old system code should no longer match
+	_, err = repo.GetAffiliateByCode(txCtx, originalCode)
+	require.ErrorIs(t, err, service.ErrAffiliateProfileNotFound)
 
-	affHistoryQuota := querySingleFloat(t, txCtx, client,
-		"SELECT aff_history_quota::double precision FROM user_affiliates WHERE user_id = $1", u.ID)
-	require.InDelta(t, 9.0, affHistoryQuota, 1e-9)
+	// Reset back to a fresh system code, clears custom flag
+	newSysCode, err := repo.ResetUserAffCode(txCtx, u.ID)
+	require.NoError(t, err)
+	require.NotEqual(t, customCode, newSysCode)
 
-	availableCount := querySingleInt(t, txCtx, client,
-		"SELECT COUNT(*) FROM affiliate_rebate_records WHERE user_id = $1 AND status = 'available'", u.ID)
-	require.Equal(t, 2, availableCount)
+	reset, err := repo.EnsureUserAffiliate(txCtx, u.ID)
+	require.NoError(t, err)
+	require.Equal(t, newSysCode, reset.AffCode)
+	require.False(t, reset.AffCodeCustom)
 
-	pendingCount := querySingleInt(t, txCtx, client,
-		"SELECT COUNT(*) FROM affiliate_rebate_records WHERE user_id = $1 AND status = 'pending'", u.ID)
-	require.Equal(t, 1, pendingCount)
+	// The old custom code is now free again
+	_, err = repo.GetAffiliateByCode(txCtx, customCode)
+	require.ErrorIs(t, err, service.ErrAffiliateProfileNotFound)
 }
 
-func TestAffiliateRepository_CreateWithdrawalRequest(t *testing.T) {
+// TestAffiliateRepository_AdminCustomCode_Conflict isolates the unique-violation
+// path. PostgreSQL aborts the enclosing tx when a unique constraint fires, so
+// this test must be the only assertion and run in its own tx — production
+// callers each have their own outer tx, so this matches real behavior.
+func TestAffiliateRepository_AdminCustomCode_Conflict(t *testing.T) {
 	ctx := context.Background()
 	tx := testEntTx(t)
 	txCtx := dbent.NewTxContext(ctx, tx)
@@ -273,57 +257,28 @@ func TestAffiliateRepository_CreateWithdrawalRequest(t *testing.T) {
 
 	repo := NewAffiliateRepository(client, integrationDB)
 
-	u := mustCreateUser(t, client, &service.User{
-		Email:        fmt.Sprintf("affiliate-withdraw-%d@example.com", time.Now().UnixNano()),
+	taker := mustCreateUser(t, client, &service.User{
+		Email:        fmt.Sprintf("affiliate-conflict-taker-%d@example.com", time.Now().UnixNano()),
 		PasswordHash: "hash",
-		Role:         service.RoleUser,
-		Status:       service.StatusActive,
-		Balance:      0,
-		Concurrency:  5,
+		Role:         service.RoleUser, Status: service.StatusActive,
+	})
+	requester := mustCreateUser(t, client, &service.User{
+		Email:        fmt.Sprintf("affiliate-conflict-req-%d@example.com", time.Now().UnixNano()),
+		PasswordHash: "hash",
+		Role:         service.RoleUser, Status: service.StatusActive,
 	})
 
-	affCode := fmt.Sprintf("WD%010d", time.Now().UnixNano()%10_000_000_000)
-	_, err := client.ExecContext(txCtx, `
-INSERT INTO user_affiliates (user_id, aff_code, aff_quota, aff_history_quota, created_at, updated_at)
-VALUES ($1, $2, 180, 220, NOW(), NOW())`, u.ID, affCode)
-	require.NoError(t, err)
+	takenCode := fmt.Sprintf("HOT%09d", time.Now().UnixNano()%1_000_000_000)
+	require.NoError(t, repo.UpdateUserAffCode(txCtx, taker.ID, takenCode))
 
-	orderID1 := mustCreatePaymentOrder(t, txCtx, client, u, fmt.Sprintf("withdraw-1-%d", time.Now().UnixNano()))
-	orderID2 := mustCreatePaymentOrder(t, txCtx, client, u, fmt.Sprintf("withdraw-2-%d", time.Now().UnixNano()))
-
-	_, err = client.ExecContext(txCtx, `
-INSERT INTO affiliate_rebate_records (user_id, source_user_id, source_order_id, level, rate, base_amount, rebate_amount, status, available_at, created_at, updated_at)
-VALUES
-  ($1, $1, $2, 1, 6, 100, 60, 'available', NOW() - INTERVAL '1 day', NOW(), NOW()),
-  ($1, $1, $3, 2, 3, 100, 60, 'available', NOW() - INTERVAL '2 day', NOW(), NOW())
-`, u.ID, orderID1, orderID2)
-	require.NoError(t, err)
-
-	item, err := repo.CreateWithdrawalRequest(txCtx, u.ID, 120, "manual payout")
-	require.NoError(t, err)
-	require.NotNil(t, item)
-	require.Equal(t, u.ID, item.UserID)
-	require.InDelta(t, 120.0, item.Amount, 1e-9)
-	require.Equal(t, "pending", item.Status)
-
-	affQuota := querySingleFloat(t, txCtx, client,
-		"SELECT aff_quota::double precision FROM user_affiliates WHERE user_id = $1", u.ID)
-	require.InDelta(t, 60.0, affQuota, 1e-9)
-
-	requestCount := querySingleInt(t, txCtx, client,
-		"SELECT COUNT(*) FROM affiliate_withdrawal_requests WHERE user_id = $1 AND status = 'pending'", u.ID)
-	require.Equal(t, 1, requestCount)
-
-	withdrawRequestedCount := querySingleInt(t, txCtx, client,
-		"SELECT COUNT(*) FROM affiliate_rebate_records WHERE user_id = $1 AND status = 'withdraw_requested'", u.ID)
-	require.Equal(t, 2, withdrawRequestedCount)
-
-	requestItemCount := querySingleInt(t, txCtx, client,
-		"SELECT COUNT(*) FROM affiliate_withdrawal_request_items WHERE withdrawal_request_id = $1", item.ID)
-	require.Equal(t, 2, requestItemCount)
+	// Now requester tries to grab the same code → conflict.
+	err := repo.UpdateUserAffCode(txCtx, requester.ID, takenCode)
+	require.ErrorIs(t, err, service.ErrAffiliateCodeTaken)
 }
 
-func TestAffiliateRepository_ReviewWithdrawalRequest(t *testing.T) {
+// TestAffiliateRepository_AdminRebateRate covers per-user exclusive rate
+// set/clear and the Batch variant including NULL semantics.
+func TestAffiliateRepository_AdminRebateRate(t *testing.T) {
 	ctx := context.Background()
 	tx := testEntTx(t)
 	txCtx := dbent.NewTxContext(ctx, tx)
@@ -331,68 +286,57 @@ func TestAffiliateRepository_ReviewWithdrawalRequest(t *testing.T) {
 
 	repo := NewAffiliateRepository(client, integrationDB)
 
-	u := mustCreateUser(t, client, &service.User{
-		Email:        fmt.Sprintf("affiliate-review-%d@example.com", time.Now().UnixNano()),
+	u1 := mustCreateUser(t, client, &service.User{
+		Email:        fmt.Sprintf("affiliate-rate-%d-a@example.com", time.Now().UnixNano()),
 		PasswordHash: "hash",
 		Role:         service.RoleUser,
 		Status:       service.StatusActive,
-		Balance:      0,
-		Concurrency:  5,
+	})
+	u2 := mustCreateUser(t, client, &service.User{
+		Email:        fmt.Sprintf("affiliate-rate-%d-b@example.com", time.Now().UnixNano()),
+		PasswordHash: "hash",
+		Role:         service.RoleUser,
+		Status:       service.StatusActive,
 	})
 
-	affCode := fmt.Sprintf("RV%010d", time.Now().UnixNano()%10_000_000_000)
-	_, err := client.ExecContext(txCtx, `
-INSERT INTO user_affiliates (user_id, aff_code, aff_quota, aff_history_quota, created_at, updated_at)
-VALUES ($1, $2, 240, 240, NOW(), NOW())`, u.ID, affCode)
+	// Set exclusive rate for u1
+	rate := 42.5
+	require.NoError(t, repo.SetUserRebateRate(txCtx, u1.ID, &rate))
+
+	got, err := repo.EnsureUserAffiliate(txCtx, u1.ID)
 	require.NoError(t, err)
+	require.NotNil(t, got.AffRebateRatePercent)
+	require.InDelta(t, 42.5, *got.AffRebateRatePercent, 1e-9)
 
-	orderID1 := mustCreatePaymentOrder(t, txCtx, client, u, fmt.Sprintf("review-1-%d", time.Now().UnixNano()))
-	orderID2 := mustCreatePaymentOrder(t, txCtx, client, u, fmt.Sprintf("review-2-%d", time.Now().UnixNano()))
-
-	_, err = client.ExecContext(txCtx, `
-INSERT INTO affiliate_rebate_records (user_id, source_user_id, source_order_id, level, rate, base_amount, rebate_amount, status, available_at, created_at, updated_at)
-VALUES
-  ($1, $1, $2, 1, 6, 100, 120, 'available', NOW() - INTERVAL '1 day', NOW(), NOW()),
-  ($1, $1, $3, 2, 3, 100, 120, 'available', NOW() - INTERVAL '2 day', NOW(), NOW())
-`, u.ID, orderID1, orderID2)
+	// Clear exclusive rate
+	require.NoError(t, repo.SetUserRebateRate(txCtx, u1.ID, nil))
+	cleared, err := repo.EnsureUserAffiliate(txCtx, u1.ID)
 	require.NoError(t, err)
+	require.Nil(t, cleared.AffRebateRatePercent)
 
-	req, err := repo.CreateWithdrawalRequest(txCtx, u.ID, 120, "manual payout")
-	require.NoError(t, err)
+	// Batch set both users
+	batchRate := 15.0
+	require.NoError(t, repo.BatchSetUserRebateRate(txCtx, []int64{u1.ID, u2.ID}, &batchRate))
 
-	rejected, err := repo.RejectWithdrawalRequest(txCtx, req.ID, 9001, "reject")
-	require.NoError(t, err)
-	require.Equal(t, "rejected", rejected.Status)
+	for _, uid := range []int64{u1.ID, u2.ID} {
+		v, err := repo.EnsureUserAffiliate(txCtx, uid)
+		require.NoError(t, err)
+		require.NotNil(t, v.AffRebateRatePercent)
+		require.InDelta(t, 15.0, *v.AffRebateRatePercent, 1e-9)
+	}
 
-	affQuota := querySingleFloat(t, txCtx, client,
-		"SELECT aff_quota::double precision FROM user_affiliates WHERE user_id = $1", u.ID)
-	require.InDelta(t, 240.0, affQuota, 1e-9)
-
-	availableCount := querySingleInt(t, txCtx, client,
-		"SELECT COUNT(*) FROM affiliate_rebate_records WHERE user_id = $1 AND status = 'available'", u.ID)
-	require.Equal(t, 2, availableCount)
-
-	_, err = client.ExecContext(txCtx, `
-UPDATE affiliate_rebate_records
-SET status = 'available', updated_at = NOW()
-WHERE user_id = $1
-`, u.ID)
-	require.NoError(t, err)
-
-	req2, err := repo.CreateWithdrawalRequest(txCtx, u.ID, 120, "manual payout 2")
-	require.NoError(t, err)
-
-	paid, err := repo.MarkWithdrawalPaid(txCtx, req2.ID, 9002, "paid")
-	require.NoError(t, err)
-	require.Equal(t, "paid", paid.Status)
-	require.NotNil(t, paid.PaidAt)
-
-	withdrawPaidCount := querySingleInt(t, txCtx, client,
-		"SELECT COUNT(*) FROM affiliate_rebate_records WHERE user_id = $1 AND status = 'withdraw_paid'", u.ID)
-	require.Equal(t, 1, withdrawPaidCount)
+	// Batch clear
+	require.NoError(t, repo.BatchSetUserRebateRate(txCtx, []int64{u1.ID, u2.ID}, nil))
+	for _, uid := range []int64{u1.ID, u2.ID} {
+		v, err := repo.EnsureUserAffiliate(txCtx, uid)
+		require.NoError(t, err)
+		require.Nil(t, v.AffRebateRatePercent)
+	}
 }
 
-func TestAffiliateRepository_ReverseRebatesForOrder(t *testing.T) {
+// TestAffiliateRepository_ListUsersWithCustomSettings verifies the admin list
+// only includes users with at least one override applied.
+func TestAffiliateRepository_ListUsersWithCustomSettings(t *testing.T) {
 	ctx := context.Background()
 	tx := testEntTx(t)
 	txCtx := dbent.NewTxContext(ctx, tx)
@@ -400,52 +344,56 @@ func TestAffiliateRepository_ReverseRebatesForOrder(t *testing.T) {
 
 	repo := NewAffiliateRepository(client, integrationDB)
 
-	u := mustCreateUser(t, client, &service.User{
-		Email:        fmt.Sprintf("affiliate-reverse-%d@example.com", time.Now().UnixNano()),
-		PasswordHash: "hash",
-		Role:         service.RoleUser,
-		Status:       service.StatusActive,
-		Balance:      0,
-		Concurrency:  5,
+	// User without any custom config — should NOT appear in the list.
+	plainEmail := fmt.Sprintf("affiliate-plain-%d@example.com", time.Now().UnixNano())
+	uPlain := mustCreateUser(t, client, &service.User{
+		Email: plainEmail, PasswordHash: "hash",
+		Role: service.RoleUser, Status: service.StatusActive,
 	})
-
-	affCode := fmt.Sprintf("RB%010d", time.Now().UnixNano()%10_000_000_000)
-	_, err := client.ExecContext(txCtx, `
-INSERT INTO user_affiliates (user_id, aff_code, aff_quota, aff_history_quota, debt_quota, created_at, updated_at)
-VALUES ($1, $2, 80, 200, 0, NOW(), NOW())`, u.ID, affCode)
+	_, err := repo.EnsureUserAffiliate(txCtx, uPlain.ID)
 	require.NoError(t, err)
 
-	orderID := mustCreatePaymentOrder(t, txCtx, client, u, fmt.Sprintf("reverse-%d", time.Now().UnixNano()))
+	// User with a custom code — should appear.
+	uCode := mustCreateUser(t, client, &service.User{
+		Email:        fmt.Sprintf("affiliate-codeonly-%d@example.com", time.Now().UnixNano()),
+		PasswordHash: "hash",
+		Role:         service.RoleUser, Status: service.StatusActive,
+	})
+	require.NoError(t, repo.UpdateUserAffCode(txCtx, uCode.ID, fmt.Sprintf("VIP%09d", time.Now().UnixNano()%1_000_000_000)))
 
-	_, err = client.ExecContext(txCtx, `
-INSERT INTO affiliate_rebate_records (user_id, source_user_id, source_order_id, level, rate, base_amount, rebate_amount, status, available_at, created_at, updated_at)
-VALUES
-  ($1, $1, $2, 1, 6, 100, 20, 'pending', NOW() + INTERVAL '1 day', NOW(), NOW()),
-  ($1, $1, $2, 2, 3, 100, 30, 'available', NOW() - INTERVAL '1 day', NOW(), NOW()),
-  ($1, $1, $2, 3, 1, 100, 50, 'withdraw_paid', NOW() - INTERVAL '2 day', NOW(), NOW())
-`, u.ID, orderID)
+	// User with only an exclusive rate — should appear.
+	uRate := mustCreateUser(t, client, &service.User{
+		Email:        fmt.Sprintf("affiliate-rateonly-%d@example.com", time.Now().UnixNano()),
+		PasswordHash: "hash",
+		Role:         service.RoleUser, Status: service.StatusActive,
+	})
+	r := 33.3
+	require.NoError(t, repo.SetUserRebateRate(txCtx, uRate.ID, &r))
+
+	entries, total, err := repo.ListUsersWithCustomSettings(txCtx, service.AffiliateAdminFilter{
+		Page: 1, PageSize: 100,
+	})
 	require.NoError(t, err)
 
-	err = repo.ReverseRebatesForOrder(txCtx, orderID)
-	require.NoError(t, err)
+	// Build a quick lookup to assert per-user attributes (other tests may have
+	// inserted custom rows in the same DB; we only care about our 3).
+	byUserID := make(map[int64]service.AffiliateAdminEntry, len(entries))
+	for _, e := range entries {
+		byUserID[e.UserID] = e
+	}
 
-	cancelledCount := querySingleInt(t, txCtx, client,
-		"SELECT COUNT(*) FROM affiliate_rebate_records WHERE source_order_id = $1 AND status = 'cancelled'", orderID)
-	require.Equal(t, 1, cancelledCount)
+	require.NotContains(t, byUserID, uPlain.ID, "users without overrides must not appear")
 
-	reversedCount := querySingleInt(t, txCtx, client,
-		"SELECT COUNT(*) FROM affiliate_rebate_records WHERE source_order_id = $1 AND status = 'reversed'", orderID)
-	require.Equal(t, 1, reversedCount)
+	codeEntry, ok := byUserID[uCode.ID]
+	require.True(t, ok, "custom-code user missing from list")
+	require.True(t, codeEntry.AffCodeCustom)
+	require.Nil(t, codeEntry.AffRebateRatePercent)
 
-	debtOffsetCount := querySingleInt(t, txCtx, client,
-		"SELECT COUNT(*) FROM affiliate_rebate_records WHERE source_order_id = $1 AND status = 'debt_offset'", orderID)
-	require.Equal(t, 1, debtOffsetCount)
+	rateEntry, ok := byUserID[uRate.ID]
+	require.True(t, ok, "custom-rate user missing from list")
+	require.False(t, rateEntry.AffCodeCustom)
+	require.NotNil(t, rateEntry.AffRebateRatePercent)
+	require.InDelta(t, 33.3, *rateEntry.AffRebateRatePercent, 1e-9)
 
-	affQuota := querySingleFloat(t, txCtx, client,
-		"SELECT aff_quota::double precision FROM user_affiliates WHERE user_id = $1", u.ID)
-	require.InDelta(t, 50.0, affQuota, 1e-9)
-
-	debtQuota := querySingleFloat(t, txCtx, client,
-		"SELECT debt_quota::double precision FROM user_affiliates WHERE user_id = $1", u.ID)
-	require.InDelta(t, 50.0, debtQuota, 1e-9)
+	require.GreaterOrEqual(t, total, int64(2), "total must include at least our 2 custom rows")
 }

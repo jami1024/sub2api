@@ -2,12 +2,9 @@ import { describe, expect, it, vi } from 'vitest'
 import { defineComponent } from 'vue'
 import { mount } from '@vue/test-utils'
 
-const { updateAccountMock, checkMixedChannelRiskMock, getWebSearchEmulationConfigMock, getSettingsMock, listTLSFingerprintProfilesMock } = vi.hoisted(() => ({
+const { updateAccountMock, checkMixedChannelRiskMock } = vi.hoisted(() => ({
   updateAccountMock: vi.fn(),
-  checkMixedChannelRiskMock: vi.fn(),
-  getWebSearchEmulationConfigMock: vi.fn().mockResolvedValue({ enabled: false, providers: [] }),
-  getSettingsMock: vi.fn().mockResolvedValue({ account_quota_notify_enabled: false }),
-  listTLSFingerprintProfilesMock: vi.fn().mockResolvedValue([])
+  checkMixedChannelRiskMock: vi.fn()
 }))
 
 vi.mock('@/stores/app', () => ({
@@ -31,11 +28,11 @@ vi.mock('@/api/admin', () => ({
       checkMixedChannelRisk: checkMixedChannelRiskMock
     },
     settings: {
-      getWebSearchEmulationConfig: getWebSearchEmulationConfigMock,
-      getSettings: getSettingsMock
+      getWebSearchEmulationConfig: vi.fn().mockResolvedValue({ enabled: false, providers: [] }),
+      getSettings: vi.fn().mockResolvedValue({})
     },
     tlsFingerprintProfiles: {
-      list: listTLSFingerprintProfilesMock
+      list: vi.fn().mockResolvedValue([])
     }
   }
 }))

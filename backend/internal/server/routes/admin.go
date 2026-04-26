@@ -92,17 +92,8 @@ func RegisterAdminRoutes(
 		// 渠道监控
 		registerChannelMonitorRoutes(admin, h)
 
-		// 邀请返利提现审核
+		// 邀请返利（专属用户管理）
 		registerAffiliateRoutes(admin, h)
-	}
-}
-
-func registerAffiliateRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
-	affiliate := admin.Group("/affiliate")
-	{
-		affiliate.GET("/withdrawals", h.Admin.Affiliate.ListWithdrawalRequests)
-		affiliate.POST("/withdrawals/:id/reject", h.Admin.Affiliate.RejectWithdrawalRequest)
-		affiliate.POST("/withdrawals/:id/mark-paid", h.Admin.Affiliate.MarkWithdrawalPaid)
 	}
 }
 
@@ -604,5 +595,29 @@ func registerChannelMonitorRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 		templates.DELETE("/:id", h.Admin.ChannelMonitorTemplate.Delete)
 		templates.GET("/:id/monitors", h.Admin.ChannelMonitorTemplate.AssociatedMonitors)
 		templates.POST("/:id/apply", h.Admin.ChannelMonitorTemplate.Apply)
+	}
+}
+
+// registerAffiliateRoutes 注册邀请返利的管理端路由（提现审核 + 专属用户配置）
+func registerAffiliateRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
+	// 本地功能：邀请返利提现审核
+	affiliate := admin.Group("/affiliate")
+	{
+		affiliate.GET("/withdrawals", h.Admin.Affiliate.ListWithdrawalRequests)
+		affiliate.POST("/withdrawals/:id/reject", h.Admin.Affiliate.RejectWithdrawalRequest)
+		affiliate.POST("/withdrawals/:id/mark-paid", h.Admin.Affiliate.MarkWithdrawalPaid)
+	}
+
+	// 上游功能：专属用户配置
+	affiliates := admin.Group("/affiliates")
+	{
+		users := affiliates.Group("/users")
+		{
+			users.GET("", h.Admin.Affiliate.ListUsers)
+			users.GET("/lookup", h.Admin.Affiliate.LookupUsers)
+			users.POST("/batch-rate", h.Admin.Affiliate.BatchSetRate)
+			users.PUT("/:user_id", h.Admin.Affiliate.UpdateUserSettings)
+			users.DELETE("/:user_id", h.Admin.Affiliate.ClearUserSettings)
+		}
 	}
 }

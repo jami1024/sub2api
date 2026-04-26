@@ -238,7 +238,7 @@ func (s *packageScopeAffiliateRepoStub) GetAffiliateByCode(ctx context.Context, 
 func (s *packageScopeAffiliateRepoStub) BindInviter(ctx context.Context, userID, inviterID int64) (bool, error) {
 	panic("unexpected BindInviter call")
 }
-func (s *packageScopeAffiliateRepoStub) AccrueQuota(ctx context.Context, inviterID, inviteeUserID int64, amount float64) (bool, error) {
+func (s *packageScopeAffiliateRepoStub) AccrueQuota(ctx context.Context, inviterID, inviteeUserID int64, amount float64, freezeHours int) (bool, error) {
 	panic("unexpected AccrueQuota call")
 }
 func (s *packageScopeAffiliateRepoStub) TransferQuotaToBalance(ctx context.Context, userID int64) (float64, float64, error) {
@@ -296,6 +296,28 @@ func (s *packageScopeAffiliateRepoStub) SumPendingRebateByUser(ctx context.Conte
 }
 func (s *packageScopeAffiliateRepoStub) ListUserRebateRecords(ctx context.Context, userID int64, limit int) ([]AffiliateRebateRecord, error) {
 	panic("unexpected ListUserRebateRecords call")
+}
+
+func (s *packageScopeAffiliateRepoStub) GetAccruedRebateFromInvitee(ctx context.Context, inviterID, inviteeUserID int64) (float64, error) {
+	return 0, nil
+}
+func (s *packageScopeAffiliateRepoStub) ThawFrozenQuota(ctx context.Context, userID int64) (float64, error) {
+	return 0, nil
+}
+func (s *packageScopeAffiliateRepoStub) UpdateUserAffCode(ctx context.Context, userID int64, newCode string) error {
+	return nil
+}
+func (s *packageScopeAffiliateRepoStub) ResetUserAffCode(ctx context.Context, userID int64) (string, error) {
+	return "", nil
+}
+func (s *packageScopeAffiliateRepoStub) SetUserRebateRate(ctx context.Context, userID int64, ratePercent *float64) error {
+	return nil
+}
+func (s *packageScopeAffiliateRepoStub) BatchSetUserRebateRate(ctx context.Context, userIDs []int64, ratePercent *float64) error {
+	return nil
+}
+func (s *packageScopeAffiliateRepoStub) ListUsersWithCustomSettings(ctx context.Context, filter AffiliateAdminFilter) ([]AffiliateAdminEntry, int64, error) {
+	return nil, 0, nil
 }
 
 func newPackageScopeEntClient(t *testing.T) *dbent.Client {

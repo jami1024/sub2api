@@ -45,3 +45,17 @@ func ensurePackageScopeForPositiveBalanceCredit(user *User, amount float64) bool
 	user.PackageScope = &scope
 	return true
 }
+
+func ensureUsagePackageScopeAllowed(user *User, apiKey *APIKey, isSubscriptionBilling bool) error {
+	if isSubscriptionBilling || user == nil || apiKey == nil || apiKey.Group == nil {
+		return nil
+	}
+	groupScope := psStringValue(apiKey.Group.PackageScope)
+	if groupScope == "" {
+		return nil
+	}
+	if !PackageScopeMatchesGroup(psStringValue(user.PackageScope), groupScope) {
+		return ErrPackageScopeNotAllowed
+	}
+	return nil
+}
