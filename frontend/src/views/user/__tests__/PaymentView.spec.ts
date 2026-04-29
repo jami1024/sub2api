@@ -531,6 +531,15 @@ describe('PaymentView balance package storefront', () => {
     })
   }
 
+  it('uses the full available app layout width like the usage records page', async () => {
+    const wrapper = mountPaymentView()
+    await flushPromises()
+
+    expect(wrapper.find('.w-full.space-y-6').exists()).toBe(true)
+    expect(wrapper.find('.max-w-6xl').exists()).toBe(false)
+    expect(wrapper.find('.max-w-4xl').exists()).toBe(false)
+  })
+
   it('defaults to balance package tab when packages exist and recharge tab stays disabled', async () => {
     const wrapper = mountPaymentView()
     await flushPromises()

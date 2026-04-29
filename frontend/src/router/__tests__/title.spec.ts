@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import router from '@/router'
 import { resolveDocumentTitle } from '@/router/title'
 
 describe('resolveDocumentTitle', () => {
@@ -21,5 +22,11 @@ describe('resolveDocumentTitle', () => {
 
     expect(before).toBe('Admin Dashboard - Alpha')
     expect(after).toBe('Admin Dashboard - Beta')
+  })
+
+  it('充值订阅页面使用页面标题文案，不使用“前往”动作文案', () => {
+    const route = router.resolve('/purchase')
+
+    expect(route.meta.titleKey).toBe('nav.purchaseSubscriptionMenu')
   })
 })

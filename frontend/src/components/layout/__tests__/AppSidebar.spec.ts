@@ -31,6 +31,13 @@ describe('AppSidebar header styles', () => {
   })
 })
 
+describe('AppSidebar brand initialization', () => {
+  it('does not render the fallback Sub2API brand before public settings are loaded', () => {
+    expect(componentSource).toContain('v-if="settingsLoaded" class="sidebar-brand-title')
+    expect(componentSource).toContain('<VersionBadge v-if="settingsLoaded"')
+  })
+})
+
 
 describe('AppSidebar user navigation', () => {
   it('does not expose the legacy my subscriptions entry in the sidebar list', () => {
@@ -41,5 +48,12 @@ describe('AppSidebar user navigation', () => {
 describe('AppSidebar purchase menu label', () => {
   it('uses a dedicated sidebar copy key for the purchase entry', () => {
     expect(componentSource).toContain("t('nav.purchaseSubscriptionMenu')")
+  })
+})
+
+describe('AppSidebar desktop width', () => {
+  it('uses the compact 15rem expanded width instead of the old 16rem width', () => {
+    expect(componentSource).toContain("sidebarCollapsed ? 'w-[72px]' : 'w-60'")
+    expect(componentSource).not.toContain("sidebarCollapsed ? 'w-[72px]' : 'w-64'")
   })
 })

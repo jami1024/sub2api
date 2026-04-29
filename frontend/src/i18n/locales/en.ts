@@ -404,8 +404,8 @@ export default {
     logout: 'Logout',
     github: 'GitHub',
     mySubscriptions: 'My Subscriptions',
-    buySubscription: 'Go to Purchase',
-    purchaseSubscriptionMenu: 'Purchase Subscription',
+    buySubscription: 'Purchase',
+    purchaseSubscriptionMenu: 'Purchase',
     docs: 'Docs',
     myOrders: 'My Orders',
     orderManagement: 'Orders',
@@ -5895,8 +5895,8 @@ export default {
 
   // Recharge / Subscription Page
   purchase: {
-    title: 'Recharge / Subscription',
-    description: 'Recharge balance or purchase subscription via the embedded page',
+    title: 'Purchase',
+    description: 'Buy balance packages or subscription plans, renew access, and manage balance mode',
     openInNewTab: 'Open in new tab',
     notEnabledTitle: 'Feature not enabled',
     notEnabledDesc: 'The administrator has not enabled the recharge/subscription entry. Please contact admin.',

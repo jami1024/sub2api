@@ -2,7 +2,7 @@
   <aside
     class="sidebar"
     :class="[
-      sidebarCollapsed ? 'w-[72px]' : 'w-64',
+      sidebarCollapsed ? 'w-[72px]' : 'w-60',
       { '-translate-x-full lg:translate-x-0': !mobileOpen }
     ]"
   >
@@ -13,11 +13,11 @@
         <img v-if="settingsLoaded" :src="siteLogo || '/logo.png'" alt="Logo" class="h-full w-full object-contain" />
       </div>
       <div class="sidebar-brand" :class="{ 'sidebar-brand-collapsed': sidebarCollapsed }" :aria-hidden="sidebarCollapsed ? 'true' : 'false'">
-        <span class="sidebar-brand-title text-lg font-bold text-gray-900 dark:text-white">
+        <span v-if="settingsLoaded" class="sidebar-brand-title text-lg font-bold text-gray-900 dark:text-white">
           {{ siteName }}
         </span>
         <!-- Version Badge -->
-        <VersionBadge :version="siteVersion" />
+        <VersionBadge v-if="settingsLoaded" :version="siteVersion" />
       </div>
     </div>
 
