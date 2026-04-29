@@ -176,6 +176,9 @@ export interface AffiliateRebateRecord {
   rate: number
   base_amount: number
   rebate_amount: number
+  available_amount: number
+  debt_amount: number
+  reversed_amount: number
   status: string
   available_at?: string | null
   created_at: string

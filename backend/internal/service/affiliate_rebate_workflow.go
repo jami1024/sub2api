@@ -9,6 +9,7 @@ import (
 )
 
 const AffiliateRebateStatusPending = "pending"
+const affiliatePackageRebateFreezeDuration = 7 * 24 * time.Hour
 
 var affiliateLevelRates = []float64{6, 3, 1}
 
@@ -32,7 +33,7 @@ func (s *AffiliateService) CreatePendingRebatesForOrder(ctx context.Context, sou
 		return 0, err
 	}
 
-	availableAt := paidAt.Add(7 * 24 * time.Hour)
+	availableAt := paidAt.Add(affiliatePackageRebateFreezeDuration)
 	records := make([]AffiliateRebateRecordInput, 0, len(ancestors))
 	total := 0.0
 	for _, ancestor := range ancestors {
@@ -83,6 +84,9 @@ func (s *AffiliateService) CreateWithdrawalRequest(ctx context.Context, userID i
 	if amount <= 0 {
 		return nil, ErrAffiliateWithdrawAmount
 	}
+	if _, err := s.repo.ReleaseDuePendingRebateRecords(ctx, time.Now()); err != nil {
+		return nil, err
+	}
 	summary, err := s.EnsureUserAffiliate(ctx, userID)
 	if err != nil {
 		return nil, err
@@ -122,6 +126,9 @@ func (s *AffiliateService) ListUserRebateRecords(ctx context.Context, userID int
 	}
 	if userID <= 0 {
 		return nil, infraerrors.BadRequest("INVALID_USER", "invalid user")
+	}
+	if _, err := s.repo.ReleaseDuePendingRebateRecords(ctx, time.Now()); err != nil {
+		return nil, err
 	}
 	return s.repo.ListUserRebateRecords(ctx, userID, limit)
 }

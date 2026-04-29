@@ -55,6 +55,9 @@ type affiliateWorkflowRepoStub struct {
 	records       []AffiliateRebateRecordInput
 	rebateRecords []AffiliateRebateRecord
 	released      int
+	releaseCalls  int
+	releaseAt     time.Time
+	invitees      []AffiliateInvitee
 	withdrawn     *AffiliateWithdrawalRequest
 	withdrawList  []AffiliateWithdrawalRequest
 }
@@ -78,7 +81,7 @@ func (s *affiliateWorkflowRepoStub) TransferQuotaToBalance(ctx context.Context, 
 	panic("unexpected TransferQuotaToBalance call")
 }
 func (s *affiliateWorkflowRepoStub) ListInvitees(ctx context.Context, inviterID int64, limit int) ([]AffiliateInvitee, error) {
-	panic("unexpected ListInvitees call")
+	return s.invitees, nil
 }
 func (s *affiliateWorkflowRepoStub) ListAncestors(ctx context.Context, userID int64, maxDepth int) ([]AffiliateAncestor, error) {
 	current := userID
@@ -104,6 +107,8 @@ func (s *affiliateWorkflowRepoStub) CreatePendingRebateRecords(ctx context.Conte
 	return len(records), nil
 }
 func (s *affiliateWorkflowRepoStub) ReleaseDuePendingRebateRecords(ctx context.Context, now time.Time) (int, error) {
+	s.releaseCalls++
+	s.releaseAt = now
 	return s.released, nil
 }
 func (s *affiliateWorkflowRepoStub) CreateWithdrawalRequest(ctx context.Context, userID int64, amount float64, applicantNote string) (*AffiliateWithdrawalRequest, error) {
@@ -203,7 +208,7 @@ func TestCreatePendingRebatesForOrderCreatesThreeLevels(t *testing.T) {
 	require.Equal(t, 1, repo.records[0].Level)
 	require.InDelta(t, 6.0, repo.records[0].RebateAmount, 1e-9)
 	require.Equal(t, AffiliateRebateStatusPending, repo.records[0].Status)
-	require.Equal(t, paidAt.Add(7*24*time.Hour), repo.records[0].AvailableAt)
+	require.Equal(t, paidAt.Add(affiliatePackageRebateFreezeDuration), repo.records[0].AvailableAt)
 
 	require.Equal(t, bID, repo.records[1].UserID)
 	require.Equal(t, 2, repo.records[1].Level)
@@ -244,6 +249,25 @@ func TestReleaseDueAffiliateRebates(t *testing.T) {
 	require.Equal(t, 2, count)
 }
 
+func TestGetAffiliateDetailReleasesDueRebatesBeforeReadingSummary(t *testing.T) {
+	ctx := context.Background()
+	userID := int64(11)
+	repo := &affiliateWorkflowRepoStub{
+		summaries: map[int64]*AffiliateSummary{
+			userID: {UserID: userID, AffQuota: 100, PendingQuota: 6},
+		},
+		released: 1,
+	}
+	svc := &AffiliateService{repo: repo}
+
+	detail, err := svc.GetAffiliateDetail(ctx, userID)
+
+	require.NoError(t, err)
+	require.NotNil(t, detail)
+	require.Equal(t, 1, repo.releaseCalls)
+	require.False(t, repo.releaseAt.IsZero())
+}
+
 func TestCreateAffiliateWithdrawalRequestRequiresMin100(t *testing.T) {
 	ctx := context.Background()
 	userID := int64(11)
@@ -267,6 +291,25 @@ func TestCreateAffiliateWithdrawalRequestRequiresMin100(t *testing.T) {
 	repo.summaries[userID].DebtQuota = 1
 	_, err = svc.CreateWithdrawalRequest(ctx, userID, 120, "withdraw")
 	require.ErrorIs(t, err, ErrAffiliateDebtOutstanding)
+}
+
+func TestCreateAffiliateWithdrawalRequestReleasesDueRebatesBeforeCheckingQuota(t *testing.T) {
+	ctx := context.Background()
+	userID := int64(11)
+	repo := &affiliateWorkflowRepoStub{
+		summaries: map[int64]*AffiliateSummary{
+			userID: {UserID: userID, AffQuota: 120},
+		},
+		released: 1,
+	}
+	svc := &AffiliateService{repo: repo}
+
+	item, err := svc.CreateWithdrawalRequest(ctx, userID, 120, "withdraw")
+
+	require.NoError(t, err)
+	require.NotNil(t, item)
+	require.Equal(t, 1, repo.releaseCalls)
+	require.False(t, repo.releaseAt.IsZero())
 }
 
 func TestReviewAffiliateWithdrawalRequest(t *testing.T) {

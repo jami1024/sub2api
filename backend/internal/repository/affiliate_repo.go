@@ -441,48 +441,104 @@ WHERE user_id = $1
 
 func (r *affiliateRepository) ReleaseDuePendingRebateRecords(ctx context.Context, now time.Time) (int, error) {
 	updatedCount := 0
-	creditsByUser := make(map[int64]float64)
 
 	err := r.withTx(ctx, func(txCtx context.Context, txClient *dbent.Client) error {
 		rows, err := txClient.QueryContext(txCtx, `
-UPDATE affiliate_rebate_records
-SET status = 'available',
-    updated_at = NOW()
+SELECT id,
+       user_id,
+       rebate_amount::double precision
+FROM affiliate_rebate_records
 WHERE status = 'pending'
   AND available_at <= $1
-RETURNING user_id, rebate_amount
+FOR UPDATE
 `, now)
 		if err != nil {
 			return err
 		}
-		defer func() { _ = rows.Close() }()
 
+		type dueRebate struct {
+			id           int64
+			userID       int64
+			rebateAmount float64
+		}
+		dueItems := make([]dueRebate, 0)
 		for rows.Next() {
-			var userID int64
-			var rebateAmount float64
-			if err := rows.Scan(&userID, &rebateAmount); err != nil {
+			var item dueRebate
+			if err := rows.Scan(&item.id, &item.userID, &item.rebateAmount); err != nil {
 				return err
 			}
-			updatedCount++
-			creditsByUser[userID] += rebateAmount
+			dueItems = append(dueItems, item)
 		}
 		if err := rows.Err(); err != nil {
+			_ = rows.Close()
+			return err
+		}
+		if err := rows.Close(); err != nil {
 			return err
 		}
 
-		for userID, amount := range creditsByUser {
-			if amount <= 0 {
+		for _, item := range dueItems {
+			if item.rebateAmount <= 0 {
 				continue
 			}
-			if _, err := ensureUserAffiliateWithClient(txCtx, txClient, userID); err != nil {
+			if _, err := ensureUserAffiliateWithClient(txCtx, txClient, item.userID); err != nil {
 				return err
 			}
+
+			debtRows, err := txClient.QueryContext(txCtx, `
+SELECT debt_quota::double precision
+FROM user_affiliates
+WHERE user_id = $1
+FOR UPDATE
+`, item.userID)
+			if err != nil {
+				return err
+			}
+			var debtQuota float64
+			if debtRows.Next() {
+				if err := debtRows.Scan(&debtQuota); err != nil {
+					_ = debtRows.Close()
+					return err
+				}
+			}
+			if err := debtRows.Close(); err != nil {
+				return err
+			}
+
+			debtOffset := math.Min(item.rebateAmount, debtQuota)
+			if debtOffset < 0 {
+				debtOffset = 0
+			}
+			availableAmount := roundToFloat(item.rebateAmount-debtOffset, 8)
+			debtOffset = roundToFloat(debtOffset, 8)
+			status := "available"
+			if availableAmount <= 0 {
+				availableAmount = 0
+				status = "debt_offset"
+			}
+
 			if _, err := txClient.ExecContext(txCtx,
-				"UPDATE user_affiliates SET aff_quota = aff_quota + $1, aff_history_quota = aff_history_quota + $1, updated_at = NOW() WHERE user_id = $2",
-				amount, userID,
+				`UPDATE affiliate_rebate_records
+SET status = $1,
+    available_amount = $2,
+    debt_amount = debt_amount + $3,
+    updated_at = NOW()
+WHERE id = $4`,
+				status, availableAmount, debtOffset, item.id,
 			); err != nil {
 				return err
 			}
+			if _, err := txClient.ExecContext(txCtx, `
+UPDATE user_affiliates
+SET aff_quota = aff_quota + $1,
+    debt_quota = GREATEST(debt_quota - $2, 0),
+    aff_history_quota = aff_history_quota + $3,
+    updated_at = NOW()
+WHERE user_id = $4
+`, availableAmount, debtOffset, item.rebateAmount, item.userID); err != nil {
+				return err
+			}
+			updatedCount++
 		}
 		return nil
 	})
@@ -510,10 +566,11 @@ func (r *affiliateRepository) CreateWithdrawalRequest(ctx context.Context, userI
 		allocations := make([]allocatedRebate, 0)
 		remaining := amount
 		rows, err := txClient.QueryContext(txCtx, `
-SELECT id, rebate_amount::double precision
+SELECT id, available_amount::double precision
 FROM affiliate_rebate_records
 WHERE user_id = $1
   AND status = 'available'
+  AND available_amount > 0
 ORDER BY available_at ASC, id ASC
 FOR UPDATE
 `, userID)
@@ -522,14 +579,14 @@ FOR UPDATE
 		}
 		for rows.Next() {
 			var rebateID int64
-			var rebateAmount float64
-			if err := rows.Scan(&rebateID, &rebateAmount); err != nil {
+			var availableAmount float64
+			if err := rows.Scan(&rebateID, &availableAmount); err != nil {
 				return err
 			}
 			if remaining <= 0 {
 				break
 			}
-			useAmount := math.Min(remaining, rebateAmount)
+			useAmount := math.Min(remaining, availableAmount)
 			if useAmount <= 0 {
 				continue
 			}
@@ -623,10 +680,11 @@ VALUES ($1, $2, $3, NOW())
 			}
 			if _, err := txClient.ExecContext(txCtx, `
 UPDATE affiliate_rebate_records
-SET status = 'withdraw_requested',
+SET available_amount = GREATEST(available_amount - $1, 0),
+    status = 'withdraw_requested',
     updated_at = NOW()
-WHERE id = $1
-`, allocation.ID); err != nil {
+WHERE id = $2
+`, allocation.Amount, allocation.ID); err != nil {
 				return err
 			}
 		}
@@ -724,6 +782,9 @@ SELECT affiliate_rebate_records.id,
        affiliate_rebate_records.rate::double precision,
        affiliate_rebate_records.base_amount::double precision,
        affiliate_rebate_records.rebate_amount::double precision,
+       affiliate_rebate_records.available_amount::double precision,
+       affiliate_rebate_records.debt_amount::double precision,
+       affiliate_rebate_records.reversed_amount::double precision,
        affiliate_rebate_records.status,
        affiliate_rebate_records.available_at,
        affiliate_rebate_records.created_at,
@@ -754,6 +815,9 @@ LIMIT $2
 			&item.Rate,
 			&item.BaseAmount,
 			&item.RebateAmount,
+			&item.AvailableAmount,
+			&item.DebtAmount,
+			&item.ReversedAmount,
 			&item.Status,
 			&availableAt,
 			&item.CreatedAt,
@@ -786,6 +850,8 @@ func (r *affiliateRepository) ReverseRebatesForOrder(ctx context.Context, source
 SELECT id,
        user_id,
        rebate_amount::double precision,
+       available_amount::double precision,
+       debt_amount::double precision,
        status
 FROM affiliate_rebate_records
 WHERE source_order_id = $1
@@ -797,15 +863,17 @@ FOR UPDATE
 		defer func() { _ = rows.Close() }()
 
 		type rebateRow struct {
-			recordID     int64
-			userID       int64
-			rebateAmount float64
-			status       string
+			recordID        int64
+			userID          int64
+			rebateAmount    float64
+			availableAmount float64
+			debtAmount      float64
+			status          string
 		}
 		items := make([]rebateRow, 0)
 		for rows.Next() {
 			var item rebateRow
-			if err := rows.Scan(&item.recordID, &item.userID, &item.rebateAmount, &item.status); err != nil {
+			if err := rows.Scan(&item.recordID, &item.userID, &item.rebateAmount, &item.availableAmount, &item.debtAmount, &item.status); err != nil {
 				return err
 			}
 			items = append(items, item)
@@ -824,6 +892,7 @@ FOR UPDATE
 				if _, err := txClient.ExecContext(txCtx, `
 UPDATE affiliate_rebate_records
 SET status = 'cancelled',
+    available_amount = 0,
     updated_at = NOW()
 WHERE id = $1
 `, item.recordID); err != nil {
@@ -834,24 +903,29 @@ WHERE id = $1
 UPDATE affiliate_rebate_records
 SET status = 'reversed',
     reversed_amount = rebate_amount,
+    available_amount = 0,
     updated_at = NOW()
 WHERE id = $1
 `, item.recordID); err != nil {
 					return err
 				}
-				availableDeduct[item.userID] += item.rebateAmount
+				availableDeduct[item.userID] += item.availableAmount
+				debtAdd[item.userID] += item.debtAmount
 			case "withdraw_requested":
 				if _, err := txClient.ExecContext(txCtx, `
 UPDATE affiliate_rebate_records
 SET status = 'reversed',
     reversed_amount = rebate_amount,
+    available_amount = 0,
     updated_at = NOW()
 WHERE id = $1
 `, item.recordID); err != nil {
 					return err
 				}
+				availableDeduct[item.userID] += item.availableAmount
+				debtAdd[item.userID] += item.debtAmount
 				requestRows, err := txClient.QueryContext(txCtx, `
-SELECT withdrawal_request_id
+SELECT withdrawal_request_id, amount::double precision
 FROM affiliate_withdrawal_request_items
 WHERE rebate_record_id = $1
 `, item.recordID)
@@ -860,11 +934,12 @@ WHERE rebate_record_id = $1
 				}
 				for requestRows.Next() {
 					var withdrawalRequestID int64
-					if err := requestRows.Scan(&withdrawalRequestID); err != nil {
+					var requestAmount float64
+					if err := requestRows.Scan(&withdrawalRequestID, &requestAmount); err != nil {
 						_ = requestRows.Close()
 						return err
 					}
-					requestDeduct[withdrawalRequestID] += item.rebateAmount
+					requestDeduct[withdrawalRequestID] += requestAmount
 				}
 				if err := requestRows.Close(); err != nil {
 					return err
@@ -875,12 +950,25 @@ UPDATE affiliate_rebate_records
 SET status = 'debt_offset',
     reversed_amount = rebate_amount,
     debt_amount = rebate_amount,
+    available_amount = 0,
     updated_at = NOW()
 WHERE id = $1
 `, item.recordID); err != nil {
 					return err
 				}
 				debtAdd[item.userID] += item.rebateAmount
+			case "debt_offset":
+				if _, err := txClient.ExecContext(txCtx, `
+UPDATE affiliate_rebate_records
+SET status = 'reversed',
+    reversed_amount = rebate_amount,
+    available_amount = 0,
+    updated_at = NOW()
+WHERE id = $1
+`, item.recordID); err != nil {
+					return err
+				}
+				debtAdd[item.userID] += item.debtAmount
 			}
 		}
 
@@ -1012,7 +1100,7 @@ WHERE id = $1
 						_ = rows3.Close()
 						return err
 					}
-					if status == "withdraw_requested" {
+					if status == "withdraw_requested" || status == "available" {
 						refundableAmount += requestItem.amount
 					}
 				}
@@ -1038,11 +1126,25 @@ WHERE id = $1
 			recordStatus = "available"
 		}
 		for _, requestItem := range requestItems {
-			if _, err := txClient.ExecContext(txCtx, `
+			if refundQuota {
+				if _, err := txClient.ExecContext(txCtx, `
 UPDATE affiliate_rebate_records
-SET status = $1,
+SET available_amount = available_amount + $1,
+    status = 'available',
     updated_at = NOW()
 WHERE id = $2
+  AND status IN ('withdraw_requested', 'available')
+`, requestItem.amount, requestItem.rebateRecordID); err != nil {
+					return err
+				}
+				continue
+			}
+			if _, err := txClient.ExecContext(txCtx, `
+UPDATE affiliate_rebate_records
+SET status = CASE WHEN available_amount > 0 THEN 'available' ELSE $1 END,
+    updated_at = NOW()
+WHERE id = $2
+  AND status IN ('withdraw_requested', 'available')
 `, recordStatus, requestItem.rebateRecordID); err != nil {
 				return err
 			}
@@ -1121,6 +1223,11 @@ func scanAffiliateWithdrawalRequest(rows *sql.Rows) (*service.AffiliateWithdrawa
 	return item, nil
 }
 
+func roundToFloat(v float64, scale int) float64 {
+	factor := math.Pow10(scale)
+	return math.Round(v*factor) / factor
+}
+
 func (r *affiliateRepository) withTx(ctx context.Context, fn func(txCtx context.Context, txClient *dbent.Client) error) error {
 	if tx := dbent.TxFromContext(ctx); tx != nil {
 		return fn(ctx, tx.Client())
@@ -1184,6 +1291,7 @@ SELECT user_id,
        aff_quota::double precision,
        aff_frozen_quota::double precision,
        aff_history_quota::double precision,
+       debt_quota::double precision,
        created_at,
        updated_at
 FROM user_affiliates
@@ -1212,6 +1320,7 @@ WHERE user_id = $1`, userID)
 		&out.AffQuota,
 		&out.AffFrozenQuota,
 		&out.AffHistoryQuota,
+		&out.DebtQuota,
 		&out.CreatedAt,
 		&out.UpdatedAt,
 	); err != nil {
@@ -1238,6 +1347,7 @@ SELECT user_id,
        aff_quota::double precision,
        aff_frozen_quota::double precision,
        aff_history_quota::double precision,
+       debt_quota::double precision,
        created_at,
        updated_at
 FROM user_affiliates
@@ -1268,6 +1378,7 @@ LIMIT 1`, strings.ToUpper(strings.TrimSpace(code)))
 		&out.AffQuota,
 		&out.AffFrozenQuota,
 		&out.AffHistoryQuota,
+		&out.DebtQuota,
 		&out.CreatedAt,
 		&out.UpdatedAt,
 	); err != nil {

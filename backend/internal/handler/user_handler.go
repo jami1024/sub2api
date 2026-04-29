@@ -179,25 +179,17 @@ func (h *UserHandler) GetAffiliate(c *gin.Context) {
 	response.Success(c, detail)
 }
 
-// TransferAffiliateQuota transfers all available affiliate quota into current balance.
+// TransferAffiliateQuota used to transfer available affiliate quota into current
+// balance. The project now uses manual withdrawal requests for multi-level
+// rebates, so this legacy direct-to-balance path is disabled.
 // POST /api/v1/user/aff/transfer
 func (h *UserHandler) TransferAffiliateQuota(c *gin.Context) {
-	subject, ok := middleware2.GetAuthSubjectFromContext(c)
-	if !ok {
+	if _, ok := middleware2.GetAuthSubjectFromContext(c); !ok {
 		response.Unauthorized(c, "User not authenticated")
 		return
 	}
 
-	transferred, balance, err := h.affiliateService.TransferAffiliateQuota(c.Request.Context(), subject.UserID)
-	if err != nil {
-		response.ErrorFrom(c, err)
-		return
-	}
-
-	response.Success(c, gin.H{
-		"transferred_quota": transferred,
-		"balance":           balance,
-	})
+	response.BadRequest(c, "affiliate transfer to balance is disabled; please use withdrawal request")
 }
 
 // CreateAffiliateWithdrawalRequestBody represents a manual affiliate withdrawal request payload.

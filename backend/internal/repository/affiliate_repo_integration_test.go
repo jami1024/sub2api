@@ -9,6 +9,7 @@ import (
 	"time"
 
 	dbent "github.com/Wei-Shaw/sub2api/ent"
+	"github.com/Wei-Shaw/sub2api/internal/payment"
 	"github.com/Wei-Shaw/sub2api/internal/service"
 	"github.com/stretchr/testify/require"
 )
@@ -37,6 +38,340 @@ func querySingleInt(t *testing.T, ctx context.Context, client *dbent.Client, que
 	require.NoError(t, rows.Scan(&value))
 	require.NoError(t, rows.Err())
 	return value
+}
+
+func mustCreateAffiliatePaymentOrder(t *testing.T, client *dbent.Client, user *service.User) int64 {
+	t.Helper()
+	order, err := client.PaymentOrder.Create().
+		SetUserID(user.ID).
+		SetUserEmail(user.Email).
+		SetUserName(user.Username).
+		SetAmount(100).
+		SetPayAmount(100).
+		SetFeeRate(0).
+		SetRechargeCode(fmt.Sprintf("AFF-ORDER-%d", time.Now().UnixNano())).
+		SetOutTradeNo(fmt.Sprintf("sub2_aff_%d", time.Now().UnixNano())).
+		SetPaymentType(payment.TypeAlipay).
+		SetPaymentTradeNo(fmt.Sprintf("trade-aff-%d", time.Now().UnixNano())).
+		SetOrderType(payment.OrderTypeBalancePackage).
+		SetStatus("COMPLETED").
+		SetExpiresAt(time.Now().Add(time.Hour)).
+		SetPaidAt(time.Now()).
+		SetClientIP("127.0.0.1").
+		SetSrcHost("api.example.com").
+		Save(context.Background())
+	require.NoError(t, err)
+	return order.ID
+}
+
+type affiliateRebateRecordState struct {
+	Status          string
+	AvailableAmount float64
+	DebtAmount      float64
+	ReversedAmount  float64
+}
+
+func queryAffiliateRebateRecordState(t *testing.T, ctx context.Context, client *dbent.Client, orderID int64) affiliateRebateRecordState {
+	t.Helper()
+	rows, err := client.QueryContext(ctx, `
+SELECT status,
+       available_amount::double precision,
+       debt_amount::double precision,
+       reversed_amount::double precision
+FROM affiliate_rebate_records
+WHERE source_order_id = $1`, orderID)
+	require.NoError(t, err)
+	defer func() { _ = rows.Close() }()
+
+	require.True(t, rows.Next(), "expected one affiliate rebate record")
+	var state affiliateRebateRecordState
+	require.NoError(t, rows.Scan(&state.Status, &state.AvailableAmount, &state.DebtAmount, &state.ReversedAmount))
+	require.NoError(t, rows.Err())
+	return state
+}
+
+func TestAffiliateRepository_ReleaseDueRebates_OffsetsDebtBeforeAvailable(t *testing.T) {
+	ctx := context.Background()
+	tx := testEntTx(t)
+	txCtx := dbent.NewTxContext(ctx, tx)
+	client := tx.Client()
+
+	repo := NewAffiliateRepository(client, integrationDB)
+	inviter := mustCreateUser(t, client, &service.User{
+		Email:        fmt.Sprintf("affiliate-debt-inviter-%d@example.com", time.Now().UnixNano()),
+		PasswordHash: "hash",
+		Role:         service.RoleUser,
+		Status:       service.StatusActive,
+	})
+	buyer := mustCreateUser(t, client, &service.User{
+		Email:        fmt.Sprintf("affiliate-debt-buyer-%d@example.com", time.Now().UnixNano()),
+		PasswordHash: "hash",
+		Role:         service.RoleUser,
+		Status:       service.StatusActive,
+	})
+	orderID := mustCreateAffiliatePaymentOrder(t, client, buyer)
+
+	_, err := client.ExecContext(txCtx, `
+INSERT INTO user_affiliates (user_id, aff_code, aff_quota, aff_history_quota, debt_quota, created_at, updated_at)
+VALUES ($1, $2, 0, 0, 80, NOW(), NOW())`, inviter.ID, fmt.Sprintf("DEBT%08d", time.Now().UnixNano()%100000000))
+	require.NoError(t, err)
+	_, err = client.ExecContext(txCtx, `
+INSERT INTO affiliate_rebate_records (
+  user_id, source_user_id, source_order_id, level, rate, base_amount, rebate_amount, status, available_at, created_at, updated_at
+) VALUES ($1, $2, $3, 1, 6, 1000, 100, 'pending', NOW() - INTERVAL '1 hour', NOW(), NOW())`,
+		inviter.ID, buyer.ID, orderID)
+	require.NoError(t, err)
+
+	released, err := repo.ReleaseDuePendingRebateRecords(txCtx, time.Now())
+	require.NoError(t, err)
+	require.Equal(t, 1, released)
+
+	affQuota := querySingleFloat(t, txCtx, client, "SELECT aff_quota::double precision FROM user_affiliates WHERE user_id = $1", inviter.ID)
+	debtQuota := querySingleFloat(t, txCtx, client, "SELECT debt_quota::double precision FROM user_affiliates WHERE user_id = $1", inviter.ID)
+	historyQuota := querySingleFloat(t, txCtx, client, "SELECT aff_history_quota::double precision FROM user_affiliates WHERE user_id = $1", inviter.ID)
+	require.InDelta(t, 20.0, affQuota, 1e-9)
+	require.InDelta(t, 0.0, debtQuota, 1e-9)
+	require.InDelta(t, 100.0, historyQuota, 1e-9)
+
+	rows, err := client.QueryContext(txCtx, `
+SELECT status, available_amount::double precision, debt_amount::double precision
+FROM affiliate_rebate_records
+WHERE source_order_id = $1`, orderID)
+	require.NoError(t, err)
+	require.True(t, rows.Next())
+	var status string
+	var availableAmount float64
+	var debtAmount float64
+	require.NoError(t, rows.Scan(&status, &availableAmount, &debtAmount))
+	require.NoError(t, rows.Close())
+	require.Equal(t, "available", status)
+	require.InDelta(t, 20.0, availableAmount, 1e-9)
+	require.InDelta(t, 80.0, debtAmount, 1e-9)
+}
+
+func TestAffiliateRepository_ReverseRebates_RestoresDebtForOffsetPortion(t *testing.T) {
+	ctx := context.Background()
+	tx := testEntTx(t)
+	txCtx := dbent.NewTxContext(ctx, tx)
+	client := tx.Client()
+
+	repo := NewAffiliateRepository(client, integrationDB)
+	inviter := mustCreateUser(t, client, &service.User{
+		Email:        fmt.Sprintf("affiliate-reverse-debt-inviter-%d@example.com", time.Now().UnixNano()),
+		PasswordHash: "hash",
+		Role:         service.RoleUser,
+		Status:       service.StatusActive,
+	})
+	buyer := mustCreateUser(t, client, &service.User{
+		Email:        fmt.Sprintf("affiliate-reverse-debt-buyer-%d@example.com", time.Now().UnixNano()),
+		PasswordHash: "hash",
+		Role:         service.RoleUser,
+		Status:       service.StatusActive,
+	})
+	orderID := mustCreateAffiliatePaymentOrder(t, client, buyer)
+
+	_, err := client.ExecContext(txCtx, `
+INSERT INTO user_affiliates (user_id, aff_code, aff_quota, aff_history_quota, debt_quota, created_at, updated_at)
+VALUES ($1, $2, 0, 0, 80, NOW(), NOW())`, inviter.ID, fmt.Sprintf("RDBT%08d", time.Now().UnixNano()%100000000))
+	require.NoError(t, err)
+	_, err = client.ExecContext(txCtx, `
+INSERT INTO affiliate_rebate_records (
+  user_id, source_user_id, source_order_id, level, rate, base_amount, rebate_amount, status, available_at, created_at, updated_at
+) VALUES ($1, $2, $3, 1, 6, 1000, 100, 'pending', NOW() - INTERVAL '1 hour', NOW(), NOW())`,
+		inviter.ID, buyer.ID, orderID)
+	require.NoError(t, err)
+
+	released, err := repo.ReleaseDuePendingRebateRecords(txCtx, time.Now())
+	require.NoError(t, err)
+	require.Equal(t, 1, released)
+
+	require.NoError(t, repo.ReverseRebatesForOrder(txCtx, orderID))
+
+	affQuota := querySingleFloat(t, txCtx, client, "SELECT aff_quota::double precision FROM user_affiliates WHERE user_id = $1", inviter.ID)
+	debtQuota := querySingleFloat(t, txCtx, client, "SELECT debt_quota::double precision FROM user_affiliates WHERE user_id = $1", inviter.ID)
+	require.InDelta(t, 0.0, affQuota, 1e-9)
+	require.InDelta(t, 80.0, debtQuota, 1e-9)
+
+	state := queryAffiliateRebateRecordState(t, txCtx, client, orderID)
+	require.Equal(t, "reversed", state.Status)
+	require.InDelta(t, 0.0, state.AvailableAmount, 1e-9)
+	require.InDelta(t, 80.0, state.DebtAmount, 1e-9)
+	require.InDelta(t, 100.0, state.ReversedAmount, 1e-9)
+}
+
+func TestAffiliateRepository_CreateWithdrawalRequest_UsesAvailableAmount(t *testing.T) {
+	ctx := context.Background()
+	tx := testEntTx(t)
+	txCtx := dbent.NewTxContext(ctx, tx)
+	client := tx.Client()
+
+	repo := NewAffiliateRepository(client, integrationDB)
+	inviter := mustCreateUser(t, client, &service.User{
+		Email:        fmt.Sprintf("affiliate-avail-inviter-%d@example.com", time.Now().UnixNano()),
+		PasswordHash: "hash",
+		Role:         service.RoleUser,
+		Status:       service.StatusActive,
+	})
+	buyer := mustCreateUser(t, client, &service.User{
+		Email:        fmt.Sprintf("affiliate-avail-buyer-%d@example.com", time.Now().UnixNano()),
+		PasswordHash: "hash",
+		Role:         service.RoleUser,
+		Status:       service.StatusActive,
+	})
+	orderID := mustCreateAffiliatePaymentOrder(t, client, buyer)
+
+	_, err := client.ExecContext(txCtx, `
+INSERT INTO user_affiliates (user_id, aff_code, aff_quota, aff_history_quota, debt_quota, created_at, updated_at)
+VALUES ($1, $2, 20, 100, 0, NOW(), NOW())`, inviter.ID, fmt.Sprintf("AVAI%08d", time.Now().UnixNano()%100000000))
+	require.NoError(t, err)
+	_, err = client.ExecContext(txCtx, `
+INSERT INTO affiliate_rebate_records (
+  user_id, source_user_id, source_order_id, level, rate, base_amount, rebate_amount,
+  available_amount, debt_amount, status, available_at, created_at, updated_at
+) VALUES ($1, $2, $3, 1, 6, 1000, 100, 20, 80, 'available', NOW() - INTERVAL '1 hour', NOW(), NOW())`,
+		inviter.ID, buyer.ID, orderID)
+	require.NoError(t, err)
+
+	item, err := repo.CreateWithdrawalRequest(txCtx, inviter.ID, 20, "withdraw available remainder")
+	require.NoError(t, err)
+	require.Equal(t, 20.0, item.Amount)
+
+	affQuota := querySingleFloat(t, txCtx, client, "SELECT aff_quota::double precision FROM user_affiliates WHERE user_id = $1", inviter.ID)
+	require.InDelta(t, 0.0, affQuota, 1e-9)
+
+	rows, err := client.QueryContext(txCtx, `
+SELECT status, available_amount::double precision
+FROM affiliate_rebate_records
+WHERE source_order_id = $1`, orderID)
+	require.NoError(t, err)
+	require.True(t, rows.Next())
+	var status string
+	var availableAmount float64
+	require.NoError(t, rows.Scan(&status, &availableAmount))
+	require.NoError(t, rows.Close())
+	require.Equal(t, "withdraw_requested", status)
+	require.InDelta(t, 0.0, availableAmount, 1e-9)
+
+	itemCount := querySingleInt(t, txCtx, client, `
+SELECT COUNT(*) FROM affiliate_withdrawal_request_items WHERE withdrawal_request_id = $1 AND amount = 20`, item.ID)
+	require.Equal(t, 1, itemCount)
+}
+
+func TestAffiliateRepository_ReverseRebates_AdjustsPendingWithdrawal(t *testing.T) {
+	ctx := context.Background()
+	tx := testEntTx(t)
+	txCtx := dbent.NewTxContext(ctx, tx)
+	client := tx.Client()
+
+	repo := NewAffiliateRepository(client, integrationDB)
+	inviter := mustCreateUser(t, client, &service.User{
+		Email:        fmt.Sprintf("affiliate-reverse-pending-inviter-%d@example.com", time.Now().UnixNano()),
+		PasswordHash: "hash",
+		Role:         service.RoleUser,
+		Status:       service.StatusActive,
+	})
+	buyer := mustCreateUser(t, client, &service.User{
+		Email:        fmt.Sprintf("affiliate-reverse-pending-buyer-%d@example.com", time.Now().UnixNano()),
+		PasswordHash: "hash",
+		Role:         service.RoleUser,
+		Status:       service.StatusActive,
+	})
+	orderID := mustCreateAffiliatePaymentOrder(t, client, buyer)
+
+	_, err := client.ExecContext(txCtx, `
+INSERT INTO user_affiliates (user_id, aff_code, aff_quota, aff_history_quota, debt_quota, created_at, updated_at)
+VALUES ($1, $2, 100, 100, 0, NOW(), NOW())`, inviter.ID, fmt.Sprintf("RPEN%08d", time.Now().UnixNano()%100000000))
+	require.NoError(t, err)
+	_, err = client.ExecContext(txCtx, `
+INSERT INTO affiliate_rebate_records (
+  user_id, source_user_id, source_order_id, level, rate, base_amount, rebate_amount,
+  available_amount, debt_amount, status, available_at, created_at, updated_at
+) VALUES ($1, $2, $3, 1, 6, 1000, 100, 100, 0, 'available', NOW() - INTERVAL '1 hour', NOW(), NOW())`,
+		inviter.ID, buyer.ID, orderID)
+	require.NoError(t, err)
+
+	withdrawal, err := repo.CreateWithdrawalRequest(txCtx, inviter.ID, 100, "withdraw before refund")
+	require.NoError(t, err)
+	require.Equal(t, "pending", withdrawal.Status)
+
+	require.NoError(t, repo.ReverseRebatesForOrder(txCtx, orderID))
+
+	affQuota := querySingleFloat(t, txCtx, client, "SELECT aff_quota::double precision FROM user_affiliates WHERE user_id = $1", inviter.ID)
+	debtQuota := querySingleFloat(t, txCtx, client, "SELECT debt_quota::double precision FROM user_affiliates WHERE user_id = $1", inviter.ID)
+	require.InDelta(t, 0.0, affQuota, 1e-9)
+	require.InDelta(t, 0.0, debtQuota, 1e-9)
+
+	rows, err := client.QueryContext(txCtx, `
+SELECT amount::double precision, status
+FROM affiliate_withdrawal_requests
+WHERE id = $1`, withdrawal.ID)
+	require.NoError(t, err)
+	require.True(t, rows.Next())
+	var withdrawalAmount float64
+	var withdrawalStatus string
+	require.NoError(t, rows.Scan(&withdrawalAmount, &withdrawalStatus))
+	require.NoError(t, rows.Close())
+	require.InDelta(t, 0.0, withdrawalAmount, 1e-9)
+	require.Equal(t, "rejected", withdrawalStatus)
+
+	state := queryAffiliateRebateRecordState(t, txCtx, client, orderID)
+	require.Equal(t, "reversed", state.Status)
+	require.InDelta(t, 0.0, state.AvailableAmount, 1e-9)
+	require.InDelta(t, 0.0, state.DebtAmount, 1e-9)
+	require.InDelta(t, 100.0, state.ReversedAmount, 1e-9)
+}
+
+func TestAffiliateRepository_ReverseRebates_AddsDebtAfterWithdrawalPaid(t *testing.T) {
+	ctx := context.Background()
+	tx := testEntTx(t)
+	txCtx := dbent.NewTxContext(ctx, tx)
+	client := tx.Client()
+
+	repo := NewAffiliateRepository(client, integrationDB)
+	inviter := mustCreateUser(t, client, &service.User{
+		Email:        fmt.Sprintf("affiliate-reverse-paid-inviter-%d@example.com", time.Now().UnixNano()),
+		PasswordHash: "hash",
+		Role:         service.RoleUser,
+		Status:       service.StatusActive,
+	})
+	buyer := mustCreateUser(t, client, &service.User{
+		Email:        fmt.Sprintf("affiliate-reverse-paid-buyer-%d@example.com", time.Now().UnixNano()),
+		PasswordHash: "hash",
+		Role:         service.RoleUser,
+		Status:       service.StatusActive,
+	})
+	orderID := mustCreateAffiliatePaymentOrder(t, client, buyer)
+
+	_, err := client.ExecContext(txCtx, `
+INSERT INTO user_affiliates (user_id, aff_code, aff_quota, aff_history_quota, debt_quota, created_at, updated_at)
+VALUES ($1, $2, 100, 100, 0, NOW(), NOW())`, inviter.ID, fmt.Sprintf("RPAI%08d", time.Now().UnixNano()%100000000))
+	require.NoError(t, err)
+	_, err = client.ExecContext(txCtx, `
+INSERT INTO affiliate_rebate_records (
+  user_id, source_user_id, source_order_id, level, rate, base_amount, rebate_amount,
+  available_amount, debt_amount, status, available_at, created_at, updated_at
+) VALUES ($1, $2, $3, 1, 6, 1000, 100, 100, 0, 'available', NOW() - INTERVAL '1 hour', NOW(), NOW())`,
+		inviter.ID, buyer.ID, orderID)
+	require.NoError(t, err)
+
+	withdrawal, err := repo.CreateWithdrawalRequest(txCtx, inviter.ID, 100, "withdraw before paid refund")
+	require.NoError(t, err)
+	paid, err := repo.MarkWithdrawalPaid(txCtx, withdrawal.ID, 99, "paid")
+	require.NoError(t, err)
+	require.Equal(t, "paid", paid.Status)
+
+	require.NoError(t, repo.ReverseRebatesForOrder(txCtx, orderID))
+
+	affQuota := querySingleFloat(t, txCtx, client, "SELECT aff_quota::double precision FROM user_affiliates WHERE user_id = $1", inviter.ID)
+	debtQuota := querySingleFloat(t, txCtx, client, "SELECT debt_quota::double precision FROM user_affiliates WHERE user_id = $1", inviter.ID)
+	require.InDelta(t, 0.0, affQuota, 1e-9)
+	require.InDelta(t, 100.0, debtQuota, 1e-9)
+
+	state := queryAffiliateRebateRecordState(t, txCtx, client, orderID)
+	require.Equal(t, "debt_offset", state.Status)
+	require.InDelta(t, 0.0, state.AvailableAmount, 1e-9)
+	require.InDelta(t, 100.0, state.DebtAmount, 1e-9)
+	require.InDelta(t, 100.0, state.ReversedAmount, 1e-9)
 }
 
 func TestAffiliateRepository_TransferQuotaToBalance_UsesClaimedQuotaBeforeClear(t *testing.T) {

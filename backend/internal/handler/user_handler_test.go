@@ -130,6 +130,29 @@ func (s *userHandlerRepoStub) UnbindUserAuthProvider(_ context.Context, _ int64,
 	return nil
 }
 
+func TestUserHandlerTransferAffiliateQuotaIsDisabled(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	handler := NewUserHandler(nil, nil, nil, nil, nil)
+
+	recorder := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(recorder)
+	c.Request = httptest.NewRequest(http.MethodPost, "/api/v1/user/aff/transfer", nil)
+	c.Set(string(middleware2.ContextKeyUser), middleware2.AuthSubject{UserID: 11})
+
+	handler.TransferAffiliateQuota(c)
+
+	require.Equal(t, http.StatusBadRequest, recorder.Code)
+
+	var resp struct {
+		Code    int    `json:"code"`
+		Message string `json:"message"`
+	}
+	require.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &resp))
+	require.Equal(t, http.StatusBadRequest, resp.Code)
+	require.Contains(t, resp.Message, "disabled")
+}
+
 func TestUserHandlerUpdateProfileReturnsAvatarURL(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
@@ -270,19 +293,19 @@ func TestUserHandlerGetProfileReturnsLegacyCompatibilityFields(t *testing.T) {
 			AvatarURL:    "https://cdn.example.com/linuxdo.png",
 			AvatarSource: "remote_url",
 		},
-			identities: []service.UserAuthIdentityRecord{
-				{
-					ProviderType:    "linuxdo",
-					ProviderKey:     "linuxdo",
-					ProviderSubject: "linuxdo-subject-21",
-					VerifiedAt:      &verifiedAt,
-					Metadata: map[string]any{
-						"username":   "linuxdo-handle",
-						"avatar_url": "https://cdn.example.com/linuxdo.png",
-					},
+		identities: []service.UserAuthIdentityRecord{
+			{
+				ProviderType:    "linuxdo",
+				ProviderKey:     "linuxdo",
+				ProviderSubject: "linuxdo-subject-21",
+				VerifiedAt:      &verifiedAt,
+				Metadata: map[string]any{
+					"username":   "linuxdo-handle",
+					"avatar_url": "https://cdn.example.com/linuxdo.png",
 				},
 			},
-		}
+		},
+	}
 	handler := NewUserHandler(service.NewUserService(repo, nil, nil, nil), nil, nil, nil, nil)
 
 	recorder := httptest.NewRecorder()

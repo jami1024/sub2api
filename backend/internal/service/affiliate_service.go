@@ -118,20 +118,23 @@ type AffiliateRebateRecordInput struct {
 }
 
 type AffiliateRebateRecord struct {
-	ID             int64      `json:"id"`
-	SourceOrderID  int64      `json:"source_order_id"`
-	UserID         int64      `json:"user_id"`
-	SourceUserID   int64      `json:"source_user_id"`
-	SourceEmail    string     `json:"source_email"`
-	SourceUsername string     `json:"source_username"`
-	Level          int        `json:"level"`
-	Rate           float64    `json:"rate"`
-	BaseAmount     float64    `json:"base_amount"`
-	RebateAmount   float64    `json:"rebate_amount"`
-	Status         string     `json:"status"`
-	AvailableAt    *time.Time `json:"available_at,omitempty"`
-	CreatedAt      time.Time  `json:"created_at"`
-	UpdatedAt      time.Time  `json:"updated_at"`
+	ID              int64      `json:"id"`
+	SourceOrderID   int64      `json:"source_order_id"`
+	UserID          int64      `json:"user_id"`
+	SourceUserID    int64      `json:"source_user_id"`
+	SourceEmail     string     `json:"source_email"`
+	SourceUsername  string     `json:"source_username"`
+	Level           int        `json:"level"`
+	Rate            float64    `json:"rate"`
+	BaseAmount      float64    `json:"base_amount"`
+	RebateAmount    float64    `json:"rebate_amount"`
+	AvailableAmount float64    `json:"available_amount"`
+	DebtAmount      float64    `json:"debt_amount"`
+	ReversedAmount  float64    `json:"reversed_amount"`
+	Status          string     `json:"status"`
+	AvailableAt     *time.Time `json:"available_at,omitempty"`
+	CreatedAt       time.Time  `json:"created_at"`
+	UpdatedAt       time.Time  `json:"updated_at"`
 }
 
 type AffiliateWithdrawalRequest struct {
@@ -230,6 +233,11 @@ func (s *AffiliateService) EnsureUserAffiliate(ctx context.Context, userID int64
 }
 
 func (s *AffiliateService) GetAffiliateDetail(ctx context.Context, userID int64) (*AffiliateDetail, error) {
+	if s != nil && s.repo != nil {
+		if _, err := s.repo.ReleaseDuePendingRebateRecords(ctx, time.Now()); err != nil {
+			return nil, err
+		}
+	}
 	// Lazy thaw: move any matured frozen quota to available before reading.
 	if s != nil && s.repo != nil {
 		_, _ = s.repo.ThawFrozenQuota(ctx, userID)
