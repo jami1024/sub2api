@@ -387,31 +387,41 @@ func (s *PaymentService) doBalancePackage(ctx context.Context, o *dbent.PaymentO
 			return infraerrors.Conflict("PACKAGE_SCOPE_CONFLICT_AFTER_PAYMENT", "package scope conflict after payment")
 		}
 	}
-	oldScope := psStringValue(user.PackageScope)
-	if user.Balance > 0 && !PackageScopeMatchesGroup(oldScope, orderScope) && o.ForceSwitchScope {
-		oldBalance := user.Balance
-		if err := s.userRepo.UpdateBalance(ctx, o.UserID, -oldBalance); err != nil {
-			return fmt.Errorf("clear user balance for scope switch: %w", err)
+	credited := s.hasAuditLog(ctx, o.ID, "BALANCE_PACKAGE_CREDITED")
+	if !credited {
+		oldScope := psStringValue(user.PackageScope)
+		if user.Balance > 0 && !PackageScopeMatchesGroup(oldScope, orderScope) && o.ForceSwitchScope {
+			oldBalance := user.Balance
+			if err := s.userRepo.UpdateBalance(ctx, o.UserID, -oldBalance); err != nil {
+				return fmt.Errorf("clear user balance for scope switch: %w", err)
+			}
+			user.Balance = 0
+			user.PackageScope = &orderScope
+			if err := s.userRepo.Update(ctx, user); err != nil {
+				return fmt.Errorf("update user package scope after force switch: %w", err)
+			}
+			s.writeAuditLog(ctx, o.ID, "BALANCE_PACKAGE_FORCE_SWITCH", "system", map[string]any{
+				"userID":         o.UserID,
+				"oldScope":       oldScope,
+				"newScope":       orderScope,
+				"clearedBalance": oldBalance,
+			})
+		} else if psStringValue(user.PackageScope) == "" {
+			user.PackageScope = &orderScope
+			if err := s.userRepo.Update(ctx, user); err != nil {
+				return fmt.Errorf("update user package scope: %w", err)
+			}
 		}
-		user.Balance = 0
-		user.PackageScope = &orderScope
-		if err := s.userRepo.Update(ctx, user); err != nil {
-			return fmt.Errorf("update user package scope after force switch: %w", err)
+		if err := s.userRepo.UpdateBalance(ctx, o.UserID, o.Amount); err != nil {
+			return fmt.Errorf("update user balance: %w", err)
 		}
-		s.writeAuditLog(ctx, o.ID, "BALANCE_PACKAGE_FORCE_SWITCH", "system", map[string]any{
-			"userID":         o.UserID,
-			"oldScope":       oldScope,
-			"newScope":       orderScope,
-			"clearedBalance": oldBalance,
+		s.writeAuditLog(ctx, o.ID, "BALANCE_PACKAGE_CREDITED", "system", map[string]any{
+			"userID":    o.UserID,
+			"amount":    o.Amount,
+			"scope":     orderScope,
+			"package":   o.BalancePackageID,
+			"payAmount": o.PayAmount,
 		})
-	} else if psStringValue(user.PackageScope) == "" {
-		user.PackageScope = &orderScope
-		if err := s.userRepo.Update(ctx, user); err != nil {
-			return fmt.Errorf("update user package scope: %w", err)
-		}
-	}
-	if err := s.userRepo.UpdateBalance(ctx, o.UserID, o.Amount); err != nil {
-		return fmt.Errorf("update user balance: %w", err)
 	}
 	if err := s.applyAffiliateRebateForOrder(ctx, o); err != nil {
 		return err

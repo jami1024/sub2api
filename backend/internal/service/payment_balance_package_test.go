@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"testing"
 	"time"
 
@@ -224,6 +225,7 @@ func (s *packageScopeAuthCacheInvalidatorStub) InvalidateAuthCacheByGroupID(ctx 
 type packageScopeAffiliateRepoStub struct {
 	summaries map[int64]*AffiliateSummary
 	records   []AffiliateRebateRecordInput
+	createErr error
 }
 
 func (s *packageScopeAffiliateRepoStub) EnsureUserAffiliate(ctx context.Context, userID int64) (*AffiliateSummary, error) {
@@ -267,6 +269,9 @@ func (s *packageScopeAffiliateRepoStub) ListAncestors(ctx context.Context, userI
 	return out, nil
 }
 func (s *packageScopeAffiliateRepoStub) CreatePendingRebateRecords(ctx context.Context, records []AffiliateRebateRecordInput) (int, error) {
+	if s.createErr != nil {
+		return 0, s.createErr
+	}
 	s.records = append(s.records, records...)
 	return len(records), nil
 }
@@ -649,6 +654,81 @@ func TestExecuteBalancePackageFulfillmentCreditsUserBalance(t *testing.T) {
 	require.InDelta(t, 6.0, affiliateRepo.records[0].RebateAmount, 1e-9)
 	require.InDelta(t, 3.0, affiliateRepo.records[1].RebateAmount, 1e-9)
 	require.InDelta(t, 1.0, affiliateRepo.records[2].RebateAmount, 1e-9)
+}
+
+func TestExecuteBalancePackageFulfillmentDoesNotCreditBalanceTwiceWhenAffiliateRebateRetrys(t *testing.T) {
+	ctx := context.Background()
+	client := newPackageScopeEntClient(t)
+
+	userEntity, err := client.User.Create().
+		SetEmail("balance-package-affiliate-retry@example.com").
+		SetPasswordHash("hash").
+		SetUsername("bp-aff-retry").
+		SetBalance(0).
+		SetConcurrency(1).
+		SetStatus(StatusActive).
+		Save(ctx)
+	require.NoError(t, err)
+
+	order, err := client.PaymentOrder.Create().
+		SetUserID(userEntity.ID).
+		SetUserEmail(userEntity.Email).
+		SetUserName(userEntity.Username).
+		SetAmount(100).
+		SetPayAmount(100).
+		SetFeeRate(0).
+		SetRechargeCode("PAY-BP-AFF-RETRY").
+		SetOutTradeNo("sub2_bp_aff_retry").
+		SetPaymentType(payment.TypeAlipay).
+		SetPaymentTradeNo("trade-bp-aff-retry").
+		SetOrderType(payment.OrderTypeBalancePackage).
+		SetBalancePackageID(4).
+		SetPackageScopeSnapshot(PackageScopeCodex).
+		SetStatus(OrderStatusPaid).
+		SetPaidAt(time.Now()).
+		SetExpiresAt(time.Now().Add(time.Hour)).
+		SetClientIP("127.0.0.1").
+		SetSrcHost("example.com").
+		Save(ctx)
+	require.NoError(t, err)
+
+	userRepo := &packageScopeUserRepoStub{user: &User{
+		ID:           userEntity.ID,
+		Email:        userEntity.Email,
+		Username:     userEntity.Username,
+		Balance:      0,
+		PackageScope: nil,
+		Status:       StatusActive,
+	}}
+	inviterID := int64(201)
+	affiliateRepo := &packageScopeAffiliateRepoStub{
+		summaries: map[int64]*AffiliateSummary{
+			userEntity.ID: {UserID: userEntity.ID, InviterID: &inviterID},
+			inviterID:     {UserID: inviterID},
+		},
+		createErr: errors.New("temporary affiliate insert failure"),
+	}
+	svc := &PaymentService{
+		entClient:        client,
+		userRepo:         userRepo,
+		affiliateService: &AffiliateService{repo: affiliateRepo},
+	}
+
+	err = svc.ExecuteBalancePackageFulfillment(ctx, order.ID)
+	require.Error(t, err)
+	require.Len(t, userRepo.balanceOps, 1)
+	require.Equal(t, 100.0, userRepo.user.Balance)
+
+	affiliateRepo.createErr = nil
+	err = svc.ExecuteBalancePackageFulfillment(ctx, order.ID)
+	require.NoError(t, err)
+	require.Len(t, userRepo.balanceOps, 1, "retry must not credit the purchased balance twice")
+	require.Equal(t, 100.0, userRepo.user.Balance)
+
+	reloaded, err := client.PaymentOrder.Get(ctx, order.ID)
+	require.NoError(t, err)
+	require.Equal(t, OrderStatusCompleted, reloaded.Status)
+	require.Len(t, affiliateRepo.records, 1)
 }
 
 func TestExecuteBalancePackageFulfillmentMarksFailedAfterPaidConflict(t *testing.T) {
