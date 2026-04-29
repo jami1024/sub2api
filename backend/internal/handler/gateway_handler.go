@@ -1722,7 +1722,7 @@ func billingErrorDetails(err error) (status int, code, message string, retryAfte
 		if msg == "" {
 			msg = "Billing service temporarily unavailable. Please retry later."
 		}
-		return http.StatusServiceUnavailable, "billing_service_error", msg, 0
+		return http.StatusServiceUnavailable, "billing_service_error", msg, billingServiceUnavailableRetryAfterSeconds
 	}
 	if errors.Is(err, service.ErrAPIKeyRateLimit5hExceeded) {
 		msg := pkgerrors.Message(err)
