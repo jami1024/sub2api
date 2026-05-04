@@ -22,6 +22,9 @@
           <p class="mt-3 max-w-[62ch] text-sm leading-7 text-slate-600 dark:text-slate-300">
             当前仅支持 Codex。下列档位会直接展示人民币价格和美元额度，并按 GPT-5.4 的常见使用方式估算大致可用量。
           </p>
+          <p class="mt-2 text-xs font-medium text-slate-500 dark:text-slate-400">
+            实际价格以实际订阅为准。
+          </p>
         </div>
 
         <div
@@ -136,8 +139,8 @@ type HomePackageCard = {
 
 const packageCards: HomePackageCard[] = [
   {
-    name: '¥15 / $50',
-    priceLabel: '¥15',
+    name: '¥20 / $50',
+    priceLabel: '¥20',
     creditLabel: '$50',
     estimateValue: '1000 万',
     estimateLabel: '按 GPT-5.4 约可使用 1000 万 tokens',
@@ -146,8 +149,8 @@ const packageCards: HomePackageCard[] = [
     kind: 'codex'
   },
   {
-    name: '¥30 / $120',
-    priceLabel: '¥30',
+    name: '¥50 / $120',
+    priceLabel: '¥50',
     creditLabel: '$120',
     estimateValue: '2400 万',
     estimateLabel: '按 GPT-5.4 约可使用 2400 万 tokens',
