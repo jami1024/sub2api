@@ -240,7 +240,7 @@ func (s *packageScopeAffiliateRepoStub) GetAffiliateByCode(ctx context.Context, 
 func (s *packageScopeAffiliateRepoStub) BindInviter(ctx context.Context, userID, inviterID int64) (bool, error) {
 	panic("unexpected BindInviter call")
 }
-func (s *packageScopeAffiliateRepoStub) AccrueQuota(ctx context.Context, inviterID, inviteeUserID int64, amount float64, freezeHours int) (bool, error) {
+func (s *packageScopeAffiliateRepoStub) AccrueQuota(ctx context.Context, inviterID, inviteeUserID int64, amount float64, freezeHours int, sourceOrderID *int64) (bool, error) {
 	panic("unexpected AccrueQuota call")
 }
 func (s *packageScopeAffiliateRepoStub) TransferQuotaToBalance(ctx context.Context, userID int64) (float64, float64, error) {
@@ -323,6 +323,19 @@ func (s *packageScopeAffiliateRepoStub) BatchSetUserRebateRate(ctx context.Conte
 }
 func (s *packageScopeAffiliateRepoStub) ListUsersWithCustomSettings(ctx context.Context, filter AffiliateAdminFilter) ([]AffiliateAdminEntry, int64, error) {
 	return nil, 0, nil
+}
+
+func (s *packageScopeAffiliateRepoStub) ListAffiliateInviteRecords(ctx context.Context, filter AffiliateRecordFilter) ([]AffiliateInviteRecord, int64, error) {
+	return nil, 0, nil
+}
+func (s *packageScopeAffiliateRepoStub) ListAffiliateRebateRecords(ctx context.Context, filter AffiliateRecordFilter) ([]AffiliateAdminRebateRecord, int64, error) {
+	return nil, 0, nil
+}
+func (s *packageScopeAffiliateRepoStub) ListAffiliateTransferRecords(ctx context.Context, filter AffiliateRecordFilter) ([]AffiliateTransferRecord, int64, error) {
+	return nil, 0, nil
+}
+func (s *packageScopeAffiliateRepoStub) GetAffiliateUserOverview(ctx context.Context, userID int64) (*AffiliateUserOverview, error) {
+	return nil, ErrUserNotFound
 }
 
 func newPackageScopeEntClient(t *testing.T) *dbent.Client {
