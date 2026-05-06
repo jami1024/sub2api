@@ -411,6 +411,7 @@ export default {
     buySubscription: '充值订阅',
     purchaseSubscriptionMenu: '充值订阅',
     docs: '文档',
+    userGuide: '使用教程',
     myOrders: '我的订单',
     orderManagement: '订单管理',
     paymentDashboard: '支付概览',
@@ -647,8 +648,107 @@ export default {
     generateNewKey: '生成新的 API 密钥',
     viewUsage: '查看使用记录',
     checkDetailedLogs: '查看详细的使用日志',
+    openUserGuide: '查看使用教程',
+    learnSetupSteps: '从充值到客户端配置',
     redeemCode: '兑换码',
     addBalanceWithCode: '使用兑换码充值'
+  },
+
+  userGuide: {
+    title: '使用教程',
+    description: '了解如何充值、创建 API Key 并配置客户端。',
+    badge: '快速开始',
+    hero: '按照下面的步骤完成充值、创建密钥、选择分组和客户端配置。配置完成后，你可以在使用记录里查看请求、Token 和消费情况。',
+    actions: {
+      createKey: '去创建 API Key',
+      recharge: '去充值订阅'
+    },
+    quickNav: {
+      title: '页面导航',
+      quickStart: '快速开始',
+      clientSetup: '客户端配置',
+      imageGeneration: '图片生成',
+      faq: '常见问题',
+      fullDoc: '完整文档'
+    },
+    quickStart: {
+      kicker: '推荐流程',
+      title: '五步完成接入',
+      description: '先完成账户和密钥，再复制对应客户端配置；后续通过用量记录确认请求和扣费是否正常。'
+    },
+    steps: {
+      fundAccount: {
+        title: '充值或购买套餐',
+        body: '如果当前站点开启了支付，可以先进入充值订阅页面购买余额包或套餐；也可以使用管理员发放的兑换码充值。'
+      },
+      createKey: {
+        title: '创建 API Key',
+        body: '进入 API 密钥页面，创建一个新的密钥。建议给密钥起一个容易识别的名称，方便后续查看用量。'
+      },
+      chooseGroup: {
+        title: '选择可用分组',
+        body: '创建或编辑密钥时选择分组。分组决定这个 Key 能使用哪些模型、账号和计费规则。'
+      },
+      configureClient: {
+        title: '配置客户端',
+        body: '点击密钥旁的“使用密钥”，按你使用的 Claude Code、Codex CLI 或 OpenAI 兼容客户端复制配置。'
+      },
+      checkUsage: {
+        title: '查看用量和余额',
+        body: '开始请求后，可以在仪表盘和使用记录页面查看请求数量、Token、实际消费和余额变化。'
+      }
+    },
+    client: {
+      title: '常见客户端配置',
+      description: '不同客户端的配置入口不同，但核心都是填写当前服务地址和你的 API Key。',
+      codex: {
+        title: 'Codex CLI',
+        body: '在 API 密钥页面打开“使用密钥”，复制 Codex CLI 配置到本机配置文件。'
+      },
+      claude: {
+        title: 'Claude Code',
+        body: '复制页面提供的环境变量，在当前终端执行；如需长期生效，写入 shell 配置文件。'
+      },
+      openai: {
+        title: 'OpenAI 兼容客户端',
+        body: '把 Base URL 设置为页面显示的 API 端点，并使用你的 API Key 作为认证密钥。'
+      }
+    },
+    claudeInstall: {
+      title: '安装 Claude Code',
+      description:
+        'Claude Code 官方客户端可以通过 npm 安装。安装后运行 claude，再按 API 密钥页面提供的环境变量配置当前服务地址和密钥。',
+      note: '需要本机已安装 Node.js。配置 Sub2API 时通常使用 ANTHROPIC_BASE_URL 和 ANTHROPIC_AUTH_TOKEN。'
+    },
+    imageGeneration: {
+      title: '使用 gpt-image-2 生图',
+      description:
+        '如果你的分组已开放 OpenAI 图片模型，可以用 OpenAI 兼容的图片接口调用 gpt-image-2。',
+      jqExample: '有 jq：直接保存为图片',
+      noJqExample: '没有 jq：用 Python 保存图片',
+      note: '把 BASE_URL 替换为 API 密钥页面显示的端点域名，把 API_KEY 替换为你的密钥。上面的示例会把返回的 b64_json 解码保存为 image.png。'
+    },
+    fullClaudeDoc: {
+      title: 'Claude Code 完整安装文档',
+      description: '下面嵌入完整 Markdown 教程，方便用户按系统逐步安装和排查。',
+      navTitle: '文档导航',
+      toggle: '展开/收起'
+    },
+    faq: {
+      title: '常见问题',
+      keyNotWorking: {
+        title: 'Key 不能用怎么办？',
+        body: '先确认密钥处于启用状态，并且已经绑定可用分组；如果设置了 IP 限制，也要确认当前网络在允许范围内。'
+      },
+      noGroup: {
+        title: '看不到可用分组怎么办？',
+        body: '可能是管理员还没有开放对应分组，或你的余额模式与分组类型不匹配。请联系管理员确认权限。'
+      },
+      billing: {
+        title: '余额或订阅怎么扣费？',
+        body: '扣费方式取决于管理员配置的套餐、余额包和分组计费规则。页面显示价格供参考，最终以实际订阅和使用记录为准。'
+      }
+    }
   },
 
   // Groups (shared)

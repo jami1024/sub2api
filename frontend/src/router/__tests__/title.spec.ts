@@ -29,4 +29,13 @@ describe('resolveDocumentTitle', () => {
 
     expect(route.meta.titleKey).toBe('nav.purchaseSubscriptionMenu')
   })
+
+  it('用户使用教程页面使用独立路由和标题文案', () => {
+    const route = router.resolve('/guide')
+
+    expect(route.name).toBe('UserGuide')
+    expect(route.meta.requiresAuth).toBe(true)
+    expect(route.meta.titleKey).toBe('userGuide.title')
+    expect(route.meta.descriptionKey).toBe('userGuide.description')
+  })
 })

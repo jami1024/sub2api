@@ -411,6 +411,7 @@ export default {
     buySubscription: 'Purchase',
     purchaseSubscriptionMenu: 'Purchase',
     docs: 'Docs',
+    userGuide: 'User Guide',
     myOrders: 'My Orders',
     orderManagement: 'Orders',
     paymentDashboard: 'Payment Dashboard',
@@ -648,8 +649,107 @@ export default {
     generateNewKey: 'Generate a new API key',
     viewUsage: 'View Usage',
     checkDetailedLogs: 'Check detailed usage logs',
+    openUserGuide: 'Open User Guide',
+    learnSetupSteps: 'Recharge, keys, and clients',
     redeemCode: 'Redeem Code',
     addBalanceWithCode: 'Add balance with a code'
+  },
+
+  userGuide: {
+    title: 'User Guide',
+    description: 'Learn how to recharge, create an API key, and configure your client.',
+    badge: 'Quick start',
+    hero: 'Follow these steps to fund your account, create a key, choose a group, and configure your client. After setup, usage records show requests, tokens, costs, and balance changes.',
+    actions: {
+      createKey: 'Create API Key',
+      recharge: 'Recharge / Purchase'
+    },
+    quickNav: {
+      title: 'On this page',
+      quickStart: 'Quick start',
+      clientSetup: 'Client setup',
+      imageGeneration: 'Image generation',
+      faq: 'FAQ',
+      fullDoc: 'Full guide'
+    },
+    quickStart: {
+      kicker: 'Recommended flow',
+      title: 'Connect in five steps',
+      description: 'Set up your account and key first, then copy the matching client config. Use usage records later to confirm requests and billing.'
+    },
+    steps: {
+      fundAccount: {
+        title: 'Recharge or buy a plan',
+        body: 'If payment is enabled, purchase a balance package or subscription from the purchase page. You can also redeem a code provided by the administrator.'
+      },
+      createKey: {
+        title: 'Create an API key',
+        body: 'Open the API Keys page and create a new key. Use a clear name so it is easy to identify in usage records later.'
+      },
+      chooseGroup: {
+        title: 'Choose an available group',
+        body: 'Select a group when creating or editing a key. The group controls available models, upstream accounts, and billing rules.'
+      },
+      configureClient: {
+        title: 'Configure your client',
+        body: 'Click “Use Key” next to the key and copy the configuration for Claude Code, Codex CLI, or OpenAI-compatible clients.'
+      },
+      checkUsage: {
+        title: 'Check usage and balance',
+        body: 'After sending requests, use the Dashboard and Usage pages to review request counts, tokens, actual cost, and balance changes.'
+      }
+    },
+    client: {
+      title: 'Common client setup',
+      description: 'Clients use different setup files, but the core values are the same: this service endpoint and your API key.',
+      codex: {
+        title: 'Codex CLI',
+        body: 'Open “Use Key” on the API Keys page and copy the Codex CLI configuration into your local config file.'
+      },
+      claude: {
+        title: 'Claude Code',
+        body: 'Copy the environment variables shown on the page and run them in your terminal. Add them to your shell profile for permanent use.'
+      },
+      openai: {
+        title: 'OpenAI-compatible clients',
+        body: 'Set Base URL to the API endpoint shown on the page and use your API key as the authentication token.'
+      }
+    },
+    claudeInstall: {
+      title: 'Install Claude Code',
+      description:
+        'The official Claude Code client can be installed with npm. After installation, run claude and configure the service endpoint and key using the environment variables shown on the API Keys page.',
+      note: 'Node.js must be installed locally. Sub2API Claude Code setup usually uses ANTHROPIC_BASE_URL and ANTHROPIC_AUTH_TOKEN.'
+    },
+    imageGeneration: {
+      title: 'Generate images with gpt-image-2',
+      description:
+        'If your group has access to OpenAI image models, call gpt-image-2 through the OpenAI-compatible image endpoint.',
+      jqExample: 'With jq: save directly as an image',
+      noJqExample: 'Without jq: save the image with Python',
+      note: 'Replace BASE_URL with the endpoint domain shown on the API Keys page and API_KEY with your key. The examples above decode the returned b64_json value and save it as image.png.'
+    },
+    fullClaudeDoc: {
+      title: 'Full Claude Code installation guide',
+      description: 'The embedded Markdown guide below helps users install and troubleshoot by operating system.',
+      navTitle: 'Document navigation',
+      toggle: 'Expand / collapse'
+    },
+    faq: {
+      title: 'FAQ',
+      keyNotWorking: {
+        title: 'What if my key does not work?',
+        body: 'Check that the key is enabled and assigned to an available group. If IP restrictions are configured, make sure your current network is allowed.'
+      },
+      noGroup: {
+        title: 'What if no groups are available?',
+        body: 'The administrator may not have opened a group for you, or your balance mode may not match the group type. Contact the administrator to confirm access.'
+      },
+      billing: {
+        title: 'How are balance and subscriptions charged?',
+        body: 'Charging depends on the configured plans, balance packages, and group billing rules. Displayed prices are for reference; actual subscriptions and usage records are authoritative.'
+      }
+    }
   },
 
   // Groups (shared)

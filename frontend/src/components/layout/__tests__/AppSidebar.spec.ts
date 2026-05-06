@@ -51,6 +51,13 @@ describe('AppSidebar purchase menu label', () => {
   })
 })
 
+describe('AppSidebar user guide navigation', () => {
+  it('exposes a user guide entry in the user sidebar', () => {
+    expect(componentSource).toContain("path: '/guide'")
+    expect(componentSource).toContain("t('nav.userGuide')")
+  })
+})
+
 describe('AppSidebar desktop width', () => {
   it('uses the compact 15rem expanded width instead of the old 16rem width', () => {
     expect(componentSource).toContain("sidebarCollapsed ? 'w-[72px]' : 'w-60'")
