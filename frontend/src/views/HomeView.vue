@@ -70,6 +70,7 @@
           <router-link
             v-else
             to="/login"
+            data-testid="home-login-link"
             class="inline-flex items-center rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-800 shadow-sm transition hover:bg-slate-50 dark:border-white/20 dark:bg-white/10 dark:text-white dark:hover:bg-white/15"
           >
             {{ t('home.login') }}

@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount, shallowMount } from '@vue/test-utils'
 import PaymentView from '../PaymentView.vue'
 import { PAYMENT_RECOVERY_STORAGE_KEY } from '@/components/payment/paymentFlow'
+import zh from '@/i18n/locales/zh'
+import en from '@/i18n/locales/en'
 
 const routeState = vi.hoisted(() => ({
   path: '/purchase',
@@ -557,6 +559,17 @@ describe('PaymentView balance package storefront', () => {
     expect(subscriptionTab.classes()).toContain('cursor-not-allowed')
   })
 
+
+  it('uses clear copy that General balance supports Claude and Codex', () => {
+    expect(zh.payment.balancePackages.supportsGeneralOnly).toBe('仅支持 General 分组')
+    expect(zh.payment.balancePackages.modeGuideGeneralTitle).toBe('仅适用于 General 分组')
+    expect(zh.payment.balancePackages.modeGuideGeneralDesc).toContain('Claude 和 Codex')
+    expect(zh.payment.balancePackages.modeGuideGeneralDesc).toContain('General 分组规则')
+    expect(en.payment.balancePackages.supportsGeneralOnly).toBe('Only available for General groups')
+    expect(en.payment.balancePackages.modeGuideGeneralTitle).toBe('For General groups only')
+    expect(en.payment.balancePackages.modeGuideGeneralDesc).toContain('Claude and Codex')
+  })
+
   it('renders balance package cards with scope badge, credited amount and support hint', async () => {
     const wrapper = mountPaymentView()
     await flushPromises()
@@ -608,6 +621,7 @@ describe('PaymentView balance package storefront', () => {
     expect(guide.text()).toContain('payment.balancePackages.modeGuideTitle')
     expect(guide.text()).toContain('payment.balancePackages.modeGuideCodexTitle')
     expect(guide.text()).toContain('payment.balancePackages.modeGuideGeneralTitle')
+    expect(guide.text()).toContain('payment.balancePackages.modeGuideGeneralDesc')
     expect(guide.text()).toContain('payment.balancePackages.noticeForceSwitch')
   })
 

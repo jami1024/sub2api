@@ -221,18 +221,31 @@ describe('HomeView', () => {
     expect(wrapper.get('[data-testid="home-hero-panel-glow"]').exists()).toBe(true)
   })
 
-  it('renders the codex package section with GPT-5.4 estimates and Claude teaser', () => {
+  it('renders the package section with Codex and Claude balance package guidance', () => {
     const wrapper = mountView()
 
-    expect(wrapper.text()).toContain('Codex 额度包')
+    expect(wrapper.text()).toContain('Codex / Claude 余额包')
     expect(wrapper.text()).toContain('¥20 / $50')
     expect(wrapper.text()).toContain('¥50 / $120')
     expect(wrapper.text()).toContain('¥100 / $400')
     expect(wrapper.text()).toContain('按 GPT-5.4 约可使用 1000 万 tokens')
     expect(wrapper.text()).toContain('按输入:输出 = 4:1 估算')
     expect(wrapper.text()).toContain('实际价格以实际订阅为准')
-    expect(wrapper.text()).toContain('Claude 额度包')
-    expect(wrapper.text()).toContain('敬请期待')
+    expect(wrapper.text()).toContain('Claude 余额包')
+    expect(wrapper.text()).toContain('新增 Claude 余额包')
+    expect(wrapper.text()).toContain('登录后前往充值订阅查看详情')
+    expect(wrapper.text()).not.toContain('敬请期待')
+  })
+
+  it('uses high-contrast dark mode styling for the package section', () => {
+    const wrapper = mountView()
+
+    const section = wrapper.get('[data-testid="home-package-section"]')
+    expect(section.classes().join(' ')).toContain('dark:bg-slate-950')
+    expect(section.classes().join(' ')).not.toContain('dark:bg-[#08101d]/88')
+
+    const firstCard = wrapper.get('[data-testid="home-package-card"]')
+    expect(firstCard.classes().join(' ')).toContain('dark:bg-slate-900/95')
   })
 
   it('renders the package multiplier badge text for codex cards', () => {
@@ -242,13 +255,13 @@ describe('HomeView', () => {
     expect(sectionText).toContain('1x')
   })
 
-  it('renders three codex package cards and one claude teaser card', () => {
+  it('renders three codex package cards and one claude package info card', () => {
     const wrapper = mountView()
     const cards = wrapper.findAll('[data-testid="home-package-card"]')
 
     expect(cards).toHaveLength(4)
-    expect(wrapper.get('[data-testid="home-package-section"]').text()).toContain('当前仅支持 Codex')
-    expect(cards[3].attributes('data-package-kind')).toBe('claude-teaser')
+    expect(wrapper.get('[data-testid="home-package-section"]').text()).toContain('同时提供 Codex 与 Claude 余额包')
+    expect(cards[3].attributes('data-package-kind')).toBe('claude')
   })
 
   it('renders the iframe override when home_content is an external URL', () => {
@@ -275,7 +288,7 @@ describe('HomeView', () => {
     const wrapper = mountView()
 
     expect(wrapper.text()).toContain('控制台')
-    expect(wrapper.text()).not.toContain('登录')
+    expect(wrapper.find('[data-testid="home-login-link"]').exists()).toBe(false)
   })
 
   it('does not flash the Sub2API fallback brand before public settings load', () => {
