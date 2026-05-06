@@ -17,7 +17,7 @@
         </span>
         <div v-if="pkg.display_tags?.length" class="mt-3 flex flex-wrap gap-2">
           <span
-            v-for="(tag, index) in pkg.display_tags.slice(0, 1)"
+            v-for="(tag, index) in pkg.display_tags.slice(0, MAX_DISPLAY_TAGS)"
             :key="`${tag}-${index}`"
             :data-testid="`balance-package-card-tag-${pkg.id}-${index}`"
             :class="[
@@ -86,6 +86,8 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { BalancePackage } from '@/types/payment'
 import { packageScopeBadgeClass, packageScopeLabelKey } from '@/utils/packageScopeBadge'
+
+const MAX_DISPLAY_TAGS = 3
 
 const props = defineProps<{
   pkg: BalancePackage

@@ -591,13 +591,13 @@ describe('PaymentView balance package storefront', () => {
     expect(action.classes()).toContain('w-full')
   })
 
-  it('renders only the first balance package display tag on cards', async () => {
+  it('renders all configured balance package display tags on cards', async () => {
     const wrapper = mountPaymentView()
     await flushPromises()
 
     expect(wrapper.get('[data-testid="balance-package-card-tag-9-0"]').text()).toContain('新手推荐')
-    expect(wrapper.find('[data-testid="balance-package-card-tag-9-1"]').exists()).toBe(false)
-    expect(wrapper.find('[data-testid="balance-package-card-tag-9-2"]').exists()).toBe(false)
+    expect(wrapper.get('[data-testid="balance-package-card-tag-9-1"]').text()).toContain('1x 倍率')
+    expect(wrapper.get('[data-testid="balance-package-card-tag-9-2"]').text()).toContain('适合 Codex')
   })
 
   it('renders balance mode guide and notes above the package cards', async () => {
