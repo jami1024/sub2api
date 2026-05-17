@@ -85,6 +85,12 @@ func (s *packageScopeUserRepoStub) DeductBalance(ctx context.Context, id int64, 
 func (s *packageScopeUserRepoStub) UpdateConcurrency(ctx context.Context, id int64, amount int) error {
 	panic("unexpected UpdateConcurrency call")
 }
+func (s *packageScopeUserRepoStub) BatchSetConcurrency(ctx context.Context, userIDs []int64, value int) (int, error) {
+	return 0, nil
+}
+func (s *packageScopeUserRepoStub) BatchAddConcurrency(ctx context.Context, userIDs []int64, delta int) (int, error) {
+	return 0, nil
+}
 func (s *packageScopeUserRepoStub) ExistsByEmail(ctx context.Context, email string) (bool, error) {
 	panic("unexpected ExistsByEmail call")
 }
@@ -115,6 +121,22 @@ func (s *packageScopeUserRepoStub) DisableTotp(ctx context.Context, userID int64
 
 type packageScopeRedeemRepoStub struct {
 	code *RedeemCode
+}
+
+type packageScopeLoadBalancerStub struct{}
+
+func (s *packageScopeLoadBalancerStub) GetInstanceConfig(context.Context, int64) (map[string]string, error) {
+	return map[string]string{}, nil
+}
+
+func (s *packageScopeLoadBalancerStub) SelectInstance(_ context.Context, _ string, paymentType payment.PaymentType, _ payment.Strategy, _ float64) (*payment.InstanceSelection, error) {
+	return &payment.InstanceSelection{
+		InstanceID:     "package-scope-test",
+		ProviderKey:    payment.TypeAlipay,
+		SupportedTypes: paymentType,
+		PaymentMode:    "qrcode",
+		Config:         map[string]string{},
+	}, nil
 }
 
 func (s *packageScopeRedeemRepoStub) Create(ctx context.Context, code *RedeemCode) error {
@@ -386,7 +408,7 @@ func TestRedeemBalanceDefaultsScopeToCodex(t *testing.T) {
 		Value:  30,
 		Status: StatusUnused,
 	}}
-	svc := NewRedeemService(redeemRepo, repo, nil, nil, nil, newPackageScopeEntClient(t), &packageScopeAuthCacheInvalidatorStub{})
+	svc := NewRedeemService(redeemRepo, repo, nil, nil, nil, newPackageScopeEntClient(t), &packageScopeAuthCacheInvalidatorStub{}, nil)
 
 	_, err := svc.Redeem(context.Background(), repo.user.ID, "CODE-123")
 	require.NoError(t, err)
@@ -547,6 +569,57 @@ func TestCreateBalancePackage_NormalizesDisplayTags(t *testing.T) {
 	})
 	require.NoError(t, err)
 	require.Equal(t, []string{"新手推荐", "1x 倍率"}, created.DisplayTags)
+}
+
+func TestCreateBalancePackageOrder_RejectsDifferentScopeWithoutForceSwitch(t *testing.T) {
+	client := newPackageScopeEntClient(t)
+	createdUser, err := client.User.Create().
+		SetEmail("scope-conflict@example.com").
+		SetPasswordHash("hash").
+		SetRole(RoleUser).
+		SetBalance(15).
+		SetConcurrency(1).
+		SetStatus(StatusActive).
+		SetPackageScope(PackageScopeCodex).
+		Save(context.Background())
+	require.NoError(t, err)
+
+	pkg, err := client.BalancePackage.Create().
+		SetName("General 包").
+		SetDescription("general only").
+		SetPrice(88).
+		SetCreditAmount(80).
+		SetPackageScope(PackageScopeGeneral).
+		SetForSale(true).
+		Save(context.Background())
+	require.NoError(t, err)
+
+	codex := PackageScopeCodex
+	svc := &PaymentService{
+		entClient: client,
+		configService: NewPaymentConfigService(client, &paymentConfigSettingRepoStub{values: map[string]string{
+			SettingPaymentEnabled: "true",
+		}}, nil),
+		loadBalancer: &packageScopeLoadBalancerStub{},
+		userRepo: &packageScopeUserRepoStub{user: &User{
+			ID:           createdUser.ID,
+			Email:        createdUser.Email,
+			Username:     createdUser.Username,
+			Balance:      15,
+			PackageScope: &codex,
+			Status:       StatusActive,
+		}},
+	}
+	_, err = svc.CreateOrder(context.Background(), CreateOrderRequest{
+		UserID:           createdUser.ID,
+		PaymentType:      payment.TypeAlipay,
+		OrderType:        payment.OrderTypeBalancePackage,
+		BalancePackageID: pkg.ID,
+		ClientIP:         "127.0.0.1",
+		SrcHost:          "example.com",
+	})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "PACKAGE_SCOPE_CONFLICT")
 }
 
 func TestCreateBalancePackageOrder_AllowsDifferentScopeWithForceSwitch(t *testing.T) {
