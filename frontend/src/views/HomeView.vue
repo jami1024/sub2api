@@ -226,6 +226,8 @@
         </div>
       </div>
     </footer>
+
+    <PublicAnnouncementPopup v-if="!isAuthenticated" />
   </div>
 </template>
 
@@ -238,6 +240,7 @@ import { useClipboard } from '@/composables/useClipboard'
 import LocaleSwitcher from '@/components/common/LocaleSwitcher.vue'
 import AigoHubHeroPanel from '@/components/home/AigoHubHeroPanel.vue'
 import HomePackageSection from '@/components/home/HomePackageSection.vue'
+import PublicAnnouncementPopup from '@/components/home/PublicAnnouncementPopup.vue'
 import Icon from '@/components/icons/Icon.vue'
 
 const WECHAT_ID = 'G000000000g1e'

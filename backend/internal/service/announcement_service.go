@@ -215,6 +215,22 @@ func (s *AnnouncementService) List(ctx context.Context, params pagination.Pagina
 	return s.announcementRepo.List(ctx, params, filters)
 }
 
+func (s *AnnouncementService) ListPublic(ctx context.Context) ([]Announcement, error) {
+	now := time.Now()
+	anns, err := s.announcementRepo.ListActive(ctx, now)
+	if err != nil {
+		return nil, fmt.Errorf("list active announcements: %w", err)
+	}
+
+	out := make([]Announcement, 0, len(anns))
+	for i := range anns {
+		if anns[i].IsActiveAt(now) {
+			out = append(out, anns[i])
+		}
+	}
+	return out, nil
+}
+
 func (s *AnnouncementService) ListForUser(ctx context.Context, userID int64, unreadOnly bool) ([]UserAnnouncement, error) {
 	user, err := s.userRepo.GetByID(ctx, userID)
 	if err != nil {

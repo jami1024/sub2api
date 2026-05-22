@@ -24,6 +24,31 @@ func NewAnnouncementHandler(announcementService *service.AnnouncementService) *A
 	}
 }
 
+// ListPublic handles listing active announcements for unauthenticated visitors
+// GET /api/v1/public/announcements
+func (h *AnnouncementHandler) ListPublic(c *gin.Context) {
+	items, err := h.announcementService.ListPublic(c.Request.Context())
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+
+	out := make([]dto.UserAnnouncement, 0, len(items))
+	for i := range items {
+		out = append(out, dto.UserAnnouncement{
+			ID:         items[i].ID,
+			Title:      items[i].Title,
+			Content:    items[i].Content,
+			NotifyMode: items[i].NotifyMode,
+			StartsAt:   items[i].StartsAt,
+			EndsAt:     items[i].EndsAt,
+			CreatedAt:  items[i].CreatedAt,
+			UpdatedAt:  items[i].UpdatedAt,
+		})
+	}
+	response.Success(c, out)
+}
+
 // List handles listing announcements visible to current user
 // GET /api/v1/announcements
 func (h *AnnouncementHandler) List(c *gin.Context) {
