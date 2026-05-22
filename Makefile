@@ -1,4 +1,4 @@
-.PHONY: build build-backend build-frontend build-datamanagementd test test-backend test-frontend test-frontend-critical test-datamanagementd secret-scan
+.PHONY: build build-backend build-frontend build-datamanagementd test test-backend test-frontend test-frontend-critical test-datamanagementd secret-scan docker-build
 
 FRONTEND_CRITICAL_VITEST := \
 	src/views/auth/__tests__/LinuxDoCallbackView.spec.ts \
@@ -42,3 +42,15 @@ test-datamanagementd:
 
 secret-scan:
 	@python3 tools/secret_scan.py
+
+# Docker 镜像构建（默认限制 1 核，适合 2C 小机器）
+# 用法: make docker-build
+#       make docker-build BUILD_CPUS=2    # 放开用满 2 核
+#       make docker-build DOCKER_TAG=sub2api:v1.0
+BUILD_CPUS ?= 1
+DOCKER_TAG ?= sub2api:local
+
+docker-build:
+	docker build --cpu-period=100000 --cpu-quota=$(shell echo $$(($(BUILD_CPUS)*100000))) \
+		--build-arg BUILD_CPUS=$(BUILD_CPUS) \
+		-t $(DOCKER_TAG) -f deploy/Dockerfile .
