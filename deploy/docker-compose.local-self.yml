@@ -2,55 +2,13 @@
 # Sub2API Docker Compose - Local Directory Version
 # =============================================================================
 # Quick Start:
-#   1. Copy .env.example to .env and configure (set DOMAIN)
+#   1. Copy .env.example to .env and configure
 #   2. mkdir -p data postgres_data redis_data
-#   3. bash init-cert.sh        # first-time SSL certificate
-#   4. docker-compose -f docker-compose.local-self.yml up -d
-#   5. Access: https://$DOMAIN
+#   3. docker-compose -f docker-compose.local-self.yml up -d
+#   4. Host nginx reverse proxy → 127.0.0.1:SERVER_PORT
 # =============================================================================
 
 services:
-  # ===========================================================================
-  # Nginx Reverse Proxy (HTTPS termination)
-  # ===========================================================================
-  nginx:
-    image: nginx:alpine
-    container_name: sub2api-nginx-personal
-    restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx.conf.template:/etc/nginx/templates/default.conf.template:ro
-      - ./certbot/conf:/etc/letsencrypt:ro
-      - ./certbot/www:/var/www/certbot:ro
-    environment:
-      - DOMAIN=${DOMAIN:?DOMAIN is required}
-    depends_on:
-      sub2api:
-        condition: service_healthy
-    networks:
-      - sub2api-network
-    healthcheck:
-      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:80/ || true"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
-
-  # ===========================================================================
-  # Certbot (Let's Encrypt auto-renewal)
-  # ===========================================================================
-  certbot:
-    image: certbot/certbot
-    container_name: sub2api-certbot-personal
-    volumes:
-      - ./certbot/conf:/etc/letsencrypt
-      - ./certbot/www:/var/www/certbot
-    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew --quiet; sleep 12h & wait $${!}; done'"
-    networks:
-      - sub2api-network
-
   # ===========================================================================
   # Sub2API Application
   # ===========================================================================
@@ -63,11 +21,8 @@ services:
       nofile:
         soft: 100000
         hard: 100000
-    # Port only exposed internally via nginx; uncomment for local debugging
-    # ports:
-    #   - "127.0.0.1:${SERVER_PORT:-8080}:8080"
-    expose:
-      - "8080"
+    ports:
+      - "127.0.0.1:${SERVER_PORT:-8080}:8080"
     volumes:
       # Local directory mapping for easy migration
       - ./data:/app/data
