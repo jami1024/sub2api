@@ -1,25 +1,56 @@
 # =============================================================================
 # Sub2API Docker Compose - Local Directory Version
 # =============================================================================
-# This configuration uses local directories for data storage instead of named
-# volumes, making it easy to migrate the entire deployment by simply copying
-# the deploy directory.
-#
 # Quick Start:
-#   1. Copy .env.example to .env and configure
+#   1. Copy .env.example to .env and configure (set DOMAIN)
 #   2. mkdir -p data postgres_data redis_data
-#   3. docker-compose -f docker-compose.local.yml up -d
-#   4. Check logs: docker-compose -f docker-compose.local.yml logs -f sub2api
-#   5. Access: http://localhost:8080
-#
-# Migration to New Server:
-#   1. docker-compose -f docker-compose.local.yml down
-#   2. tar czf sub2api-deploy.tar.gz deploy/
-#   3. Transfer to new server and extract
-#   4. docker-compose -f docker-compose.local.yml up -d
+#   3. bash init-cert.sh        # first-time SSL certificate
+#   4. docker-compose -f docker-compose.local-self.yml up -d
+#   5. Access: https://$DOMAIN
 # =============================================================================
 
 services:
+  # ===========================================================================
+  # Nginx Reverse Proxy (HTTPS termination)
+  # ===========================================================================
+  nginx:
+    image: nginx:alpine
+    container_name: sub2api-nginx-personal
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf.template:/etc/nginx/templates/default.conf.template:ro
+      - ./certbot/conf:/etc/letsencrypt:ro
+      - ./certbot/www:/var/www/certbot:ro
+    environment:
+      - DOMAIN=${DOMAIN:?DOMAIN is required}
+    depends_on:
+      sub2api:
+        condition: service_healthy
+    networks:
+      - sub2api-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:80/ || true"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  # ===========================================================================
+  # Certbot (Let's Encrypt auto-renewal)
+  # ===========================================================================
+  certbot:
+    image: certbot/certbot
+    container_name: sub2api-certbot-personal
+    volumes:
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew --quiet; sleep 12h & wait $${!}; done'"
+    networks:
+      - sub2api-network
+
   # ===========================================================================
   # Sub2API Application
   # ===========================================================================
@@ -32,8 +63,11 @@ services:
       nofile:
         soft: 100000
         hard: 100000
-    ports:
-      - "${BIND_HOST:-0.0.0.0}:${SERVER_PORT:-8080}:8080"
+    # Port only exposed internally via nginx; uncomment for local debugging
+    # ports:
+    #   - "127.0.0.1:${SERVER_PORT:-8080}:8080"
+    expose:
+      - "8080"
     volumes:
       # Local directory mapping for easy migration
       - ./data:/app/data
@@ -128,6 +162,7 @@ services:
       # SECURITY: This repo does not embed third-party client_secret.
       - GEMINI_CLI_OAUTH_CLIENT_SECRET=${GEMINI_CLI_OAUTH_CLIENT_SECRET:-}
       - ANTIGRAVITY_OAUTH_CLIENT_SECRET=${ANTIGRAVITY_OAUTH_CLIENT_SECRET:-}
+      - ANTIGRAVITY_USER_AGENT_VERSION=${ANTIGRAVITY_USER_AGENT_VERSION:-}
 
       # =======================================================================
       # Security Configuration (URL Allowlist)
@@ -147,6 +182,17 @@ services:
       # Proxy for accessing GitHub (online updates + pricing data)
       # Examples: http://host:port, socks5://host:port
       - UPDATE_PROXY_URL=${UPDATE_PROXY_URL:-}
+
+      # =======================================================================
+      # Image Generation Stream & Concurrency
+      # =======================================================================
+      - GATEWAY_IMAGE_STREAM_DATA_INTERVAL_TIMEOUT=${GATEWAY_IMAGE_STREAM_DATA_INTERVAL_TIMEOUT:-900}
+      - GATEWAY_IMAGE_STREAM_KEEPALIVE_INTERVAL=${GATEWAY_IMAGE_STREAM_KEEPALIVE_INTERVAL:-10}
+      - GATEWAY_IMAGE_CONCURRENCY_ENABLED=${GATEWAY_IMAGE_CONCURRENCY_ENABLED:-false}
+      - GATEWAY_IMAGE_CONCURRENCY_MAX_CONCURRENT_REQUESTS=${GATEWAY_IMAGE_CONCURRENCY_MAX_CONCURRENT_REQUESTS:-0}
+      - GATEWAY_IMAGE_CONCURRENCY_OVERFLOW_MODE=${GATEWAY_IMAGE_CONCURRENCY_OVERFLOW_MODE:-reject}
+      - GATEWAY_IMAGE_CONCURRENCY_WAIT_TIMEOUT_SECONDS=${GATEWAY_IMAGE_CONCURRENCY_WAIT_TIMEOUT_SECONDS:-30}
+      - GATEWAY_IMAGE_CONCURRENCY_MAX_WAITING_REQUESTS=${GATEWAY_IMAGE_CONCURRENCY_MAX_WAITING_REQUESTS:-100}
     depends_on:
       postgres:
         condition: service_healthy
