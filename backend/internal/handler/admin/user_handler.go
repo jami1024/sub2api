@@ -63,9 +63,10 @@ type UpdateUserRequest struct {
 
 // UpdateBalanceRequest represents balance update request
 type UpdateBalanceRequest struct {
-	Balance   float64 `json:"balance" binding:"required,gt=0"`
-	Operation string  `json:"operation" binding:"required,oneof=set add subtract"`
-	Notes     string  `json:"notes"`
+	Balance      float64 `json:"balance" binding:"required,gt=0"`
+	Operation    string  `json:"operation" binding:"required,oneof=set add subtract"`
+	Notes        string  `json:"notes"`
+	PackageScope string  `json:"package_scope" binding:"omitempty,oneof=codex general"`
 }
 
 type BindUserAuthIdentityRequest struct {
@@ -333,7 +334,7 @@ func (h *UserHandler) UpdateBalance(c *gin.Context) {
 		Body:   req,
 	}
 	executeAdminIdempotentJSON(c, "admin.users.balance.update", idempotencyPayload, service.DefaultWriteIdempotencyTTL(), func(ctx context.Context) (any, error) {
-		user, execErr := h.adminService.UpdateUserBalance(ctx, userID, req.Balance, req.Operation, req.Notes)
+		user, execErr := h.adminService.UpdateUserBalance(ctx, userID, req.Balance, req.Operation, req.Notes, req.PackageScope)
 		if execErr != nil {
 			return nil, execErr
 		}

@@ -32,7 +32,7 @@ type AdminService interface {
 	CreateUser(ctx context.Context, input *CreateUserInput) (*User, error)
 	UpdateUser(ctx context.Context, id int64, input *UpdateUserInput) (*User, error)
 	DeleteUser(ctx context.Context, id int64) error
-	UpdateUserBalance(ctx context.Context, userID int64, balance float64, operation string, notes string) (*User, error)
+	UpdateUserBalance(ctx context.Context, userID int64, balance float64, operation string, notes string, packageScope ...string) (*User, error)
 	BatchUpdateConcurrency(ctx context.Context, userIDs []int64, value int, mode string) (int, error)
 	GetUserAPIKeys(ctx context.Context, userID int64, page, pageSize int, sortBy, sortOrder string) ([]APIKey, int64, error)
 	GetUserUsageStats(ctx context.Context, userID int64, period string) (any, error)
@@ -853,19 +853,35 @@ func (s *adminServiceImpl) BatchUpdateConcurrency(ctx context.Context, userIDs [
 	return affected, nil
 }
 
-func (s *adminServiceImpl) UpdateUserBalance(ctx context.Context, userID int64, balance float64, operation string, notes string) (*User, error) {
+func (s *adminServiceImpl) UpdateUserBalance(ctx context.Context, userID int64, balance float64, operation string, notes string, packageScope ...string) (*User, error) {
 	user, err := s.userRepo.GetByID(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
 
 	oldBalance := user.Balance
+	oldScope := psStringValue(user.PackageScope)
+	selectedScope := ""
+	if len(packageScope) > 0 {
+		rawScope := strings.TrimSpace(packageScope[0])
+		if rawScope != "" {
+			selectedScope = NormalizePackageScope(rawScope)
+		}
+		if rawScope != "" && selectedScope == "" {
+			return nil, fmt.Errorf("invalid package scope: must be 'codex' or 'general'")
+		}
+	}
+	scopeChanged := selectedScope != "" && selectedScope != oldScope
 
 	switch operation {
 	case "set":
 		user.Balance = balance
 	case "add":
-		user.Balance += balance
+		if scopeChanged {
+			user.Balance = balance
+		} else {
+			user.Balance += balance
+		}
 	case "subtract":
 		user.Balance -= balance
 	}
@@ -874,7 +890,11 @@ func (s *adminServiceImpl) UpdateUserBalance(ctx context.Context, userID int64, 
 		return nil, fmt.Errorf("balance cannot be negative, current balance: %.2f, requested operation would result in: %.2f", oldBalance, user.Balance)
 	}
 
-	ensurePackageScopeForPositiveBalanceCredit(user, user.Balance-oldBalance)
+	if selectedScope != "" && (operation == "add" || operation == "set") {
+		user.PackageScope = &selectedScope
+	} else {
+		ensurePackageScopeForPositiveBalanceCredit(user, user.Balance-oldBalance)
+	}
 
 	if err := s.userRepo.Update(ctx, user); err != nil {
 		return nil, err
@@ -894,30 +914,37 @@ func (s *adminServiceImpl) UpdateUserBalance(ctx context.Context, userID int64, 
 		}()
 	}
 
-	if balanceDiff != 0 {
-		code, err := GenerateRedeemCode()
-		if err != nil {
-			logger.LegacyPrintf("service.admin", "failed to generate adjustment redeem code: %v", err)
-			return user, nil
-		}
-
-		adjustmentRecord := &RedeemCode{
-			Code:   code,
-			Type:   AdjustmentTypeAdminBalance,
-			Value:  balanceDiff,
-			Status: StatusUsed,
-			UsedBy: &user.ID,
-			Notes:  notes,
-		}
-		now := time.Now()
-		adjustmentRecord.UsedAt = &now
-
-		if err := s.redeemCodeRepo.Create(ctx, adjustmentRecord); err != nil {
-			logger.LegacyPrintf("service.admin", "failed to create balance adjustment redeem code: %v", err)
-		}
+	if scopeChanged && oldBalance > 0 && operation == "add" {
+		s.createBalanceAdjustmentRecord(ctx, user.ID, -oldBalance, notes)
+		s.createBalanceAdjustmentRecord(ctx, user.ID, balance, notes)
+	} else if balanceDiff != 0 {
+		s.createBalanceAdjustmentRecord(ctx, user.ID, balanceDiff, notes)
 	}
 
 	return user, nil
+}
+
+func (s *adminServiceImpl) createBalanceAdjustmentRecord(ctx context.Context, userID int64, value float64, notes string) {
+	code, err := GenerateRedeemCode()
+	if err != nil {
+		logger.LegacyPrintf("service.admin", "failed to generate adjustment redeem code: %v", err)
+		return
+	}
+
+	adjustmentRecord := &RedeemCode{
+		Code:   code,
+		Type:   AdjustmentTypeAdminBalance,
+		Value:  value,
+		Status: StatusUsed,
+		UsedBy: &userID,
+		Notes:  notes,
+	}
+	now := time.Now()
+	adjustmentRecord.UsedAt = &now
+
+	if err := s.redeemCodeRepo.Create(ctx, adjustmentRecord); err != nil {
+		logger.LegacyPrintf("service.admin", "failed to create balance adjustment redeem code: %v", err)
+	}
 }
 
 func (s *adminServiceImpl) GetUserAPIKeys(ctx context.Context, userID int64, page, pageSize int, sortBy, sortOrder string) ([]APIKey, int64, error) {

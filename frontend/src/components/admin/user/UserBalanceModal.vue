@@ -12,6 +12,17 @@
           <button v-if="operation === 'subtract'" type="button" @click="fillAllBalance" class="btn btn-secondary whitespace-nowrap">{{ t('admin.users.withdrawAll') }}</button>
         </div>
       </div>
+      <div v-if="operation === 'add'">
+        <label class="input-label">{{ t('admin.users.packageScope') }}</label>
+        <select v-model="form.packageScope" data-testid="package-scope-select" class="input">
+          <option value="codex">{{ t('payment.balancePackages.codex') }}</option>
+          <option value="general">{{ t('payment.balancePackages.general') }}</option>
+        </select>
+        <p class="mt-1 text-xs text-gray-500 dark:text-dark-400">{{ t('admin.users.packageScopeHint') }}</p>
+      </div>
+      <div v-if="showPackageScopeSwitchWarning" class="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200">
+        {{ t('admin.users.packageScopeSwitchWarning') }}
+      </div>
       <div><label class="input-label">{{ t('admin.users.notes') }}</label><textarea v-model="form.notes" rows="3" class="input"></textarea></div>
       <div v-if="form.amount > 0" class="rounded-xl border border-blue-200 bg-blue-50 p-4 dark:border-blue-800 dark:bg-blue-950"><div class="flex items-center justify-between text-sm"><span class="text-gray-700 dark:text-gray-300">{{ t('admin.users.newBalance') }}:</span><span class="font-bold text-gray-900 dark:text-gray-100">${{ formatBalance(calculateNewBalance()) }}</span></div></div>
     </form>
@@ -25,18 +36,31 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'
 import { adminAPI } from '@/api/admin'
-import type { AdminUser } from '@/types'
+import type { AdminUser, PackageScope } from '@/types'
 import BaseDialog from '@/components/common/BaseDialog.vue'
 
 const props = defineProps<{ show: boolean, user: AdminUser | null, operation: 'add' | 'subtract' }>()
 const emit = defineEmits(['close', 'success']); const { t } = useI18n(); const appStore = useAppStore()
 
-const submitting = ref(false); const form = reactive({ amount: 0, notes: '' })
-watch(() => props.show, (v) => { if(v) { form.amount = 0; form.notes = '' } })
+const submitting = ref(false); const form = reactive({ amount: 0, notes: '', packageScope: 'codex' as PackageScope })
+watch(() => props.show, (v) => {
+  if(v) {
+    form.amount = 0
+    form.notes = ''
+    form.packageScope = props.user?.package_scope || 'codex'
+  }
+})
+
+const showPackageScopeSwitchWarning = computed(() =>
+  props.operation === 'add'
+  && !!props.user?.package_scope
+  && props.user.package_scope !== form.packageScope
+  && props.user.balance > 0
+)
 
 // 格式化余额：显示完整精度，去除尾部多余的0
 const formatBalance = (value: number) => {
@@ -59,7 +83,9 @@ const fillAllBalance = () => {
 
 const calculateNewBalance = () => {
   if (!props.user) return 0
-  const result = props.operation === 'add' ? props.user.balance + form.amount : props.user.balance - form.amount
+  const result = props.operation === 'add'
+    ? showPackageScopeSwitchWarning.value ? form.amount : props.user.balance + form.amount
+    : props.user.balance - form.amount
   // 避免浮点数精度问题导致的 -0.00 显示
   return Math.abs(result) < 1e-10 ? 0 : result
 }
@@ -76,7 +102,7 @@ const handleBalanceSubmit = async () => {
   }
   submitting.value = true
   try {
-    await adminAPI.users.updateBalance(props.user.id, form.amount, props.operation, form.notes)
+    await adminAPI.users.updateBalance(props.user.id, form.amount, props.operation, form.notes, props.operation === 'add' ? form.packageScope : undefined)
     appStore.showSuccess(t('common.success')); emit('success'); emit('close')
   } catch (e: any) {
     console.error('Failed to update balance:', e)

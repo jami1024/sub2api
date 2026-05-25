@@ -95,3 +95,46 @@ func TestAdminService_UpdateUserBalance_NoChangeNoInvalidate(t *testing.T) {
 	require.Empty(t, invalidator.userIDs)
 	require.Empty(t, redeemRepo.created)
 }
+
+func TestAdminService_UpdateUserBalance_EmptyPackageScopeKeepsExistingBehavior(t *testing.T) {
+	baseRepo := &userRepoStub{user: &User{ID: 7, Balance: 10}}
+	repo := &balanceUserRepoStub{userRepoStub: baseRepo}
+	redeemRepo := &balanceRedeemRepoStub{redeemRepoStub: &redeemRepoStub{}}
+	svc := &adminServiceImpl{
+		userRepo:       repo,
+		redeemCodeRepo: redeemRepo,
+	}
+
+	user, err := svc.UpdateUserBalance(context.Background(), 7, 5, "add", "", "")
+
+	require.NoError(t, err)
+	require.Equal(t, 15.0, user.Balance)
+	require.NotNil(t, user.PackageScope)
+	require.Equal(t, PackageScopeCodex, *user.PackageScope)
+	require.Len(t, redeemRepo.created, 1)
+	require.Equal(t, 5.0, redeemRepo.created[0].Value)
+}
+
+func TestAdminService_UpdateUserBalance_SwitchesPackageScopeAndClearsOldBalance(t *testing.T) {
+	codexScope := PackageScopeCodex
+	baseRepo := &userRepoStub{user: &User{ID: 7, Balance: 20, PackageScope: &codexScope}}
+	repo := &balanceUserRepoStub{userRepoStub: baseRepo}
+	redeemRepo := &balanceRedeemRepoStub{redeemRepoStub: &redeemRepoStub{}}
+	invalidator := &authCacheInvalidatorStub{}
+	svc := &adminServiceImpl{
+		userRepo:             repo,
+		redeemCodeRepo:       redeemRepo,
+		authCacheInvalidator: invalidator,
+	}
+
+	user, err := svc.UpdateUserBalance(context.Background(), 7, 50, "add", "", PackageScopeGeneral)
+
+	require.NoError(t, err)
+	require.Equal(t, 50.0, user.Balance)
+	require.NotNil(t, user.PackageScope)
+	require.Equal(t, PackageScopeGeneral, *user.PackageScope)
+	require.Equal(t, []int64{7}, invalidator.userIDs)
+	require.Len(t, redeemRepo.created, 2)
+	require.Equal(t, -20.0, redeemRepo.created[0].Value)
+	require.Equal(t, 50.0, redeemRepo.created[1].Value)
+}

@@ -2026,6 +2026,9 @@ export default {
       withdrawAmount: 'Withdraw Amount',
       withdrawAll: 'All',
       currentBalance: 'Current Balance',
+      packageScope: 'Balance Package Mode',
+      packageScopeHint: 'Choose which mode this balance top-up belongs to.',
+      packageScopeSwitchWarning: 'The selected mode differs from the current balance mode. Confirming will clear the old-mode balance and keep only this top-up amount.',
       depositNotesPlaceholder:
         'e.g., New user registration bonus, promotional credit, compensation, etc.',
       withdrawNotesPlaceholder:

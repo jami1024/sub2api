@@ -12,6 +12,7 @@ vi.mock('@/api/client', () => ({
 
 import {
   bindUserAuthIdentity,
+  updateBalance,
   type AdminBindAuthIdentityRequest,
   type AdminBoundAuthIdentity,
 } from '@/api/admin/users'
@@ -113,5 +114,26 @@ describe('admin users api auth identity binding', () => {
   it('keeps bind auth identity request and response types aligned with the backend contract', () => {
     expect(requestContractExact).toBe(true)
     expect(responseContractExact).toBe(true)
+  })
+})
+
+describe('admin users api balance updates', () => {
+  beforeEach(() => {
+    post.mockReset()
+  })
+
+  it('includes selected package scope when updating user balance', async () => {
+    const response = { id: 9, balance: 50, package_scope: 'general' }
+    post.mockResolvedValue({ data: response })
+
+    const result = await updateBalance(9, 50, 'add', 'manual switch', 'general')
+
+    expect(post).toHaveBeenCalledWith('/admin/users/9/balance', {
+      balance: 50,
+      operation: 'add',
+      notes: 'manual switch',
+      package_scope: 'general'
+    })
+    expect(result).toEqual(response)
   })
 })
