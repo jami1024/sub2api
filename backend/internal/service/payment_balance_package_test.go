@@ -160,6 +160,9 @@ func (s *packageScopeRedeemRepoStub) GetByCode(ctx context.Context, code string)
 func (s *packageScopeRedeemRepoStub) Update(ctx context.Context, code *RedeemCode) error {
 	panic("unexpected Update call")
 }
+func (s *packageScopeRedeemRepoStub) BatchUpdate(ctx context.Context, ids []int64, fields RedeemCodeBatchUpdateFields) (int64, error) {
+	panic("unexpected BatchUpdate call")
+}
 func (s *packageScopeRedeemRepoStub) Delete(ctx context.Context, id int64) error {
 	panic("unexpected Delete call")
 }
@@ -212,6 +215,9 @@ func (s *packageScopeAdminRedeemRepoStub) GetByCode(ctx context.Context, code st
 }
 func (s *packageScopeAdminRedeemRepoStub) Update(ctx context.Context, code *RedeemCode) error {
 	panic("unexpected Update call")
+}
+func (s *packageScopeAdminRedeemRepoStub) BatchUpdate(ctx context.Context, ids []int64, fields RedeemCodeBatchUpdateFields) (int64, error) {
+	panic("unexpected BatchUpdate call")
 }
 func (s *packageScopeAdminRedeemRepoStub) Delete(ctx context.Context, id int64) error {
 	panic("unexpected Delete call")
