@@ -32,6 +32,9 @@ func (s *packageScopeUserRepoStub) GetByID(ctx context.Context, id int64) (*User
 	}
 	return s.user, nil
 }
+func (s *packageScopeUserRepoStub) GetByIDIncludeDeleted(ctx context.Context, id int64) (*User, error) {
+	return s.GetByID(ctx, id)
+}
 func (s *packageScopeUserRepoStub) GetByEmail(ctx context.Context, email string) (*User, error) {
 	panic("unexpected GetByEmail call")
 }
