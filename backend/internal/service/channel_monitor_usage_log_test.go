@@ -7,8 +7,11 @@ import (
 )
 
 type channelMonitorUsageRepoStub struct {
-	monitor *ChannelMonitor
-	latest  map[string]*ChannelMonitorUsageLogLatest
+	monitor           *ChannelMonitor
+	latest            map[string]*ChannelMonitorUsageLogLatest
+	latestForMonitors map[int64][]*ChannelMonitorLatest
+	insertedRows      []*ChannelMonitorHistoryRow
+	markedChecked     []time.Time
 }
 
 func (s *channelMonitorUsageRepoStub) Create(context.Context, *ChannelMonitor) error { return nil }
@@ -23,10 +26,12 @@ func (s *channelMonitorUsageRepoStub) List(context.Context, ChannelMonitorListPa
 func (s *channelMonitorUsageRepoStub) ListEnabled(context.Context) ([]*ChannelMonitor, error) {
 	return nil, nil
 }
-func (s *channelMonitorUsageRepoStub) MarkChecked(context.Context, int64, time.Time) error {
+func (s *channelMonitorUsageRepoStub) MarkChecked(_ context.Context, _ int64, checkedAt time.Time) error {
+	s.markedChecked = append(s.markedChecked, checkedAt)
 	return nil
 }
-func (s *channelMonitorUsageRepoStub) InsertHistoryBatch(context.Context, []*ChannelMonitorHistoryRow) error {
+func (s *channelMonitorUsageRepoStub) InsertHistoryBatch(_ context.Context, rows []*ChannelMonitorHistoryRow) error {
+	s.insertedRows = append(s.insertedRows, rows...)
 	return nil
 }
 func (s *channelMonitorUsageRepoStub) DeleteHistoryBefore(context.Context, time.Time) (int64, error) {
@@ -42,7 +47,7 @@ func (s *channelMonitorUsageRepoStub) ComputeAvailability(context.Context, int64
 	return nil, nil
 }
 func (s *channelMonitorUsageRepoStub) ListLatestForMonitorIDs(context.Context, []int64) (map[int64][]*ChannelMonitorLatest, error) {
-	return nil, nil
+	return s.latestForMonitors, nil
 }
 func (s *channelMonitorUsageRepoStub) ComputeAvailabilityForMonitors(context.Context, []int64, int) (map[int64][]*ChannelMonitorAvailability, error) {
 	return nil, nil
@@ -106,6 +111,94 @@ func TestChannelMonitorRunCheckUsesUsageLogs(t *testing.T) {
 	}
 	if results[1].Status != "" {
 		t.Fatalf("missing usage log status = %q, want empty", results[1].Status)
+	}
+}
+
+func TestChannelMonitorRunCheckPersistsHistoryOnlyForUsageBackedStatuses(t *testing.T) {
+	createdAt := time.Date(2026, 6, 4, 10, 0, 0, 0, time.UTC)
+	durationMs := 120
+	repo := &channelMonitorUsageRepoStub{
+		monitor: &ChannelMonitor{
+			ID:           9,
+			Provider:     MonitorProviderOpenAI,
+			APIKey:       "encrypted",
+			PrimaryModel: "gpt-5.4",
+			ExtraModels:  []string{"gpt-5.4-mini"},
+		},
+		latest: map[string]*ChannelMonitorUsageLogLatest{
+			"gpt-5.4": {Model: "gpt-5.4", DurationMs: &durationMs, CreatedAt: createdAt},
+		},
+	}
+	svc := NewChannelMonitorService(repo, channelMonitorPassEncryptor{})
+
+	_, err := svc.RunCheck(context.Background(), 9)
+	if err != nil {
+		t.Fatalf("RunCheck returned error: %v", err)
+	}
+	if len(repo.insertedRows) != 1 {
+		t.Fatalf("len(insertedRows) = %d, want 1", len(repo.insertedRows))
+	}
+	row := repo.insertedRows[0]
+	if row.Model != "gpt-5.4" || row.Status != MonitorStatusOperational || !row.CheckedAt.Equal(createdAt) {
+		t.Fatalf("inserted row = %#v, want gpt-5.4 operational at usage log time", row)
+	}
+	if len(repo.markedChecked) != 1 {
+		t.Fatalf("len(markedChecked) = %d, want 1", len(repo.markedChecked))
+	}
+}
+
+func TestChannelMonitorRunCheckSkipsDuplicateUsageHistory(t *testing.T) {
+	createdAt := time.Date(2026, 6, 4, 10, 0, 0, 0, time.UTC)
+	durationMs := 120
+	repo := &channelMonitorUsageRepoStub{
+		monitor: &ChannelMonitor{
+			ID:           9,
+			Provider:     MonitorProviderOpenAI,
+			APIKey:       "encrypted",
+			PrimaryModel: "gpt-5.4",
+		},
+		latest: map[string]*ChannelMonitorUsageLogLatest{
+			"gpt-5.4": {Model: "gpt-5.4", DurationMs: &durationMs, CreatedAt: createdAt},
+		},
+		latestForMonitors: map[int64][]*ChannelMonitorLatest{
+			9: {{Model: "gpt-5.4", Status: MonitorStatusOperational, CheckedAt: createdAt}},
+		},
+	}
+	svc := NewChannelMonitorService(repo, channelMonitorPassEncryptor{})
+
+	_, err := svc.RunCheck(context.Background(), 9)
+	if err != nil {
+		t.Fatalf("RunCheck returned error: %v", err)
+	}
+	if len(repo.insertedRows) != 0 {
+		t.Fatalf("len(insertedRows) = %d, want 0 for duplicate usage log", len(repo.insertedRows))
+	}
+	if len(repo.markedChecked) != 0 {
+		t.Fatalf("len(markedChecked) = %d, want 0 for duplicate usage log", len(repo.markedChecked))
+	}
+}
+
+func TestChannelMonitorRunCheckDoesNotPersistWhenNoUsageLog(t *testing.T) {
+	repo := &channelMonitorUsageRepoStub{
+		monitor: &ChannelMonitor{
+			ID:           9,
+			Provider:     MonitorProviderOpenAI,
+			APIKey:       "encrypted",
+			PrimaryModel: "gpt-5.4",
+		},
+		latest: map[string]*ChannelMonitorUsageLogLatest{},
+	}
+	svc := NewChannelMonitorService(repo, channelMonitorPassEncryptor{})
+
+	_, err := svc.RunCheck(context.Background(), 9)
+	if err != nil {
+		t.Fatalf("RunCheck returned error: %v", err)
+	}
+	if len(repo.insertedRows) != 0 {
+		t.Fatalf("len(insertedRows) = %d, want 0 without usage log", len(repo.insertedRows))
+	}
+	if len(repo.markedChecked) != 0 {
+		t.Fatalf("len(markedChecked) = %d, want 0 without usage log", len(repo.markedChecked))
 	}
 }
 

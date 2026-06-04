@@ -261,7 +261,9 @@ func (s *ChannelMonitorService) RunCheck(ctx context.Context, id int64) ([]*Chec
 	if err != nil {
 		return nil, err
 	}
-	return s.runChecksFromUsageLogs(ctx, m), nil
+	results := s.runChecksFromUsageLogs(ctx, m)
+	s.persistUsageLogCheckResults(ctx, m, results)
+	return results, nil
 }
 
 // runChecksFromUsageLogs 用真实使用日志合成监控结果，不主动请求上游。
@@ -328,6 +330,64 @@ func usageLogLatestToCheckResult(model string, latest *ChannelMonitorUsageLogLat
 		res.Message = fmt.Sprintf("slow response from usage log: %dms", *latest.DurationMs)
 	}
 	return res
+}
+
+// persistUsageLogCheckResults 只把真实使用日志推导出的可用状态写入监控历史。
+// 没有使用日志的空状态不写；同一条 usage log 已写入过时不重复写。
+func (s *ChannelMonitorService) persistUsageLogCheckResults(ctx context.Context, m *ChannelMonitor, results []*CheckResult) {
+	rows := s.usageLogCheckHistoryRows(ctx, m, results)
+	if len(rows) == 0 {
+		return
+	}
+	if err := s.repo.InsertHistoryBatch(ctx, rows); err != nil {
+		slog.Error("channel_monitor: insert usage-log history failed",
+			"monitor_id", m.ID, "name", m.Name, "error", err)
+		return
+	}
+	if err := s.repo.MarkChecked(ctx, m.ID, time.Now()); err != nil {
+		slog.Error("channel_monitor: mark usage-log checked failed",
+			"monitor_id", m.ID, "error", err)
+	}
+}
+
+func (s *ChannelMonitorService) usageLogCheckHistoryRows(ctx context.Context, m *ChannelMonitor, results []*CheckResult) []*ChannelMonitorHistoryRow {
+	if m == nil || len(results) == 0 {
+		return nil
+	}
+	latestByModel := s.latestMonitorHistoryByModel(ctx, m.ID)
+	rows := make([]*ChannelMonitorHistoryRow, 0, len(results))
+	for _, r := range results {
+		if r == nil || !isUsageLogBackedMonitorStatus(r.Status) {
+			continue
+		}
+		if latest := latestByModel[r.Model]; latest != nil && !latest.CheckedAt.Before(r.CheckedAt) {
+			continue
+		}
+		rows = append(rows, &ChannelMonitorHistoryRow{
+			MonitorID:     m.ID,
+			Model:         r.Model,
+			Status:        r.Status,
+			LatencyMs:     r.LatencyMs,
+			PingLatencyMs: r.PingLatencyMs,
+			Message:       r.Message,
+			CheckedAt:     r.CheckedAt,
+		})
+	}
+	return rows
+}
+
+func (s *ChannelMonitorService) latestMonitorHistoryByModel(ctx context.Context, monitorID int64) map[string]*ChannelMonitorLatest {
+	latestMap, err := s.repo.ListLatestForMonitorIDs(ctx, []int64{monitorID})
+	if err != nil {
+		slog.Warn("channel_monitor: load latest history for usage-log dedupe failed",
+			"monitor_id", monitorID, "error", err)
+		return map[string]*ChannelMonitorLatest{}
+	}
+	return indexLatestByModel(latestMap[monitorID])
+}
+
+func isUsageLogBackedMonitorStatus(status string) bool {
+	return status == MonitorStatusOperational || status == MonitorStatusDegraded
 }
 
 // persistCheckResults 写入本次检测的历史记录并更新 last_checked_at。
