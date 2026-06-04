@@ -251,13 +251,15 @@ func (h *ChannelMonitorHandler) batchSummaryFor(c *gin.Context, items []*service
 	providerByID := make(map[int64]string, len(items))
 	primaryByID := make(map[int64]string, len(items))
 	extrasByID := make(map[int64][]string, len(items))
+	intervalByID := make(map[int64]int, len(items))
 	for _, m := range items {
 		ids = append(ids, m.ID)
 		providerByID[m.ID] = m.Provider
 		primaryByID[m.ID] = m.PrimaryModel
 		extrasByID[m.ID] = m.ExtraModels
+		intervalByID[m.ID] = m.IntervalSeconds
 	}
-	return h.monitorService.BatchMonitorStatusSummary(c.Request.Context(), ids, providerByID, primaryByID, extrasByID)
+	return h.monitorService.BatchMonitorStatusSummary(c.Request.Context(), ids, providerByID, primaryByID, extrasByID, intervalByID)
 }
 
 // buildListItemResponse 把 monitor + summary 装成 admin list 的响应行。

@@ -47,7 +47,7 @@ func (s *channelMonitorUsageRepoStub) ListLatestForMonitorIDs(context.Context, [
 func (s *channelMonitorUsageRepoStub) ComputeAvailabilityForMonitors(context.Context, []int64, int) (map[int64][]*ChannelMonitorAvailability, error) {
 	return nil, nil
 }
-func (s *channelMonitorUsageRepoStub) ListLatestSuccessfulOpenAIUsageByModels(context.Context, []string) (map[string]*ChannelMonitorUsageLogLatest, error) {
+func (s *channelMonitorUsageRepoStub) ListLatestSuccessfulOpenAIUsageByModels(context.Context, []string, time.Time) (map[string]*ChannelMonitorUsageLogLatest, error) {
 	return s.latest, nil
 }
 func (s *channelMonitorUsageRepoStub) ListRecentHistoryForMonitors(context.Context, []int64, map[int64]string, int) (map[int64][]*ChannelMonitorHistoryEntry, error) {

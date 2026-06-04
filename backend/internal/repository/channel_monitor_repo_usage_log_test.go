@@ -23,13 +23,14 @@ func TestChannelMonitorRepositoryListLatestSuccessfulOpenAIUsageByModels(t *test
 		AddRow("gpt-5.4-mini", nil, createdAt.Add(-time.Minute))
 
 	mock.ExpectQuery(regexp.QuoteMeta("WITH targets AS")).
-		WithArgs(pq.Array([]string{"gpt-5.4", "gpt-5.4-mini"})).
+		WithArgs(pq.Array([]string{"gpt-5.4", "gpt-5.4-mini"}), createdAt.Add(-time.Minute)).
 		WillReturnRows(rows)
 
 	repo := &channelMonitorRepository{db: db}
 	got, err := repo.ListLatestSuccessfulOpenAIUsageByModels(
 		context.Background(),
 		[]string{" gpt-5.4 ", "gpt-5.4-mini", "gpt-5.4"},
+		createdAt.Add(-time.Minute),
 	)
 	if err != nil {
 		t.Fatalf("ListLatestSuccessfulOpenAIUsageByModels returned error: %v", err)

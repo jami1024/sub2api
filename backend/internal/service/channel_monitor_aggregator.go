@@ -24,12 +24,14 @@ func (s *ChannelMonitorService) BatchMonitorStatusSummary(
 	providerByID map[int64]string,
 	primaryByID map[int64]string,
 	extrasByID map[int64][]string,
+	intervalByID map[int64]int,
 ) map[int64]MonitorStatusSummary {
 	out := make(map[int64]MonitorStatusSummary, len(ids))
 	if len(ids) == 0 {
 		return out
 	}
-	usageLatest := s.batchOpenAIUsageLatest(ctx, ids, providerByID, primaryByID, extrasByID)
+	usageLatest := s.batchOpenAIUsageLatest(ctx, ids, providerByID, primaryByID, extrasByID, intervalByID)
+	now := time.Now()
 	latestMap, err := s.repo.ListLatestForMonitorIDs(ctx, ids)
 	if err != nil {
 		slog.Warn("channel_monitor: batch load latest failed", "error", err)
@@ -43,7 +45,13 @@ func (s *ChannelMonitorService) BatchMonitorStatusSummary(
 
 	for _, id := range ids {
 		if providerByID[id] == MonitorProviderOpenAI {
-			out[id] = buildUsageLogStatusSummary(primaryByID[id], extrasByID[id], usageLatest)
+			out[id] = buildUsageLogStatusSummary(
+				primaryByID[id],
+				extrasByID[id],
+				usageLatest,
+				channelMonitorUsageLogSince(now, intervalByID[id]),
+				now,
+			)
 			continue
 		}
 		out[id] = buildStatusSummary(
@@ -62,19 +70,25 @@ func (s *ChannelMonitorService) batchOpenAIUsageLatest(
 	providerByID map[int64]string,
 	primaryByID map[int64]string,
 	extrasByID map[int64][]string,
+	intervalByID map[int64]int,
 ) map[string]*ChannelMonitorUsageLogLatest {
 	models := make([]string, 0)
+	longestInterval := 0
 	for _, id := range ids {
 		if providerByID[id] != MonitorProviderOpenAI {
 			continue
 		}
 		models = append(models, primaryByID[id])
 		models = append(models, extrasByID[id]...)
+		interval := intervalByID[id]
+		if interval > longestInterval {
+			longestInterval = interval
+		}
 	}
 	if len(models) == 0 {
 		return map[string]*ChannelMonitorUsageLogLatest{}
 	}
-	latest, err := s.repo.ListLatestSuccessfulOpenAIUsageByModels(ctx, models)
+	latest, err := s.repo.ListLatestSuccessfulOpenAIUsageByModels(ctx, models, channelMonitorUsageLogSince(time.Now(), longestInterval))
 	if err != nil {
 		slog.Warn("channel_monitor: batch load openai usage logs failed", "error", err)
 		return map[string]*ChannelMonitorUsageLogLatest{}
@@ -86,10 +100,12 @@ func buildUsageLogStatusSummary(
 	primary string,
 	extras []string,
 	latest map[string]*ChannelMonitorUsageLogLatest,
+	since time.Time,
+	now time.Time,
 ) MonitorStatusSummary {
 	summary := MonitorStatusSummary{ExtraModels: make([]ExtraModelStatus, 0, len(extras))}
-	if l := latest[strings.TrimSpace(primary)]; l != nil {
-		res := usageLogLatestToCheckResult(primary, l, time.Now())
+	if l := usageLogLatestWithinWindow(latest[strings.TrimSpace(primary)], since); l != nil {
+		res := usageLogLatestToCheckResult(primary, l, now)
 		summary.PrimaryStatus = res.Status
 		summary.PrimaryLatencyMs = res.LatencyMs
 		summary.Availability7d = 100
@@ -100,14 +116,21 @@ func buildUsageLogStatusSummary(
 			continue
 		}
 		entry := ExtraModelStatus{Model: model}
-		if l := latest[model]; l != nil {
-			res := usageLogLatestToCheckResult(model, l, time.Now())
+		if l := usageLogLatestWithinWindow(latest[model], since); l != nil {
+			res := usageLogLatestToCheckResult(model, l, now)
 			entry.Status = res.Status
 			entry.LatencyMs = res.LatencyMs
 		}
 		summary.ExtraModels = append(summary.ExtraModels, entry)
 	}
 	return summary
+}
+
+func usageLogLatestWithinWindow(latest *ChannelMonitorUsageLogLatest, since time.Time) *ChannelMonitorUsageLogLatest {
+	if latest == nil || latest.CreatedAt.Before(since) {
+		return nil
+	}
+	return latest
 }
 
 // ListUserView 用户只读视图：列出所有 enabled 监控的概览。
@@ -126,8 +149,8 @@ func (s *ChannelMonitorService) ListUserView(ctx context.Context) ([]*UserMonito
 		return []*UserMonitorView{}, nil
 	}
 
-	ids, providerByID, primaryByID, extrasByID := collectMonitorIndexes(monitors)
-	summaries := s.BatchMonitorStatusSummary(ctx, ids, providerByID, primaryByID, extrasByID)
+	ids, providerByID, primaryByID, extrasByID, intervalByID := collectMonitorIndexes(monitors)
+	summaries := s.BatchMonitorStatusSummary(ctx, ids, providerByID, primaryByID, extrasByID, intervalByID)
 	latestMap := s.batchLatest(ctx, ids)
 	timelineMap := s.batchTimeline(ctx, ids, primaryByID)
 
@@ -140,18 +163,20 @@ func (s *ChannelMonitorService) ListUserView(ctx context.Context) ([]*UserMonito
 }
 
 // collectMonitorIndexes 把 monitors 列表按 ID 展开为聚合查询所需的索引结构。
-func collectMonitorIndexes(monitors []*ChannelMonitor) ([]int64, map[int64]string, map[int64]string, map[int64][]string) {
+func collectMonitorIndexes(monitors []*ChannelMonitor) ([]int64, map[int64]string, map[int64]string, map[int64][]string, map[int64]int) {
 	ids := make([]int64, 0, len(monitors))
 	providerByID := make(map[int64]string, len(monitors))
 	primaryByID := make(map[int64]string, len(monitors))
 	extrasByID := make(map[int64][]string, len(monitors))
+	intervalByID := make(map[int64]int, len(monitors))
 	for _, m := range monitors {
 		ids = append(ids, m.ID)
 		providerByID[m.ID] = m.Provider
 		primaryByID[m.ID] = m.PrimaryModel
 		extrasByID[m.ID] = m.ExtraModels
+		intervalByID[m.ID] = m.IntervalSeconds
 	}
-	return ids, providerByID, primaryByID, extrasByID
+	return ids, providerByID, primaryByID, extrasByID, intervalByID
 }
 
 // batchLatest 批量取 latest per model，失败仅日志（与现有 BatchMonitorStatusSummary 一致，不阻断列表渲染）。

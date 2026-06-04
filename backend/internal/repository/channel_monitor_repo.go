@@ -400,6 +400,7 @@ func (r *channelMonitorRepository) ListLatestForMonitorIDs(ctx context.Context, 
 func (r *channelMonitorRepository) ListLatestSuccessfulOpenAIUsageByModels(
 	ctx context.Context,
 	models []string,
+	since time.Time,
 ) (map[string]*service.ChannelMonitorUsageLogLatest, error) {
 	out := make(map[string]*service.ChannelMonitorUsageLogLatest, len(models))
 	models = normalizeUsageLogMonitorModels(models)
@@ -424,6 +425,7 @@ func (r *channelMonitorRepository) ListLatestSuccessfulOpenAIUsageByModels(
 		        OR ul.requested_model = t.model
 		        OR ul.upstream_model = t.model
 		     )
+		     AND ul.created_at >= $2
 		    WHERE (
 		        COALESCE(ul.inbound_endpoint, '') IN ('/v1/chat/completions', '/v1/responses', '/v1/responses/compact')
 		        OR COALESCE(ul.upstream_endpoint, '') IN ('/v1/chat/completions', '/v1/responses', '/v1/responses/compact')
@@ -434,7 +436,7 @@ func (r *channelMonitorRepository) ListLatestSuccessfulOpenAIUsageByModels(
 		WHERE rn = 1
 	`
 
-	rows, err := r.db.QueryContext(ctx, q, pq.Array(models))
+	rows, err := r.db.QueryContext(ctx, q, pq.Array(models), since)
 	if err != nil {
 		return nil, fmt.Errorf("query latest openai usage logs: %w", err)
 	}
