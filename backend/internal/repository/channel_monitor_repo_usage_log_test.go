@@ -18,9 +18,9 @@ func TestChannelMonitorRepositoryListLatestSuccessfulOpenAIUsageByModels(t *test
 	defer func() { _ = db.Close() }()
 
 	createdAt := time.Date(2026, 6, 4, 10, 0, 0, 0, time.UTC)
-	rows := sqlmock.NewRows([]string{"target_model", "duration_ms", "created_at"}).
-		AddRow("gpt-5.4", int64(120), createdAt).
-		AddRow("gpt-5.4-mini", nil, createdAt.Add(-time.Minute))
+	rows := sqlmock.NewRows([]string{"target_model", "duration_ms", "first_token_ms", "created_at"}).
+		AddRow("gpt-5.4", int64(1200), int64(120), createdAt).
+		AddRow("gpt-5.4-mini", nil, nil, createdAt.Add(-time.Minute))
 
 	mock.ExpectQuery(regexp.QuoteMeta("WITH targets AS")).
 		WithArgs(pq.Array([]string{"gpt-5.4", "gpt-5.4-mini"}), createdAt.Add(-time.Minute)).
@@ -41,8 +41,8 @@ func TestChannelMonitorRepositoryListLatestSuccessfulOpenAIUsageByModels(t *test
 	if len(got) != 2 {
 		t.Fatalf("len(got) = %d, want 2", len(got))
 	}
-	if got["gpt-5.4"] == nil || got["gpt-5.4"].DurationMs == nil || *got["gpt-5.4"].DurationMs != 120 {
-		t.Fatalf("gpt-5.4 latest = %#v, want duration 120", got["gpt-5.4"])
+	if got["gpt-5.4"] == nil || got["gpt-5.4"].FirstTokenMs == nil || *got["gpt-5.4"].FirstTokenMs != 120 {
+		t.Fatalf("gpt-5.4 latest = %#v, want first token 120", got["gpt-5.4"])
 	}
 	if got["gpt-5.4-mini"] == nil || got["gpt-5.4-mini"].DurationMs != nil {
 		t.Fatalf("gpt-5.4-mini latest = %#v, want nil duration", got["gpt-5.4-mini"])

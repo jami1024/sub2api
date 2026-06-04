@@ -199,9 +199,10 @@ type ChannelMonitorLatest struct {
 // ChannelMonitorUsageLogLatest describes the latest successful real usage log
 // matching a monitor model. It is used to derive monitor status without active probes.
 type ChannelMonitorUsageLogLatest struct {
-	Model      string
-	DurationMs *int
-	CreatedAt  time.Time
+	Model        string
+	DurationMs   *int
+	FirstTokenMs *int
+	CreatedAt    time.Time
 }
 
 // ChannelMonitorAvailability 单个模型在某窗口内的可用率与平均延迟（用于 UserMonitorDetail 聚合）。

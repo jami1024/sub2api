@@ -78,7 +78,8 @@ func (channelMonitorPassEncryptor) Decrypt(s string) (string, error) { return s,
 
 func TestChannelMonitorRunCheckUsesUsageLogs(t *testing.T) {
 	createdAt := time.Date(2026, 6, 4, 10, 0, 0, 0, time.UTC)
-	durationMs := 120
+	durationMs := 1200
+	firstTokenMs := 120
 	repo := &channelMonitorUsageRepoStub{
 		monitor: &ChannelMonitor{
 			ID:           9,
@@ -88,7 +89,7 @@ func TestChannelMonitorRunCheckUsesUsageLogs(t *testing.T) {
 			ExtraModels:  []string{"gpt-5.4-mini"},
 		},
 		latest: map[string]*ChannelMonitorUsageLogLatest{
-			"gpt-5.4": {Model: "gpt-5.4", DurationMs: &durationMs, CreatedAt: createdAt},
+			"gpt-5.4": {Model: "gpt-5.4", DurationMs: &durationMs, FirstTokenMs: &firstTokenMs, CreatedAt: createdAt},
 		},
 	}
 	svc := NewChannelMonitorService(repo, channelMonitorPassEncryptor{})
@@ -103,8 +104,8 @@ func TestChannelMonitorRunCheckUsesUsageLogs(t *testing.T) {
 	if results[0].Status != MonitorStatusOperational {
 		t.Fatalf("primary status = %q, want %q", results[0].Status, MonitorStatusOperational)
 	}
-	if results[0].LatencyMs == nil || *results[0].LatencyMs != durationMs {
-		t.Fatalf("primary latency = %v, want %d", results[0].LatencyMs, durationMs)
+	if results[0].LatencyMs == nil || *results[0].LatencyMs != firstTokenMs {
+		t.Fatalf("primary latency = %v, want first token %d", results[0].LatencyMs, firstTokenMs)
 	}
 	if !results[0].CheckedAt.Equal(createdAt) {
 		t.Fatalf("primary checked_at = %s, want %s", results[0].CheckedAt, createdAt)
@@ -116,7 +117,8 @@ func TestChannelMonitorRunCheckUsesUsageLogs(t *testing.T) {
 
 func TestChannelMonitorRunCheckPersistsHistoryOnlyForUsageBackedStatuses(t *testing.T) {
 	createdAt := time.Date(2026, 6, 4, 10, 0, 0, 0, time.UTC)
-	durationMs := 120
+	durationMs := 1200
+	firstTokenMs := 120
 	repo := &channelMonitorUsageRepoStub{
 		monitor: &ChannelMonitor{
 			ID:           9,
@@ -126,7 +128,7 @@ func TestChannelMonitorRunCheckPersistsHistoryOnlyForUsageBackedStatuses(t *test
 			ExtraModels:  []string{"gpt-5.4-mini"},
 		},
 		latest: map[string]*ChannelMonitorUsageLogLatest{
-			"gpt-5.4": {Model: "gpt-5.4", DurationMs: &durationMs, CreatedAt: createdAt},
+			"gpt-5.4": {Model: "gpt-5.4", DurationMs: &durationMs, FirstTokenMs: &firstTokenMs, CreatedAt: createdAt},
 		},
 	}
 	svc := NewChannelMonitorService(repo, channelMonitorPassEncryptor{})
@@ -149,7 +151,8 @@ func TestChannelMonitorRunCheckPersistsHistoryOnlyForUsageBackedStatuses(t *test
 
 func TestChannelMonitorRunCheckSkipsDuplicateUsageHistory(t *testing.T) {
 	createdAt := time.Date(2026, 6, 4, 10, 0, 0, 0, time.UTC)
-	durationMs := 120
+	durationMs := 1200
+	firstTokenMs := 120
 	repo := &channelMonitorUsageRepoStub{
 		monitor: &ChannelMonitor{
 			ID:           9,
@@ -158,7 +161,7 @@ func TestChannelMonitorRunCheckSkipsDuplicateUsageHistory(t *testing.T) {
 			PrimaryModel: "gpt-5.4",
 		},
 		latest: map[string]*ChannelMonitorUsageLogLatest{
-			"gpt-5.4": {Model: "gpt-5.4", DurationMs: &durationMs, CreatedAt: createdAt},
+			"gpt-5.4": {Model: "gpt-5.4", DurationMs: &durationMs, FirstTokenMs: &firstTokenMs, CreatedAt: createdAt},
 		},
 		latestForMonitors: map[int64][]*ChannelMonitorLatest{
 			9: {{Model: "gpt-5.4", Status: MonitorStatusOperational, CheckedAt: createdAt}},
@@ -203,11 +206,11 @@ func TestChannelMonitorRunCheckDoesNotPersistWhenNoUsageLog(t *testing.T) {
 }
 
 func TestUsageLogLatestToCheckResultDegraded(t *testing.T) {
-	durationMs := int(monitorDegradedThreshold/time.Millisecond) + 1
+	firstTokenMs := int(monitorDegradedThreshold/time.Millisecond) + 1
 	res := usageLogLatestToCheckResult("gpt-5.4", &ChannelMonitorUsageLogLatest{
-		Model:      "gpt-5.4",
-		DurationMs: &durationMs,
-		CreatedAt:  time.Date(2026, 6, 4, 10, 0, 0, 0, time.UTC),
+		Model:        "gpt-5.4",
+		FirstTokenMs: &firstTokenMs,
+		CreatedAt:    time.Date(2026, 6, 4, 10, 0, 0, 0, time.UTC),
 	}, time.Now())
 
 	if res.Status != MonitorStatusDegraded {
@@ -215,5 +218,21 @@ func TestUsageLogLatestToCheckResultDegraded(t *testing.T) {
 	}
 	if res.Message == "" {
 		t.Fatalf("expected degraded message")
+	}
+}
+
+func TestUsageLogLatestToCheckResultDoesNotUseTotalDurationAsLatency(t *testing.T) {
+	durationMs := int(monitorDegradedThreshold/time.Millisecond) + 1
+	res := usageLogLatestToCheckResult("gpt-5.4", &ChannelMonitorUsageLogLatest{
+		Model:      "gpt-5.4",
+		DurationMs: &durationMs,
+		CreatedAt:  time.Date(2026, 6, 4, 10, 0, 0, 0, time.UTC),
+	}, time.Now())
+
+	if res.Status != MonitorStatusOperational {
+		t.Fatalf("status = %q, want %q when only total duration is slow", res.Status, MonitorStatusOperational)
+	}
+	if res.LatencyMs != nil {
+		t.Fatalf("latency = %v, want nil when first_token_ms is missing", *res.LatencyMs)
 	}
 }

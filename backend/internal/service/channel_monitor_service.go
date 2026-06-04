@@ -323,11 +323,11 @@ func usageLogLatestToCheckResult(model string, latest *ChannelMonitorUsageLogLat
 		return res
 	}
 	res.CheckedAt = latest.CreatedAt
-	res.LatencyMs = latest.DurationMs
+	res.LatencyMs = latest.FirstTokenMs
 	res.Status = MonitorStatusOperational
-	if latest.DurationMs != nil && time.Duration(*latest.DurationMs)*time.Millisecond >= monitorDegradedThreshold {
+	if latest.FirstTokenMs != nil && time.Duration(*latest.FirstTokenMs)*time.Millisecond >= monitorDegradedThreshold {
 		res.Status = MonitorStatusDegraded
-		res.Message = fmt.Sprintf("slow response from usage log: %dms", *latest.DurationMs)
+		res.Message = fmt.Sprintf("slow first token from usage log: %dms", *latest.FirstTokenMs)
 	}
 	return res
 }
