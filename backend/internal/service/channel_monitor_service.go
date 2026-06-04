@@ -38,6 +38,9 @@ type ChannelMonitorRepository interface {
 	// 批量聚合（admin/user list 用，避免 N+1）
 	ListLatestForMonitorIDs(ctx context.Context, ids []int64) (map[int64][]*ChannelMonitorLatest, error)
 	ComputeAvailabilityForMonitors(ctx context.Context, ids []int64, windowDays int) (map[int64][]*ChannelMonitorAvailability, error)
+	// ListLatestSuccessfulOpenAIUsageByModels returns the latest successful OpenAI usage log per target model.
+	// Matching checks requested_model, model, and upstream_model. Missing models are omitted.
+	ListLatestSuccessfulOpenAIUsageByModels(ctx context.Context, models []string) (map[string]*ChannelMonitorUsageLogLatest, error)
 	// ListRecentHistoryForMonitors 批量取多个 monitor 各自主模型（primaryModels[monitorID]）最近 perMonitorLimit 条历史。
 	// 返回的 entry 已按 checked_at DESC 排序（最新在前），不含 message 字段。
 	ListRecentHistoryForMonitors(ctx context.Context, ids []int64, primaryModels map[int64]string, perMonitorLimit int) (map[int64][]*ChannelMonitorHistoryEntry, error)
@@ -258,12 +261,65 @@ func (s *ChannelMonitorService) RunCheck(ctx context.Context, id int64) ([]*Chec
 	if err != nil {
 		return nil, err
 	}
-	if m.APIKeyDecryptFailed {
-		return nil, ErrChannelMonitorAPIKeyDecryptFailed
+	return s.runChecksFromUsageLogs(ctx, m), nil
+}
+
+// runChecksFromUsageLogs 用真实使用日志合成监控结果，不主动请求上游。
+func (s *ChannelMonitorService) runChecksFromUsageLogs(ctx context.Context, m *ChannelMonitor) []*CheckResult {
+	models := channelMonitorModels(m)
+	results := make([]*CheckResult, 0, len(models))
+	latest := map[string]*ChannelMonitorUsageLogLatest{}
+
+	if m != nil && m.Provider == MonitorProviderOpenAI {
+		loaded, err := s.repo.ListLatestSuccessfulOpenAIUsageByModels(ctx, models)
+		if err != nil {
+			slog.Warn("channel_monitor: load usage-log run results failed", "monitor_id", m.ID, "error", err)
+		} else {
+			latest = loaded
+		}
 	}
-	results := s.runChecksConcurrent(ctx, m)
-	s.persistCheckResults(ctx, m, results)
-	return results, nil
+
+	now := time.Now()
+	for _, model := range models {
+		results = append(results, usageLogLatestToCheckResult(model, latest[model], now))
+	}
+	return results
+}
+
+func channelMonitorModels(m *ChannelMonitor) []string {
+	if m == nil {
+		return nil
+	}
+	models := append([]string{m.PrimaryModel}, m.ExtraModels...)
+	out := make([]string, 0, len(models))
+	seen := make(map[string]struct{}, len(models))
+	for _, model := range models {
+		model = strings.TrimSpace(model)
+		if model == "" {
+			continue
+		}
+		if _, ok := seen[model]; ok {
+			continue
+		}
+		seen[model] = struct{}{}
+		out = append(out, model)
+	}
+	return out
+}
+
+func usageLogLatestToCheckResult(model string, latest *ChannelMonitorUsageLogLatest, now time.Time) *CheckResult {
+	res := &CheckResult{Model: model, CheckedAt: now}
+	if latest == nil {
+		return res
+	}
+	res.CheckedAt = latest.CreatedAt
+	res.LatencyMs = latest.DurationMs
+	res.Status = MonitorStatusOperational
+	if latest.DurationMs != nil && time.Duration(*latest.DurationMs)*time.Millisecond >= monitorDegradedThreshold {
+		res.Status = MonitorStatusDegraded
+		res.Message = fmt.Sprintf("slow response from usage log: %dms", *latest.DurationMs)
+	}
+	return res
 }
 
 // persistCheckResults 写入本次检测的历史记录并更新 last_checked_at。

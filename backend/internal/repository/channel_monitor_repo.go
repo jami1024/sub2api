@@ -395,6 +395,85 @@ func (r *channelMonitorRepository) ListLatestForMonitorIDs(ctx context.Context, 
 	return out, nil
 }
 
+// ListLatestSuccessfulOpenAIUsageByModels 返回每个目标模型最近一次真实成功使用记录。
+// 该查询服务于“日志驱动渠道监控”：只读取 usage_logs，不主动请求上游。
+func (r *channelMonitorRepository) ListLatestSuccessfulOpenAIUsageByModels(
+	ctx context.Context,
+	models []string,
+) (map[string]*service.ChannelMonitorUsageLogLatest, error) {
+	out := make(map[string]*service.ChannelMonitorUsageLogLatest, len(models))
+	models = normalizeUsageLogMonitorModels(models)
+	if len(models) == 0 {
+		return out, nil
+	}
+
+	const q = `
+		WITH targets AS (
+		    SELECT unnest($1::text[]) AS model
+		),
+		matched AS (
+		    SELECT
+		        t.model AS target_model,
+		        ul.duration_ms,
+		        ul.created_at,
+		        ROW_NUMBER() OVER (PARTITION BY t.model ORDER BY ul.created_at DESC, ul.id DESC) AS rn
+		    FROM targets t
+		    JOIN usage_logs ul ON ul.actual_cost > 0
+		     AND (
+		        ul.model = t.model
+		        OR ul.requested_model = t.model
+		        OR ul.upstream_model = t.model
+		     )
+		    WHERE (
+		        COALESCE(ul.inbound_endpoint, '') IN ('/v1/chat/completions', '/v1/responses', '/v1/responses/compact')
+		        OR COALESCE(ul.upstream_endpoint, '') IN ('/v1/chat/completions', '/v1/responses', '/v1/responses/compact')
+		    )
+		)
+		SELECT target_model, duration_ms, created_at
+		FROM matched
+		WHERE rn = 1
+	`
+
+	rows, err := r.db.QueryContext(ctx, q, pq.Array(models))
+	if err != nil {
+		return nil, fmt.Errorf("query latest openai usage logs: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	for rows.Next() {
+		var model string
+		var duration sql.NullInt64
+		var createdAt time.Time
+		if err := rows.Scan(&model, &duration, &createdAt); err != nil {
+			return nil, fmt.Errorf("scan latest openai usage log: %w", err)
+		}
+		latest := &service.ChannelMonitorUsageLogLatest{Model: model, CreatedAt: createdAt}
+		assignNullInt(&latest.DurationMs, duration)
+		out[model] = latest
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func normalizeUsageLogMonitorModels(models []string) []string {
+	seen := make(map[string]struct{}, len(models))
+	out := make([]string, 0, len(models))
+	for _, model := range models {
+		model = strings.TrimSpace(model)
+		if model == "" {
+			continue
+		}
+		if _, exists := seen[model]; exists {
+			continue
+		}
+		seen[model] = struct{}{}
+		out = append(out, model)
+	}
+	return out
+}
+
 // ListRecentHistoryForMonitors 为多个 monitor 批量取各自"指定模型"最近 N 条历史（按 checked_at DESC，最新在前）。
 // primaryModels[monitorID] 指定该监控要过滤的模型名；monitor 不在 primaryModels 中的记录不返回。
 // 通过 CTE + unnest(两个 int8/text 数组) 构造 (monitor_id, model) 白名单，

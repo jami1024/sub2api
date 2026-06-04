@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"strings"
+	"time"
 )
 
 // 渠道监控聚合层：把 latest + availability 拼成 admin/user 视图所需的 summary / detail。
@@ -19,6 +21,7 @@ import (
 func (s *ChannelMonitorService) BatchMonitorStatusSummary(
 	ctx context.Context,
 	ids []int64,
+	providerByID map[int64]string,
 	primaryByID map[int64]string,
 	extrasByID map[int64][]string,
 ) map[int64]MonitorStatusSummary {
@@ -26,6 +29,7 @@ func (s *ChannelMonitorService) BatchMonitorStatusSummary(
 	if len(ids) == 0 {
 		return out
 	}
+	usageLatest := s.batchOpenAIUsageLatest(ctx, ids, providerByID, primaryByID, extrasByID)
 	latestMap, err := s.repo.ListLatestForMonitorIDs(ctx, ids)
 	if err != nil {
 		slog.Warn("channel_monitor: batch load latest failed", "error", err)
@@ -38,6 +42,10 @@ func (s *ChannelMonitorService) BatchMonitorStatusSummary(
 	}
 
 	for _, id := range ids {
+		if providerByID[id] == MonitorProviderOpenAI {
+			out[id] = buildUsageLogStatusSummary(primaryByID[id], extrasByID[id], usageLatest)
+			continue
+		}
 		out[id] = buildStatusSummary(
 			indexLatestByModel(latestMap[id]),
 			indexAvailabilityByModel(availMap[id]),
@@ -46,6 +54,60 @@ func (s *ChannelMonitorService) BatchMonitorStatusSummary(
 		)
 	}
 	return out
+}
+
+func (s *ChannelMonitorService) batchOpenAIUsageLatest(
+	ctx context.Context,
+	ids []int64,
+	providerByID map[int64]string,
+	primaryByID map[int64]string,
+	extrasByID map[int64][]string,
+) map[string]*ChannelMonitorUsageLogLatest {
+	models := make([]string, 0)
+	for _, id := range ids {
+		if providerByID[id] != MonitorProviderOpenAI {
+			continue
+		}
+		models = append(models, primaryByID[id])
+		models = append(models, extrasByID[id]...)
+	}
+	if len(models) == 0 {
+		return map[string]*ChannelMonitorUsageLogLatest{}
+	}
+	latest, err := s.repo.ListLatestSuccessfulOpenAIUsageByModels(ctx, models)
+	if err != nil {
+		slog.Warn("channel_monitor: batch load openai usage logs failed", "error", err)
+		return map[string]*ChannelMonitorUsageLogLatest{}
+	}
+	return latest
+}
+
+func buildUsageLogStatusSummary(
+	primary string,
+	extras []string,
+	latest map[string]*ChannelMonitorUsageLogLatest,
+) MonitorStatusSummary {
+	summary := MonitorStatusSummary{ExtraModels: make([]ExtraModelStatus, 0, len(extras))}
+	if l := latest[strings.TrimSpace(primary)]; l != nil {
+		res := usageLogLatestToCheckResult(primary, l, time.Now())
+		summary.PrimaryStatus = res.Status
+		summary.PrimaryLatencyMs = res.LatencyMs
+		summary.Availability7d = 100
+	}
+	for _, model := range extras {
+		model = strings.TrimSpace(model)
+		if model == "" {
+			continue
+		}
+		entry := ExtraModelStatus{Model: model}
+		if l := latest[model]; l != nil {
+			res := usageLogLatestToCheckResult(model, l, time.Now())
+			entry.Status = res.Status
+			entry.LatencyMs = res.LatencyMs
+		}
+		summary.ExtraModels = append(summary.ExtraModels, entry)
+	}
+	return summary
 }
 
 // ListUserView 用户只读视图：列出所有 enabled 监控的概览。
@@ -64,8 +126,8 @@ func (s *ChannelMonitorService) ListUserView(ctx context.Context) ([]*UserMonito
 		return []*UserMonitorView{}, nil
 	}
 
-	ids, primaryByID, extrasByID := collectMonitorIndexes(monitors)
-	summaries := s.BatchMonitorStatusSummary(ctx, ids, primaryByID, extrasByID)
+	ids, providerByID, primaryByID, extrasByID := collectMonitorIndexes(monitors)
+	summaries := s.BatchMonitorStatusSummary(ctx, ids, providerByID, primaryByID, extrasByID)
 	latestMap := s.batchLatest(ctx, ids)
 	timelineMap := s.batchTimeline(ctx, ids, primaryByID)
 
@@ -77,17 +139,19 @@ func (s *ChannelMonitorService) ListUserView(ctx context.Context) ([]*UserMonito
 	return views, nil
 }
 
-// collectMonitorIndexes 把 monitors 列表按 ID 展开为聚合查询所需的三个索引结构。
-func collectMonitorIndexes(monitors []*ChannelMonitor) ([]int64, map[int64]string, map[int64][]string) {
+// collectMonitorIndexes 把 monitors 列表按 ID 展开为聚合查询所需的索引结构。
+func collectMonitorIndexes(monitors []*ChannelMonitor) ([]int64, map[int64]string, map[int64]string, map[int64][]string) {
 	ids := make([]int64, 0, len(monitors))
+	providerByID := make(map[int64]string, len(monitors))
 	primaryByID := make(map[int64]string, len(monitors))
 	extrasByID := make(map[int64][]string, len(monitors))
 	for _, m := range monitors {
 		ids = append(ids, m.ID)
+		providerByID[m.ID] = m.Provider
 		primaryByID[m.ID] = m.PrimaryModel
 		extrasByID[m.ID] = m.ExtraModels
 	}
-	return ids, primaryByID, extrasByID
+	return ids, providerByID, primaryByID, extrasByID
 }
 
 // batchLatest 批量取 latest per model，失败仅日志（与现有 BatchMonitorStatusSummary 一致，不阻断列表渲染）。
