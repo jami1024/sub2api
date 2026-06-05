@@ -1103,6 +1103,7 @@ export default {
     dialogLatency: '对话延迟',
     endpointPing: '端点 PING',
     history60pts: '近 {n} 次记录',
+    noRequestLogs: '暂无请求记录',
     nextUpdateIn: '{n}s 后刷新',
     past: 'PAST',
     now: 'NOW',

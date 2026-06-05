@@ -3,7 +3,7 @@
     <div
       class="flex justify-between text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-2"
     >
-      <span>{{ t('monitorCommon.history60pts', { n: length }) }}</span>
+      <span>{{ timelineLabel }}</span>
       <span class="tabular-nums">{{ t('monitorCommon.nextUpdateIn', { n: countdownSeconds }) }}</span>
     </div>
 
@@ -76,6 +76,15 @@ const STATUS_COLOR: Record<string, string> = {
   error: 'bg-red-500',
   empty: 'bg-gray-300 dark:bg-dark-600',
 }
+
+const hasTimelineData = computed(() => (props.buckets ?? []).length > 0)
+
+const timelineLabel = computed(() => {
+  if (!hasTimelineData.value) return t('monitorCommon.noRequestLogs')
+  return t('monitorCommon.history60pts', { n: length.value })
+})
+
+const length = computed(() => props.length)
 
 const displayBars = computed<Bar[]>(() => {
   // Real points come newest-first; convert to oldest-first so the rightmost

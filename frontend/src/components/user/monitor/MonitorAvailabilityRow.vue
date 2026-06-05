@@ -11,6 +11,7 @@
         {{ displayValue }}
       </span>
       <span
+        v-if="hasValue"
         class="text-base font-semibold leading-none"
         :style="colorStyle"
       >%</span>
@@ -38,9 +39,12 @@ const props = defineProps<{
 const { t } = useI18n()
 
 const displayValue = computed(() => {
-  if (props.value === null || Number.isNaN(props.value)) return t('monitorCommon.latencyEmpty')
-  return props.value.toFixed(2)
+  const value = props.value
+  if (value === null || Number.isNaN(value)) return t('monitorCommon.latencyEmpty')
+  return value.toFixed(2)
 })
+
+const hasValue = computed(() => props.value !== null && !Number.isNaN(props.value))
 
 const colorStyle = computed(() => {
   const colour = hslForPct(props.value)

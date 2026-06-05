@@ -60,13 +60,13 @@
     <!-- Availability row -->
     <MonitorAvailabilityRow
       :window-label="availabilityLabel"
-      :value="availabilityValue"
+      :value="currentAvailabilityValue"
       :samples-label="extraModelsCountLabel"
     />
 
     <!-- Timeline -->
     <MonitorTimeline
-      :buckets="item.timeline"
+      :buckets="currentTimeline"
       :countdown-seconds="countdownSeconds"
     />
   </button>
@@ -114,6 +114,16 @@ const {
 const providerTintClass = computed(() =>
   PROVIDER_TINT[props.item.provider] ?? 'text-gray-500 dark:text-gray-300'
 )
+
+const hasCurrentStatus = computed(() => Boolean(props.item.primary_status))
+
+const currentAvailabilityValue = computed(() => {
+  return hasCurrentStatus.value ? props.availabilityValue : null
+})
+
+const currentTimeline = computed(() => {
+  return hasCurrentStatus.value ? props.item.timeline : []
+})
 
 const availabilityLabel = computed(() => {
   const win = t(`channelStatus.windowTab.${props.window}`)
