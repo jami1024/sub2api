@@ -39,6 +39,12 @@ const (
 
 var opsMetricsCollectorAdvisoryLockID = hashAdvisoryLockID(opsMetricsCollectorLeaderLockKey)
 
+var (
+	readCgroupCPUUsageNanosForMetrics = readCgroupCPUUsageNanos
+	readCgroupCPULimitCoresForMetrics = readCgroupCPULimitCores
+	runtimeNumCPUForMetrics           = runtime.NumCPU
+)
+
 type OpsMetricsCollector struct {
 	opsRepo     OpsRepository
 	settingRepo SettingRepository
@@ -642,7 +648,7 @@ func (c *OpsMetricsCollector) collectSystemStats(ctx context.Context) (*opsColle
 }
 
 func (c *OpsMetricsCollector) tryCgroupCPUPercent(now time.Time) *float64 {
-	usageNanos, ok := readCgroupCPUUsageNanos()
+	usageNanos, ok := readCgroupCPUUsageNanosForMetrics()
 	if !ok {
 		return nil
 	}
@@ -676,10 +682,13 @@ func (c *OpsMetricsCollector) tryCgroupCPUPercent(now time.Time) *float64 {
 		return nil
 	}
 
-	cores := readCgroupCPULimitCores()
+	cores := readCgroupCPULimitCoresForMetrics()
 	if cores <= 0 {
-		// Can't reliably normalize; skip and fall back to gopsutil.
-		return nil
+		// No cgroup CPU limit set; use host CPU count as denominator.
+		cores = float64(runtimeNumCPUForMetrics())
+		if cores <= 0 {
+			return nil
+		}
 	}
 
 	pct := (deltaUsageSec / (elapsedSec * cores)) * 100

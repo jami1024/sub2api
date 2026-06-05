@@ -58,3 +58,35 @@ func TestOpsMetricsCollectorQueryErrorCountsExcludesCountTokens(t *testing.T) {
 	require.NoError(t, db.Close())
 	require.NoError(t, mock.ExpectationsWereMet())
 }
+
+func TestOpsMetricsCollectorUsesHostCPUCountWhenCgroupHasNoLimit(t *testing.T) {
+	originalUsageReader := readCgroupCPUUsageNanosForMetrics
+	originalLimitReader := readCgroupCPULimitCoresForMetrics
+	originalCPUCountReader := runtimeNumCPUForMetrics
+	defer func() {
+		readCgroupCPUUsageNanosForMetrics = originalUsageReader
+		readCgroupCPULimitCoresForMetrics = originalLimitReader
+		runtimeNumCPUForMetrics = originalCPUCountReader
+	}()
+
+	usageNanos := uint64(1_000_000_000)
+	readCgroupCPUUsageNanosForMetrics = func() (uint64, bool) {
+		return usageNanos, true
+	}
+	readCgroupCPULimitCoresForMetrics = func() float64 {
+		return 0
+	}
+	runtimeNumCPUForMetrics = func() int {
+		return 8
+	}
+
+	collector := &OpsMetricsCollector{}
+	now := time.Date(2026, 6, 5, 10, 0, 0, 0, time.UTC)
+	require.Nil(t, collector.tryCgroupCPUPercent(now))
+
+	usageNanos = 5_000_000_000
+	got := collector.tryCgroupCPUPercent(now.Add(time.Second))
+
+	require.NotNil(t, got)
+	require.Equal(t, 50.0, *got)
+}
