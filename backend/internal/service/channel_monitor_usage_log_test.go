@@ -12,6 +12,8 @@ type channelMonitorUsageRepoStub struct {
 	latestForMonitors map[int64][]*ChannelMonitorLatest
 	insertedRows      []*ChannelMonitorHistoryRow
 	markedChecked     []time.Time
+	latestPerModelN   int
+	availabilityN     int
 }
 
 func (s *channelMonitorUsageRepoStub) Create(context.Context, *ChannelMonitor) error { return nil }
@@ -41,9 +43,11 @@ func (s *channelMonitorUsageRepoStub) ListHistory(context.Context, int64, string
 	return nil, nil
 }
 func (s *channelMonitorUsageRepoStub) ListLatestPerModel(context.Context, int64) ([]*ChannelMonitorLatest, error) {
+	s.latestPerModelN++
 	return nil, nil
 }
 func (s *channelMonitorUsageRepoStub) ComputeAvailability(context.Context, int64, int) ([]*ChannelMonitorAvailability, error) {
+	s.availabilityN++
 	return nil, nil
 }
 func (s *channelMonitorUsageRepoStub) ListLatestForMonitorIDs(context.Context, []int64) (map[int64][]*ChannelMonitorLatest, error) {
@@ -205,6 +209,58 @@ func TestChannelMonitorRunCheckDoesNotPersistWhenNoUsageLog(t *testing.T) {
 	}
 	if len(repo.markedChecked) != 0 {
 		t.Fatalf("len(markedChecked) = %d, want 0 without usage log", len(repo.markedChecked))
+	}
+}
+
+func TestChannelMonitorGetUserDetailUsesOpenAIUsageLogs(t *testing.T) {
+	createdAt := time.Now().UTC()
+	firstTokenMs := 900
+	avgFirstTokenMs := 450
+	repo := &channelMonitorUsageRepoStub{
+		monitor: &ChannelMonitor{
+			ID:              9,
+			Provider:        MonitorProviderOpenAI,
+			Enabled:         true,
+			Name:            "OpenAI",
+			PrimaryModel:    "gpt-5.4",
+			IntervalSeconds: monitorMinIntervalSeconds,
+		},
+		latest: map[string]*ChannelMonitorUsageLogLatest{
+			"gpt-5.4": {
+				Model:           "gpt-5.4",
+				FirstTokenMs:    &firstTokenMs,
+				AvgFirstTokenMs: &avgFirstTokenMs,
+				CreatedAt:       createdAt,
+			},
+		},
+		latestForMonitors: map[int64][]*ChannelMonitorLatest{
+			9: {{Model: "gpt-5.4", Status: MonitorStatusFailed, CheckedAt: createdAt.Add(-time.Hour)}},
+		},
+	}
+	svc := NewChannelMonitorService(repo, channelMonitorPassEncryptor{})
+
+	detail, err := svc.GetUserDetail(context.Background(), 9)
+	if err != nil {
+		t.Fatalf("GetUserDetail returned error: %v", err)
+	}
+	if repo.latestPerModelN != 0 || repo.availabilityN != 0 {
+		t.Fatalf("legacy history calls latest=%d availability=%d, want 0 for OpenAI usage-log detail", repo.latestPerModelN, repo.availabilityN)
+	}
+	if len(detail.Models) != 1 {
+		t.Fatalf("len(models) = %d, want 1", len(detail.Models))
+	}
+	model := detail.Models[0]
+	if model.LatestStatus != MonitorStatusOperational {
+		t.Fatalf("latest status = %q, want %q", model.LatestStatus, MonitorStatusOperational)
+	}
+	if model.LatestLatencyMs == nil || *model.LatestLatencyMs != avgFirstTokenMs {
+		t.Fatalf("latest latency = %v, want average first token %d", model.LatestLatencyMs, avgFirstTokenMs)
+	}
+	if model.Availability7d != 100 || model.Availability15d != 100 || model.Availability30d != 100 {
+		t.Fatalf("availability = %.2f/%.2f/%.2f, want all 100", model.Availability7d, model.Availability15d, model.Availability30d)
+	}
+	if model.AvgLatency7dMs == nil || *model.AvgLatency7dMs != avgFirstTokenMs {
+		t.Fatalf("avg latency = %v, want average first token %d", model.AvgLatency7dMs, avgFirstTokenMs)
 	}
 }
 

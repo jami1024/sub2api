@@ -247,6 +247,9 @@ func (s *ChannelMonitorService) GetUserDetail(ctx context.Context, id int64) (*U
 	if !m.Enabled {
 		return nil, ErrChannelMonitorNotFound
 	}
+	if m.Provider == MonitorProviderOpenAI {
+		return s.getOpenAIUsageLogUserDetail(ctx, m)
+	}
 
 	latest, err := s.repo.ListLatestPerModel(ctx, id)
 	if err != nil {
@@ -265,6 +268,50 @@ func (s *ChannelMonitorService) GetUserDetail(ctx context.Context, id int64) (*U
 		GroupName: m.GroupName,
 		Models:    models,
 	}, nil
+}
+
+func (s *ChannelMonitorService) getOpenAIUsageLogUserDetail(ctx context.Context, m *ChannelMonitor) (*UserMonitorDetail, error) {
+	models := channelMonitorModels(m)
+	now := time.Now()
+	since := channelMonitorUsageLogSince(now, m.IntervalSeconds)
+	latest, err := s.repo.ListLatestSuccessfulOpenAIUsageByModels(ctx, models, since)
+	if err != nil {
+		return nil, fmt.Errorf("list latest openai usage logs: %w", err)
+	}
+	return &UserMonitorDetail{
+		ID:        m.ID,
+		Name:      m.Name,
+		Provider:  m.Provider,
+		GroupName: m.GroupName,
+		Models:    buildOpenAIUsageLogModelDetails(models, latest, since, now),
+	}, nil
+}
+
+func buildOpenAIUsageLogModelDetails(
+	models []string,
+	latest map[string]*ChannelMonitorUsageLogLatest,
+	since time.Time,
+	now time.Time,
+) []ModelDetail {
+	out := make([]ModelDetail, 0, len(models))
+	for _, model := range models {
+		model = strings.TrimSpace(model)
+		if model == "" {
+			continue
+		}
+		d := ModelDetail{Model: model}
+		if l := usageLogLatestWithinWindow(latest[model], since); l != nil {
+			res := usageLogLatestToCheckResult(model, l, now)
+			d.LatestStatus = res.Status
+			d.LatestLatencyMs = res.LatencyMs
+			d.Availability7d = 100
+			d.Availability15d = 100
+			d.Availability30d = 100
+			d.AvgLatency7dMs = res.LatencyMs
+		}
+		out = append(out, d)
+	}
+	return out
 }
 
 // collectAvailabilityWindows 一次性查询 7/15/30 天三个窗口，按模型组织。
