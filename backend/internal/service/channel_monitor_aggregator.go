@@ -157,7 +157,12 @@ func (s *ChannelMonitorService) ListUserView(ctx context.Context) ([]*UserMonito
 	views := make([]*UserMonitorView, 0, len(monitors))
 	for _, m := range monitors {
 		primaryLatest := pickLatest(latestMap[m.ID], m.PrimaryModel)
-		views = append(views, buildUserViewFromSummary(m, summaries[m.ID], primaryLatest, timelineMap[m.ID]))
+		views = append(views, buildUserViewFromSummary(
+			m,
+			summaries[m.ID],
+			primaryLatest,
+			timelineEntriesForUserView(m, timelineMap[m.ID]),
+		))
 	}
 	return views, nil
 }
@@ -214,6 +219,22 @@ func pickLatest(rows []*ChannelMonitorLatest, model string) *ChannelMonitorLates
 		}
 	}
 	return nil
+}
+
+func timelineEntriesForUserView(m *ChannelMonitor, entries []*ChannelMonitorHistoryEntry) []*ChannelMonitorHistoryEntry {
+	if m == nil || m.Provider != MonitorProviderOpenAI {
+		return entries
+	}
+	out := make([]*ChannelMonitorHistoryEntry, 0, len(entries))
+	for _, e := range entries {
+		if e == nil {
+			continue
+		}
+		if isUsageLogBackedMonitorStatus(e.Status) {
+			out = append(out, e)
+		}
+	}
+	return out
 }
 
 // GetUserDetail 用户只读视图：单个监控详情（每个模型 7d/15d/30d 可用率与平均延迟）。
