@@ -417,6 +417,7 @@ func (r *channelMonitorRepository) ListLatestSuccessfulOpenAIUsageByModels(
 		        t.model AS target_model,
 		        ul.duration_ms,
 		        ul.first_token_ms,
+		        ROUND(AVG(ul.first_token_ms) OVER (PARTITION BY t.model))::bigint AS avg_first_token_ms,
 		        ul.created_at,
 		        ROW_NUMBER() OVER (PARTITION BY t.model ORDER BY ul.created_at DESC, ul.id DESC) AS rn
 		    FROM targets t
@@ -432,7 +433,7 @@ func (r *channelMonitorRepository) ListLatestSuccessfulOpenAIUsageByModels(
 		        OR COALESCE(ul.upstream_endpoint, '') IN ('/v1/chat/completions', '/v1/responses', '/v1/responses/compact')
 		    )
 		)
-		SELECT target_model, duration_ms, first_token_ms, created_at
+		SELECT target_model, duration_ms, first_token_ms, avg_first_token_ms, created_at
 		FROM matched
 		WHERE rn = 1
 	`
@@ -447,13 +448,15 @@ func (r *channelMonitorRepository) ListLatestSuccessfulOpenAIUsageByModels(
 		var model string
 		var duration sql.NullInt64
 		var firstToken sql.NullInt64
+		var avgFirstToken sql.NullInt64
 		var createdAt time.Time
-		if err := rows.Scan(&model, &duration, &firstToken, &createdAt); err != nil {
+		if err := rows.Scan(&model, &duration, &firstToken, &avgFirstToken, &createdAt); err != nil {
 			return nil, fmt.Errorf("scan latest openai usage log: %w", err)
 		}
 		latest := &service.ChannelMonitorUsageLogLatest{Model: model, CreatedAt: createdAt}
 		assignNullInt(&latest.DurationMs, duration)
 		assignNullInt(&latest.FirstTokenMs, firstToken)
+		assignNullInt(&latest.AvgFirstTokenMs, avgFirstToken)
 		out[model] = latest
 	}
 	if err := rows.Err(); err != nil {

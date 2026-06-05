@@ -323,7 +323,7 @@ func usageLogLatestToCheckResult(model string, latest *ChannelMonitorUsageLogLat
 		return res
 	}
 	res.CheckedAt = latest.CreatedAt
-	res.LatencyMs = latest.FirstTokenMs
+	res.LatencyMs = latest.AvgFirstTokenMs
 	res.Status = MonitorStatusOperational
 	if latest.FirstTokenMs != nil && time.Duration(*latest.FirstTokenMs)*time.Millisecond >= monitorDegradedThreshold {
 		res.Status = MonitorStatusDegraded

@@ -80,6 +80,7 @@ func TestChannelMonitorRunCheckUsesUsageLogs(t *testing.T) {
 	createdAt := time.Date(2026, 6, 4, 10, 0, 0, 0, time.UTC)
 	durationMs := 1200
 	firstTokenMs := 120
+	avgFirstTokenMs := 120
 	repo := &channelMonitorUsageRepoStub{
 		monitor: &ChannelMonitor{
 			ID:           9,
@@ -89,7 +90,7 @@ func TestChannelMonitorRunCheckUsesUsageLogs(t *testing.T) {
 			ExtraModels:  []string{"gpt-5.4-mini"},
 		},
 		latest: map[string]*ChannelMonitorUsageLogLatest{
-			"gpt-5.4": {Model: "gpt-5.4", DurationMs: &durationMs, FirstTokenMs: &firstTokenMs, CreatedAt: createdAt},
+			"gpt-5.4": {Model: "gpt-5.4", DurationMs: &durationMs, FirstTokenMs: &firstTokenMs, AvgFirstTokenMs: &avgFirstTokenMs, CreatedAt: createdAt},
 		},
 	}
 	svc := NewChannelMonitorService(repo, channelMonitorPassEncryptor{})
@@ -119,6 +120,7 @@ func TestChannelMonitorRunCheckPersistsHistoryOnlyForUsageBackedStatuses(t *test
 	createdAt := time.Date(2026, 6, 4, 10, 0, 0, 0, time.UTC)
 	durationMs := 1200
 	firstTokenMs := 120
+	avgFirstTokenMs := 120
 	repo := &channelMonitorUsageRepoStub{
 		monitor: &ChannelMonitor{
 			ID:           9,
@@ -128,7 +130,7 @@ func TestChannelMonitorRunCheckPersistsHistoryOnlyForUsageBackedStatuses(t *test
 			ExtraModels:  []string{"gpt-5.4-mini"},
 		},
 		latest: map[string]*ChannelMonitorUsageLogLatest{
-			"gpt-5.4": {Model: "gpt-5.4", DurationMs: &durationMs, FirstTokenMs: &firstTokenMs, CreatedAt: createdAt},
+			"gpt-5.4": {Model: "gpt-5.4", DurationMs: &durationMs, FirstTokenMs: &firstTokenMs, AvgFirstTokenMs: &avgFirstTokenMs, CreatedAt: createdAt},
 		},
 	}
 	svc := NewChannelMonitorService(repo, channelMonitorPassEncryptor{})
@@ -153,6 +155,7 @@ func TestChannelMonitorRunCheckSkipsDuplicateUsageHistory(t *testing.T) {
 	createdAt := time.Date(2026, 6, 4, 10, 0, 0, 0, time.UTC)
 	durationMs := 1200
 	firstTokenMs := 120
+	avgFirstTokenMs := 120
 	repo := &channelMonitorUsageRepoStub{
 		monitor: &ChannelMonitor{
 			ID:           9,
@@ -161,7 +164,7 @@ func TestChannelMonitorRunCheckSkipsDuplicateUsageHistory(t *testing.T) {
 			PrimaryModel: "gpt-5.4",
 		},
 		latest: map[string]*ChannelMonitorUsageLogLatest{
-			"gpt-5.4": {Model: "gpt-5.4", DurationMs: &durationMs, FirstTokenMs: &firstTokenMs, CreatedAt: createdAt},
+			"gpt-5.4": {Model: "gpt-5.4", DurationMs: &durationMs, FirstTokenMs: &firstTokenMs, AvgFirstTokenMs: &avgFirstTokenMs, CreatedAt: createdAt},
 		},
 		latestForMonitors: map[int64][]*ChannelMonitorLatest{
 			9: {{Model: "gpt-5.4", Status: MonitorStatusOperational, CheckedAt: createdAt}},
@@ -208,9 +211,10 @@ func TestChannelMonitorRunCheckDoesNotPersistWhenNoUsageLog(t *testing.T) {
 func TestUsageLogLatestToCheckResultDegraded(t *testing.T) {
 	firstTokenMs := int(monitorDegradedThreshold/time.Millisecond) + 1
 	res := usageLogLatestToCheckResult("gpt-5.4", &ChannelMonitorUsageLogLatest{
-		Model:        "gpt-5.4",
-		FirstTokenMs: &firstTokenMs,
-		CreatedAt:    time.Date(2026, 6, 4, 10, 0, 0, 0, time.UTC),
+		Model:           "gpt-5.4",
+		FirstTokenMs:    &firstTokenMs,
+		AvgFirstTokenMs: &firstTokenMs,
+		CreatedAt:       time.Date(2026, 6, 4, 10, 0, 0, 0, time.UTC),
 	}, time.Now())
 
 	if res.Status != MonitorStatusDegraded {
@@ -218,6 +222,24 @@ func TestUsageLogLatestToCheckResultDegraded(t *testing.T) {
 	}
 	if res.Message == "" {
 		t.Fatalf("expected degraded message")
+	}
+}
+
+func TestUsageLogLatestToCheckResultUsesAverageFirstTokenLatency(t *testing.T) {
+	firstTokenMs := 900
+	avgFirstTokenMs := 450
+	res := usageLogLatestToCheckResult("gpt-5.4", &ChannelMonitorUsageLogLatest{
+		Model:           "gpt-5.4",
+		FirstTokenMs:    &firstTokenMs,
+		AvgFirstTokenMs: &avgFirstTokenMs,
+		CreatedAt:       time.Date(2026, 6, 4, 10, 0, 0, 0, time.UTC),
+	}, time.Now())
+
+	if res.LatencyMs == nil || *res.LatencyMs != avgFirstTokenMs {
+		t.Fatalf("latency = %v, want average first token %d", res.LatencyMs, avgFirstTokenMs)
+	}
+	if res.Status != MonitorStatusOperational {
+		t.Fatalf("status = %q, want %q", res.Status, MonitorStatusOperational)
 	}
 }
 
