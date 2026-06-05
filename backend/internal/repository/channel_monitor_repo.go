@@ -25,6 +25,8 @@ type channelMonitorRepository struct {
 	db     *sql.DB
 }
 
+const openAIUsageDegradedThreshold = 100 * time.Second
+
 // NewChannelMonitorRepository 创建仓储实例。
 func NewChannelMonitorRepository(client *dbent.Client, db *sql.DB) service.ChannelMonitorRepository {
 	return &channelMonitorRepository{client: client, db: db}
@@ -517,6 +519,299 @@ func normalizeUsageLogMonitorModels(models []string) []string {
 		out = append(out, model)
 	}
 	return out
+}
+
+// ComputeOpenAIUsageHealthByModels 用真实请求日志计算 OpenAI 模型健康度。
+// 成功请求来自 usage_logs；SLA 错误来自 ops_error_logs，排除业务限制与 count_tokens。
+func (r *channelMonitorRepository) ComputeOpenAIUsageHealthByModels(
+	ctx context.Context,
+	models []string,
+	since time.Time,
+) (map[string]*service.ChannelMonitorUsageHealth, error) {
+	out := make(map[string]*service.ChannelMonitorUsageHealth, len(models))
+	models = normalizeUsageLogMonitorModels(models)
+	if len(models) == 0 {
+		return out, nil
+	}
+
+	const q = `
+		WITH targets AS (
+		    SELECT unnest($1::text[]) AS model
+		),
+		successes AS (
+		    SELECT DISTINCT t.model AS target_model,
+		           ul.id,
+		           ul.first_token_ms,
+		           ul.created_at
+		    FROM targets t
+		    JOIN usage_logs ul
+		      ON ul.model = t.model OR ul.requested_model = t.model OR ul.upstream_model = t.model
+		    WHERE (
+		        ul.inbound_endpoint IN ('/v1/chat/completions', '/v1/responses', '/v1/responses/compact')
+		        OR ul.upstream_endpoint IN ('/v1/chat/completions', '/v1/responses', '/v1/responses/compact')
+		    )
+		      AND ul.created_at >= $2
+		),
+		sla_errors AS (
+		    SELECT DISTINCT t.model AS target_model,
+		           oe.id,
+		           oe.time_to_first_token_ms,
+		           oe.created_at
+		    FROM targets t
+		    JOIN ops_error_logs oe
+		      ON oe.model = t.model OR oe.requested_model = t.model OR oe.upstream_model = t.model
+		    WHERE (
+		        COALESCE(oe.inbound_endpoint, oe.request_path) IN ('/v1/chat/completions', '/v1/responses', '/v1/responses/compact')
+		        OR oe.upstream_endpoint IN ('/v1/chat/completions', '/v1/responses', '/v1/responses/compact')
+		    )
+		      AND oe.created_at >= $2
+		      AND COALESCE(oe.status_code, 0) >= 400
+		      AND NOT oe.is_business_limited
+		      AND oe.is_count_tokens = FALSE
+		),
+		stats AS (
+		    SELECT t.model AS target_model,
+		           COALESCE(s.success_count, 0) AS success_count,
+		           COALESCE(e.error_count_sla, 0) AS error_count_sla,
+		           s.avg_latency_ms
+		    FROM targets t
+		    LEFT JOIN (
+		        SELECT target_model,
+		               COUNT(*) AS success_count,
+		               ROUND(AVG(first_token_ms))::bigint AS avg_latency_ms
+		        FROM successes
+		        GROUP BY target_model
+		    ) s ON s.target_model = t.model
+		    LEFT JOIN (
+		        SELECT target_model,
+		               COUNT(*) AS error_count_sla
+		        FROM sla_errors
+		        GROUP BY target_model
+		    ) e ON e.target_model = t.model
+		),
+		latest_events AS (
+		    SELECT target_model, 'success'::text AS kind, id, first_token_ms::bigint AS latency_ms, created_at
+		    FROM successes
+		    UNION ALL
+		    SELECT target_model, 'error'::text AS kind, id, time_to_first_token_ms AS latency_ms, created_at
+		    FROM sla_errors
+		),
+		latest AS (
+		    SELECT DISTINCT ON (target_model)
+		           target_model, kind, latency_ms, created_at
+		    FROM latest_events
+		    ORDER BY target_model, created_at DESC, id DESC
+		)
+		SELECT st.target_model,
+		       st.success_count,
+		       st.error_count_sla,
+		       st.avg_latency_ms,
+		       l.kind,
+		       l.latency_ms,
+		       l.created_at
+		FROM stats st
+		LEFT JOIN latest l ON l.target_model = st.target_model
+	`
+
+	rows, err := r.db.QueryContext(ctx, q, pq.Array(models), since)
+	if err != nil {
+		return nil, fmt.Errorf("query openai usage health: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	for rows.Next() {
+		health, err := scanOpenAIUsageHealthRow(rows)
+		if err != nil {
+			return nil, err
+		}
+		out[health.Model] = health
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func scanOpenAIUsageHealthRow(rows interface{ Scan(...any) error }) (*service.ChannelMonitorUsageHealth, error) {
+	var avgLatency sql.NullInt64
+	var latestKind sql.NullString
+	var latestLatency sql.NullInt64
+	var latestAt sql.NullTime
+	health := &service.ChannelMonitorUsageHealth{}
+	if err := rows.Scan(
+		&health.Model,
+		&health.SuccessCount,
+		&health.ErrorCountSLA,
+		&avgLatency,
+		&latestKind,
+		&latestLatency,
+		&latestAt,
+	); err != nil {
+		return nil, fmt.Errorf("scan openai usage health row: %w", err)
+	}
+	if avgLatency.Valid {
+		v := int(avgLatency.Int64)
+		health.AvgLatencyMs = &v
+	}
+	total := health.SuccessCount + health.ErrorCountSLA
+	if total > 0 {
+		health.AvailabilityPct = float64(health.SuccessCount) * 100 / float64(total)
+	}
+	if latestLatency.Valid {
+		v := int(latestLatency.Int64)
+		health.LatestLatencyMs = &v
+	}
+	if latestAt.Valid {
+		health.LatestCheckedAt = latestAt.Time
+	}
+	health.LatestStatus = openAIUsageEventStatus(latestKind.String, health.LatestLatencyMs)
+	return health, nil
+}
+
+// ListRecentOpenAIUsageEventsByModels 返回每个模型最近的真实成功/错误请求事件，用于用户卡片时间线。
+func (r *channelMonitorRepository) ListRecentOpenAIUsageEventsByModels(
+	ctx context.Context,
+	models []string,
+	since time.Time,
+	limit int,
+) (map[string][]*service.ChannelMonitorHistoryEntry, error) {
+	out := make(map[string][]*service.ChannelMonitorHistoryEntry, len(models))
+	models = normalizeUsageLogMonitorModels(models)
+	if len(models) == 0 {
+		return out, nil
+	}
+	if limit <= 0 {
+		limit = service.MonitorHistoryDefaultLimit
+	}
+	if limit > service.MonitorHistoryMaxLimit {
+		limit = service.MonitorHistoryMaxLimit
+	}
+
+	const q = `
+		WITH targets AS (
+		    SELECT unnest($1::text[]) AS model
+		),
+		buckets AS (
+		    SELECT t.model AS target_model,
+		           gs.bucket_idx,
+		           $2::timestamptz + (gs.bucket_idx * interval '30 seconds') AS bucket_at,
+		           $2::timestamptz + ((gs.bucket_idx + 1) * interval '30 seconds') AS bucket_end
+		    FROM targets t
+		    CROSS JOIN generate_series(0, $3::int - 1) AS gs(bucket_idx)
+		),
+		events AS (
+		    SELECT DISTINCT t.model AS target_model,
+		           'success'::text AS kind,
+		           ul.id,
+		           ul.first_token_ms::bigint AS latency_ms,
+		           ul.created_at
+		    FROM targets t
+		    JOIN usage_logs ul
+		      ON ul.model = t.model OR ul.requested_model = t.model OR ul.upstream_model = t.model
+		    WHERE (
+		        ul.inbound_endpoint IN ('/v1/chat/completions', '/v1/responses', '/v1/responses/compact')
+		        OR ul.upstream_endpoint IN ('/v1/chat/completions', '/v1/responses', '/v1/responses/compact')
+		    )
+		      AND ul.created_at >= $2
+		      AND ul.created_at < $2::timestamptz + ($3::int * interval '30 seconds')
+		    UNION ALL
+		    SELECT DISTINCT t.model AS target_model,
+		           'error'::text AS kind,
+		           oe.id,
+		           oe.time_to_first_token_ms AS latency_ms,
+		           oe.created_at
+		    FROM targets t
+		    JOIN ops_error_logs oe
+		      ON oe.model = t.model OR oe.requested_model = t.model OR oe.upstream_model = t.model
+		    WHERE (
+		        COALESCE(oe.inbound_endpoint, oe.request_path) IN ('/v1/chat/completions', '/v1/responses', '/v1/responses/compact')
+		        OR oe.upstream_endpoint IN ('/v1/chat/completions', '/v1/responses', '/v1/responses/compact')
+		    )
+		      AND oe.created_at >= $2
+		      AND oe.created_at < $2::timestamptz + ($3::int * interval '30 seconds')
+		      AND COALESCE(oe.status_code, 0) >= 400
+		      AND NOT oe.is_business_limited
+		      AND oe.is_count_tokens = FALSE
+		),
+		bucket_stats AS (
+		    SELECT b.target_model,
+		           b.bucket_idx,
+		           b.bucket_at,
+		           COUNT(e.*) FILTER (WHERE e.kind = 'success') AS success_count,
+		           COUNT(e.*) FILTER (WHERE e.kind = 'error') AS error_count,
+		           COUNT(e.*) AS total_count,
+		           ROUND(AVG(e.latency_ms) FILTER (WHERE e.kind = 'success' AND e.latency_ms IS NOT NULL))::bigint AS avg_latency_ms,
+		           BOOL_OR(e.kind = 'success' AND e.latency_ms IS NOT NULL AND e.latency_ms >= 100000) AS has_slow_success
+		    FROM buckets b
+		    LEFT JOIN events e
+		      ON e.target_model = b.target_model
+		     AND e.created_at >= b.bucket_at
+		     AND e.created_at < b.bucket_end
+		    GROUP BY b.target_model, b.bucket_idx, b.bucket_at
+		)
+		SELECT target_model,
+		       CASE
+		         WHEN total_count = 0 THEN 'empty'
+		         WHEN error_count > 0 AND success_count = 0 THEN 'error'
+		         WHEN error_count > 0 OR has_slow_success THEN 'mixed'
+		         ELSE 'success'
+		       END AS kind,
+		       avg_latency_ms,
+		       bucket_at
+		FROM bucket_stats
+		ORDER BY target_model, bucket_idx
+	`
+
+	rows, err := r.db.QueryContext(ctx, q, pq.Array(models), since, limit)
+	if err != nil {
+		return nil, fmt.Errorf("query recent openai usage events: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	for rows.Next() {
+		var model string
+		var kind string
+		var latency sql.NullInt64
+		var checkedAt time.Time
+		if err := rows.Scan(&model, &kind, &latency, &checkedAt); err != nil {
+			return nil, fmt.Errorf("scan recent openai usage event: %w", err)
+		}
+		entry := &service.ChannelMonitorHistoryEntry{
+			Model:     model,
+			Status:    openAIUsageEventStatus(kind, nullIntToPtr(latency)),
+			LatencyMs: nullIntToPtr(latency),
+			CheckedAt: checkedAt,
+		}
+		out[model] = append(out[model], entry)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func nullIntToPtr(n sql.NullInt64) *int {
+	if !n.Valid {
+		return nil
+	}
+	v := int(n.Int64)
+	return &v
+}
+
+func openAIUsageEventStatus(kind string, latencyMs *int) string {
+	switch kind {
+	case "success":
+		if latencyMs != nil && time.Duration(*latencyMs)*time.Millisecond >= openAIUsageDegradedThreshold {
+			return service.MonitorStatusDegraded
+		}
+		return service.MonitorStatusOperational
+	case "mixed":
+		return service.MonitorStatusDegraded
+	case "error":
+		return service.MonitorStatusFailed
+	default:
+		return ""
+	}
 }
 
 // ListRecentHistoryForMonitors 为多个 monitor 批量取各自"指定模型"最近 N 条历史（按 checked_at DESC，最新在前）。

@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-func TestTimelineEntriesForUserViewFiltersStaleOpenAIProbeFailures(t *testing.T) {
+func TestTimelineEntriesForUserViewKeepsOpenAISLAEvents(t *testing.T) {
 	now := time.Date(2026, 6, 5, 8, 30, 0, 0, time.UTC)
 	m := &ChannelMonitor{Provider: MonitorProviderOpenAI}
 	entries := []*ChannelMonitorHistoryEntry{
@@ -17,11 +17,11 @@ func TestTimelineEntriesForUserViewFiltersStaleOpenAIProbeFailures(t *testing.T)
 
 	got := timelineEntriesForUserView(m, entries)
 
-	if len(got) != 2 {
-		t.Fatalf("len(got) = %d, want 2", len(got))
+	if len(got) != len(entries) {
+		t.Fatalf("len(got) = %d, want %d", len(got), len(entries))
 	}
-	if got[0].Status != MonitorStatusOperational || got[1].Status != MonitorStatusDegraded {
-		t.Fatalf("statuses = [%q, %q], want operational/degraded only", got[0].Status, got[1].Status)
+	if got[1].Status != MonitorStatusFailed || got[2].Status != MonitorStatusError {
+		t.Fatalf("statuses = %#v, want OpenAI SLA error events preserved", got)
 	}
 }
 

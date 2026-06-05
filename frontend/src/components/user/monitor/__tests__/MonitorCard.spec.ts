@@ -8,6 +8,7 @@ vi.mock('vue-i18n', () => ({
   useI18n: () => ({
     t: (key: string, params?: Record<string, unknown>) => {
       if (key === 'monitorCommon.history60pts') return `近 ${params?.n} 次记录`
+      if (key === 'monitorCommon.realtimeWindow30m') return '近 30 分钟'
       if (key === 'monitorCommon.nextUpdateIn') return `${params?.n}s 后刷新`
       if (key === 'monitorCommon.latencyEmpty') return '-'
       return key
@@ -58,7 +59,6 @@ describe('MonitorCard', () => {
       props: {
         item: baseItem(),
         window: '7d',
-        availabilityValue: 0,
         countdownSeconds: 58,
       },
       global: { stubs },
@@ -78,7 +78,6 @@ describe('MonitorCard', () => {
       props: {
         item,
         window: '7d',
-        availabilityValue: 100,
         countdownSeconds: 58,
       },
       global: { stubs },

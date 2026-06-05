@@ -42,6 +42,11 @@ type ChannelMonitorRepository interface {
 	// ListLatestSuccessfulOpenAIUsageByModels returns the latest successful OpenAI usage log per target model since the given time.
 	// Matching checks requested_model, model, and upstream_model. Missing models are omitted.
 	ListLatestSuccessfulOpenAIUsageByModels(ctx context.Context, models []string, since time.Time) (map[string]*ChannelMonitorUsageLogLatest, error)
+	// ComputeOpenAIUsageHealthByModels returns SLA-compatible request health per target model.
+	// Successes are read from usage_logs and SLA errors from ops_error_logs.
+	ComputeOpenAIUsageHealthByModels(ctx context.Context, models []string, since time.Time) (map[string]*ChannelMonitorUsageHealth, error)
+	// ListRecentOpenAIUsageEventsByModels returns recent success/error request events per target model.
+	ListRecentOpenAIUsageEventsByModels(ctx context.Context, models []string, since time.Time, limit int) (map[string][]*ChannelMonitorHistoryEntry, error)
 	// ListRecentHistoryForMonitors 批量取多个 monitor 各自主模型（primaryModels[monitorID]）最近 perMonitorLimit 条历史。
 	// 返回的 entry 已按 checked_at DESC 排序（最新在前），不含 message 字段。
 	ListRecentHistoryForMonitors(ctx context.Context, ids []int64, primaryModels map[int64]string, perMonitorLimit int) (map[int64][]*ChannelMonitorHistoryEntry, error)
@@ -72,10 +77,19 @@ type ChannelMonitorService struct {
 	userDetailMu    sync.RWMutex
 	userDetailCache map[int64]channelMonitorUserDetailCacheEntry
 	userDetailGroup singleflight.Group
+
+	userListMu    sync.RWMutex
+	userListCache channelMonitorUserListCacheEntry
+	userListGroup singleflight.Group
 }
 
 type channelMonitorUserDetailCacheEntry struct {
 	detail    *UserMonitorDetail
+	expiresAt time.Time
+}
+
+type channelMonitorUserListCacheEntry struct {
+	views     []*UserMonitorView
 	expiresAt time.Time
 }
 
@@ -86,6 +100,7 @@ func NewChannelMonitorService(repo ChannelMonitorRepository, encryptor SecretEnc
 		encryptor:       encryptor,
 		userDetailCache: make(map[int64]channelMonitorUserDetailCacheEntry),
 		userDetailGroup: singleflight.Group{},
+		userListGroup:   singleflight.Group{},
 	}
 }
 

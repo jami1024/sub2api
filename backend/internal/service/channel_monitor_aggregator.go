@@ -30,8 +30,8 @@ func (s *ChannelMonitorService) BatchMonitorStatusSummary(
 	if len(ids) == 0 {
 		return out
 	}
-	usageLatest := s.batchOpenAIUsageLatest(ctx, ids, providerByID, primaryByID, extrasByID, intervalByID)
 	now := time.Now()
+	usageHealth := s.batchOpenAIUsageHealth(ctx, ids, providerByID, primaryByID, extrasByID, now.Add(-monitorUserRealtimeWindow))
 	historyIDs := nonOpenAIMonitorIDs(ids, providerByID)
 	latestMap := map[int64][]*ChannelMonitorLatest{}
 	availMap := map[int64][]*ChannelMonitorAvailability{}
@@ -51,12 +51,10 @@ func (s *ChannelMonitorService) BatchMonitorStatusSummary(
 
 	for _, id := range ids {
 		if providerByID[id] == MonitorProviderOpenAI {
-			out[id] = buildUsageLogStatusSummary(
+			out[id] = buildUsageHealthStatusSummary(
 				primaryByID[id],
 				extrasByID[id],
-				usageLatest,
-				channelMonitorUsageLogSince(now, intervalByID[id]),
-				now,
+				usageHealth,
 			)
 			continue
 		}
@@ -68,6 +66,26 @@ func (s *ChannelMonitorService) BatchMonitorStatusSummary(
 		)
 	}
 	return out
+}
+
+func (s *ChannelMonitorService) batchOpenAIUsageHealth(
+	ctx context.Context,
+	ids []int64,
+	providerByID map[int64]string,
+	primaryByID map[int64]string,
+	extrasByID map[int64][]string,
+	since time.Time,
+) map[string]*ChannelMonitorUsageHealth {
+	models := openAIUsageModels(ids, providerByID, primaryByID, extrasByID)
+	if len(models) == 0 {
+		return map[string]*ChannelMonitorUsageHealth{}
+	}
+	health, err := s.repo.ComputeOpenAIUsageHealthByModels(ctx, models, since)
+	if err != nil {
+		slog.Warn("channel_monitor: batch load openai usage health failed", "error", err)
+		return map[string]*ChannelMonitorUsageHealth{}
+	}
+	return health
 }
 
 func (s *ChannelMonitorService) batchOpenAIUsageLatest(
@@ -100,6 +118,66 @@ func (s *ChannelMonitorService) batchOpenAIUsageLatest(
 		return map[string]*ChannelMonitorUsageLogLatest{}
 	}
 	return latest
+}
+
+func openAIUsageModels(
+	ids []int64,
+	providerByID map[int64]string,
+	primaryByID map[int64]string,
+	extrasByID map[int64][]string,
+) []string {
+	models := make([]string, 0)
+	for _, id := range ids {
+		if providerByID[id] != MonitorProviderOpenAI {
+			continue
+		}
+		models = append(models, primaryByID[id])
+		models = append(models, extrasByID[id]...)
+	}
+	return normalizeMonitorModels(models)
+}
+
+func normalizeMonitorModels(models []string) []string {
+	out := make([]string, 0, len(models))
+	seen := make(map[string]struct{}, len(models))
+	for _, model := range models {
+		model = strings.TrimSpace(model)
+		if model == "" {
+			continue
+		}
+		if _, ok := seen[model]; ok {
+			continue
+		}
+		seen[model] = struct{}{}
+		out = append(out, model)
+	}
+	return out
+}
+
+func buildUsageHealthStatusSummary(
+	primary string,
+	extras []string,
+	health map[string]*ChannelMonitorUsageHealth,
+) MonitorStatusSummary {
+	summary := MonitorStatusSummary{ExtraModels: make([]ExtraModelStatus, 0, len(extras))}
+	if h := health[strings.TrimSpace(primary)]; h != nil {
+		summary.PrimaryStatus = h.LatestStatus
+		summary.PrimaryLatencyMs = h.LatestLatencyMs
+		summary.Availability7d = h.AvailabilityPct
+	}
+	for _, model := range extras {
+		model = strings.TrimSpace(model)
+		if model == "" {
+			continue
+		}
+		entry := ExtraModelStatus{Model: model}
+		if h := health[model]; h != nil {
+			entry.Status = h.LatestStatus
+			entry.LatencyMs = h.LatestLatencyMs
+		}
+		summary.ExtraModels = append(summary.ExtraModels, entry)
+	}
+	return summary
 }
 
 func buildUsageLogStatusSummary(
@@ -147,6 +225,31 @@ func usageLogLatestWithinWindow(latest *ChannelMonitorUsageLogLatest, since time
 //	1 次批量 7d availability；
 //	1 次批量 timeline（主模型最近 N 条）。
 func (s *ChannelMonitorService) ListUserView(ctx context.Context) ([]*UserMonitorView, error) {
+	if cached := s.getCachedUserList(); cached != nil {
+		return cached, nil
+	}
+	v, err, _ := s.userListGroup.Do("user-list", func() (any, error) {
+		if cached := s.getCachedUserList(); cached != nil {
+			return cached, nil
+		}
+		views, err := s.loadUserView(ctx)
+		if err != nil {
+			return nil, err
+		}
+		s.setCachedUserList(views)
+		return cloneUserMonitorViews(views), nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	views, ok := v.([]*UserMonitorView)
+	if !ok {
+		return nil, fmt.Errorf("load user monitor list: unexpected cache value")
+	}
+	return views, nil
+}
+
+func (s *ChannelMonitorService) loadUserView(ctx context.Context) ([]*UserMonitorView, error) {
 	monitors, err := s.repo.ListEnabled(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("list enabled monitors: %w", err)
@@ -158,16 +261,21 @@ func (s *ChannelMonitorService) ListUserView(ctx context.Context) ([]*UserMonito
 	ids, providerByID, primaryByID, extrasByID, intervalByID := collectMonitorIndexes(monitors)
 	summaries := s.BatchMonitorStatusSummary(ctx, ids, providerByID, primaryByID, extrasByID, intervalByID)
 	latestMap := s.batchLatest(ctx, nonOpenAIMonitorIDs(ids, providerByID))
-	timelineMap := s.batchTimeline(ctx, ids, primaryByID)
+	timelineMap := s.batchTimeline(ctx, nonOpenAIMonitorIDs(ids, providerByID), primaryByID)
+	openAITimelineMap := s.batchOpenAIUsageTimeline(ctx, ids, providerByID, primaryByID)
 
 	views := make([]*UserMonitorView, 0, len(monitors))
 	for _, m := range monitors {
 		primaryLatest := pickLatest(latestMap[m.ID], m.PrimaryModel)
+		timeline := timelineMap[m.ID]
+		if m.Provider == MonitorProviderOpenAI {
+			timeline = openAITimelineMap[m.ID]
+		}
 		views = append(views, buildUserViewFromSummary(
 			m,
 			summaries[m.ID],
 			primaryLatest,
-			timelineEntriesForUserView(m, timelineMap[m.ID]),
+			timelineEntriesForUserView(m, timeline),
 		))
 	}
 	return views, nil
@@ -227,6 +335,37 @@ func (s *ChannelMonitorService) batchTimeline(
 	return timelineMap
 }
 
+func (s *ChannelMonitorService) batchOpenAIUsageTimeline(
+	ctx context.Context,
+	ids []int64,
+	providerByID map[int64]string,
+	primaryByID map[int64]string,
+) map[int64][]*ChannelMonitorHistoryEntry {
+	models := make([]string, 0)
+	for _, id := range ids {
+		if providerByID[id] == MonitorProviderOpenAI {
+			models = append(models, primaryByID[id])
+		}
+	}
+	models = normalizeMonitorModels(models)
+	out := make(map[int64][]*ChannelMonitorHistoryEntry)
+	if len(models) == 0 {
+		return out
+	}
+	events, err := s.repo.ListRecentOpenAIUsageEventsByModels(ctx, models, time.Now().Add(-monitorUserRealtimeWindow), monitorTimelineMaxPoints)
+	if err != nil {
+		slog.Warn("channel_monitor: user view batch openai usage timeline failed", "error", err)
+		return out
+	}
+	for _, id := range ids {
+		if providerByID[id] != MonitorProviderOpenAI {
+			continue
+		}
+		out[id] = events[strings.TrimSpace(primaryByID[id])]
+	}
+	return out
+}
+
 // pickLatest 从 latest 切片中挑出指定 model 对应项，未命中返回 nil。
 func pickLatest(rows []*ChannelMonitorLatest, model string) *ChannelMonitorLatest {
 	if model == "" {
@@ -241,19 +380,7 @@ func pickLatest(rows []*ChannelMonitorLatest, model string) *ChannelMonitorLates
 }
 
 func timelineEntriesForUserView(m *ChannelMonitor, entries []*ChannelMonitorHistoryEntry) []*ChannelMonitorHistoryEntry {
-	if m == nil || m.Provider != MonitorProviderOpenAI {
-		return entries
-	}
-	out := make([]*ChannelMonitorHistoryEntry, 0, len(entries))
-	for _, e := range entries {
-		if e == nil {
-			continue
-		}
-		if isUsageLogBackedMonitorStatus(e.Status) {
-			out = append(out, e)
-		}
-	}
-	return out
+	return entries
 }
 
 // GetUserDetail 用户只读视图：单个监控详情（每个模型 7d/15d/30d 可用率与平均延迟）。
@@ -292,7 +419,7 @@ func (s *ChannelMonitorService) loadUserDetail(ctx context.Context, id int64) (*
 		return nil, ErrChannelMonitorNotFound
 	}
 	if m.Provider == MonitorProviderOpenAI {
-		return s.getOpenAIUsageLogUserDetail(ctx, m)
+		return s.getOpenAIUsageHealthUserDetail(ctx, m)
 	}
 
 	latest, err := s.repo.ListLatestPerModel(ctx, id)
@@ -350,6 +477,45 @@ func (s *ChannelMonitorService) invalidateUserDetailCache(id int64) {
 	delete(s.userDetailCache, id)
 	s.userDetailMu.Unlock()
 	s.userDetailGroup.Forget(fmt.Sprintf("user-detail:%d", id))
+	s.invalidateUserListCache()
+}
+
+func (s *ChannelMonitorService) getCachedUserList() []*UserMonitorView {
+	if s == nil {
+		return nil
+	}
+	s.userListMu.RLock()
+	entry := s.userListCache
+	s.userListMu.RUnlock()
+	if entry.views == nil || time.Now().After(entry.expiresAt) {
+		if entry.views != nil {
+			s.invalidateUserListCache()
+		}
+		return nil
+	}
+	return cloneUserMonitorViews(entry.views)
+}
+
+func (s *ChannelMonitorService) setCachedUserList(views []*UserMonitorView) {
+	if s == nil {
+		return
+	}
+	s.userListMu.Lock()
+	s.userListCache = channelMonitorUserListCacheEntry{
+		views:     cloneUserMonitorViews(views),
+		expiresAt: time.Now().Add(monitorUserDetailCacheTTL),
+	}
+	s.userListMu.Unlock()
+}
+
+func (s *ChannelMonitorService) invalidateUserListCache() {
+	if s == nil {
+		return
+	}
+	s.userListMu.Lock()
+	s.userListCache = channelMonitorUserListCacheEntry{}
+	s.userListMu.Unlock()
+	s.userListGroup.Forget("user-list")
 }
 
 func cloneUserMonitorDetail(in *UserMonitorDetail) *UserMonitorDetail {
@@ -361,6 +527,28 @@ func cloneUserMonitorDetail(in *UserMonitorDetail) *UserMonitorDetail {
 		out.Models = append([]ModelDetail(nil), in.Models...)
 	}
 	return &out
+}
+
+func cloneUserMonitorViews(in []*UserMonitorView) []*UserMonitorView {
+	if in == nil {
+		return nil
+	}
+	out := make([]*UserMonitorView, 0, len(in))
+	for _, v := range in {
+		if v == nil {
+			out = append(out, nil)
+			continue
+		}
+		cp := *v
+		if v.ExtraModels != nil {
+			cp.ExtraModels = append([]ExtraModelStatus(nil), v.ExtraModels...)
+		}
+		if v.Timeline != nil {
+			cp.Timeline = append([]UserMonitorTimelinePoint(nil), v.Timeline...)
+		}
+		out = append(out, &cp)
+	}
+	return out
 }
 
 func (s *ChannelMonitorService) getOpenAIUsageLogUserDetail(ctx context.Context, m *ChannelMonitor) (*UserMonitorDetail, error) {
@@ -378,6 +566,63 @@ func (s *ChannelMonitorService) getOpenAIUsageLogUserDetail(ctx context.Context,
 		GroupName: m.GroupName,
 		Models:    buildOpenAIUsageLogModelDetails(models, latest, since, now),
 	}, nil
+}
+
+func (s *ChannelMonitorService) getOpenAIUsageHealthUserDetail(ctx context.Context, m *ChannelMonitor) (*UserMonitorDetail, error) {
+	models := channelMonitorModels(m)
+	healthMap, err := s.collectOpenAIUsageHealthWindows(ctx, models)
+	if err != nil {
+		return nil, err
+	}
+	return &UserMonitorDetail{
+		ID:        m.ID,
+		Name:      m.Name,
+		Provider:  m.Provider,
+		GroupName: m.GroupName,
+		Models:    buildOpenAIUsageHealthModelDetails(models, healthMap),
+	}, nil
+}
+
+func (s *ChannelMonitorService) collectOpenAIUsageHealthWindows(ctx context.Context, models []string) (map[int]map[string]*ChannelMonitorUsageHealth, error) {
+	out := make(map[int]map[string]*ChannelMonitorUsageHealth, 3)
+	now := time.Now()
+	windows := []int{monitorAvailability7Days, monitorAvailability15Days, monitorAvailability30Days}
+	for _, w := range windows {
+		rows, err := s.repo.ComputeOpenAIUsageHealthByModels(ctx, models, now.AddDate(0, 0, -w))
+		if err != nil {
+			return nil, fmt.Errorf("compute openai usage health %dd: %w", w, err)
+		}
+		out[w] = rows
+	}
+	return out, nil
+}
+
+func buildOpenAIUsageHealthModelDetails(
+	models []string,
+	healthMap map[int]map[string]*ChannelMonitorUsageHealth,
+) []ModelDetail {
+	out := make([]ModelDetail, 0, len(models))
+	for _, model := range models {
+		model = strings.TrimSpace(model)
+		if model == "" {
+			continue
+		}
+		d := ModelDetail{Model: model}
+		if h := healthMap[monitorAvailability7Days][model]; h != nil {
+			d.LatestStatus = h.LatestStatus
+			d.LatestLatencyMs = h.LatestLatencyMs
+			d.Availability7d = h.AvailabilityPct
+			d.AvgLatency7dMs = h.AvgLatencyMs
+		}
+		if h := healthMap[monitorAvailability15Days][model]; h != nil {
+			d.Availability15d = h.AvailabilityPct
+		}
+		if h := healthMap[monitorAvailability30Days][model]; h != nil {
+			d.Availability30d = h.AvailabilityPct
+		}
+		out = append(out, d)
+	}
+	return out
 }
 
 func buildOpenAIUsageLogModelDetails(

@@ -3,16 +3,14 @@
     <MonitorHero
       :overall-status="overallStatus"
       :interval-seconds="DEFAULT_INTERVAL_SECONDS"
-      :window="currentWindow"
       :loading="loading"
       :auto-refresh="autoRefresh"
-      @update:window="handleWindowChange"
       @refresh="manualReload"
     />
 
     <MonitorCardGrid
       :items="items"
-      :window="currentWindow"
+      window="7d"
       :countdown-seconds="countdown"
       :loading="loading"
       :detail-cache="detailCache"
@@ -41,10 +39,7 @@ import {
   type UserMonitorDetail,
 } from '@/api/channelMonitor'
 import AppLayout from '@/components/layout/AppLayout.vue'
-import MonitorHero, {
-  type MonitorWindow,
-  type OverallStatus,
-} from '@/components/user/monitor/MonitorHero.vue'
+import MonitorHero, { type OverallStatus } from '@/components/user/monitor/MonitorHero.vue'
 import MonitorCardGrid from '@/components/user/monitor/MonitorCardGrid.vue'
 import MonitorDetailDialog from '@/components/user/MonitorDetailDialog.vue'
 import { DEFAULT_INTERVAL_SECONDS, STATUS_OPERATIONAL } from '@/constants/channelMonitor'
@@ -56,7 +51,6 @@ const appStore = useAppStore()
 // ── State ──
 const items = ref<UserMonitorView[]>([])
 const loading = ref(false)
-const currentWindow = ref<MonitorWindow>('7d')
 const detailCache = reactive<Record<number, UserMonitorDetail>>({})
 const detailLoading = reactive<Record<number, boolean>>({})
 const detailInFlight = new Map<number, Promise<void>>()
@@ -123,11 +117,7 @@ async function reload(silent = false) {
 
 async function manualReload() {
   await reload(false)
-  // After base reload, refresh any cached detail records so non-7d availability
-  // values stay in sync without forcing the user to switch tabs again.
-  if (currentWindow.value !== '7d') {
-    await Promise.all(items.value.map(it => loadDetail(it.id, true)))
-  }
+  await Promise.all(items.value.filter(it => detailCache[it.id]).map(it => loadDetail(it.id, true)))
 }
 
 async function loadDetail(id: number, force = false) {
@@ -151,17 +141,6 @@ async function loadDetail(id: number, force = false) {
   return task
 }
 
-async function ensureDetailsForWindow() {
-  if (currentWindow.value === '7d') return
-  await Promise.all(items.value.map(it => loadDetail(it.id)))
-}
-
-// ── Handlers ──
-async function handleWindowChange(value: MonitorWindow) {
-  currentWindow.value = value
-  await ensureDetailsForWindow()
-}
-
 function openDetail(row: UserMonitorView) {
   detailTarget.value = row
   showDetail.value = true
@@ -172,10 +151,6 @@ function closeDetail() {
   showDetail.value = false
   detailTarget.value = null
 }
-
-watch(items, () => {
-  void ensureDetailsForWindow()
-})
 
 watch(
   () => appStore.cachedPublicSettings?.channel_monitor_enabled,

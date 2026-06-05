@@ -94,7 +94,6 @@ const PROVIDER_TINT: Record<string, string> = {
 const props = defineProps<{
   item: UserMonitorView
   window: '7d' | '15d' | '30d'
-  availabilityValue: number | null
   countdownSeconds: number
 }>()
 
@@ -118,7 +117,7 @@ const providerTintClass = computed(() =>
 const hasCurrentStatus = computed(() => Boolean(props.item.primary_status))
 
 const currentAvailabilityValue = computed(() => {
-  return hasCurrentStatus.value ? props.availabilityValue : null
+  return hasCurrentStatus.value ? props.item.availability_7d ?? null : null
 })
 
 const currentTimeline = computed(() => {
@@ -126,8 +125,7 @@ const currentTimeline = computed(() => {
 })
 
 const availabilityLabel = computed(() => {
-  const win = t(`channelStatus.windowTab.${props.window}`)
-  return `${t('monitorCommon.availabilityPrefix')} · ${win}`
+  return `${t('monitorCommon.availabilityPrefix')} · ${t('monitorCommon.realtimeWindow30m')}`
 })
 
 const extraModelsCountLabel = computed(() => {

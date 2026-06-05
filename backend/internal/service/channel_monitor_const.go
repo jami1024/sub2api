@@ -77,8 +77,10 @@ const (
 
 	// monitorTimelineMaxPoints 用户视图 timeline 每个监控最多返回的历史点数。
 	monitorTimelineMaxPoints = 60
+	// monitorUserRealtimeWindow 用户状态卡实时健康窗口。
+	monitorUserRealtimeWindow = 30 * time.Minute
 	// monitorUserDetailCacheTTL 用户侧详情短缓存 TTL，用于合并多人同时打开详情造成的重复读库。
-	monitorUserDetailCacheTTL = 10 * time.Second
+	monitorUserDetailCacheTTL = 30 * time.Second
 
 	// monitorEndpointResolveTimeout validateEndpoint 解析 hostname 的最长耗时。
 	monitorEndpointResolveTimeout = 5 * time.Second

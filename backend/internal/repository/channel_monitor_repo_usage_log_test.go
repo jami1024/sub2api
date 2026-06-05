@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/Wei-Shaw/sub2api/internal/service"
 	"github.com/lib/pq"
 )
 
@@ -49,5 +50,53 @@ func TestChannelMonitorRepositoryListLatestSuccessfulOpenAIUsageByModels(t *test
 	}
 	if got["gpt-5.4-mini"] == nil || got["gpt-5.4-mini"].DurationMs != nil {
 		t.Fatalf("gpt-5.4-mini latest = %#v, want nil duration", got["gpt-5.4-mini"])
+	}
+}
+
+func TestChannelMonitorRepositoryListRecentOpenAIUsageEventsByModelsReturnsTimeBuckets(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("sqlmock.New: %v", err)
+	}
+	defer func() { _ = db.Close() }()
+
+	start := time.Date(2026, 6, 5, 10, 0, 0, 0, time.UTC)
+	rows := sqlmock.NewRows([]string{"target_model", "kind", "latency_ms", "bucket_at"}).
+		AddRow("gpt-5.5", "success", int64(120), start).
+		AddRow("gpt-5.5", "mixed", int64(900), start.Add(30*time.Second)).
+		AddRow("gpt-5.5", "error", nil, start.Add(60*time.Second)).
+		AddRow("gpt-5.5", "empty", nil, start.Add(90*time.Second))
+
+	mock.ExpectQuery(regexp.QuoteMeta("WITH targets AS")).
+		WithArgs(pq.Array([]string{"gpt-5.5"}), start, 4).
+		WillReturnRows(rows)
+
+	repo := &channelMonitorRepository{db: db}
+	got, err := repo.ListRecentOpenAIUsageEventsByModels(
+		context.Background(),
+		[]string{"gpt-5.5"},
+		start,
+		4,
+	)
+	if err != nil {
+		t.Fatalf("ListRecentOpenAIUsageEventsByModels returned error: %v", err)
+	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Fatalf("unmet sql expectations: %v", err)
+	}
+	points := got["gpt-5.5"]
+	if len(points) != 4 {
+		t.Fatalf("len(points) = %d, want 4", len(points))
+	}
+	wantStatuses := []string{
+		service.MonitorStatusOperational,
+		service.MonitorStatusDegraded,
+		service.MonitorStatusFailed,
+		"",
+	}
+	for i, want := range wantStatuses {
+		if points[i].Status != want {
+			t.Fatalf("point[%d].Status = %q, want %q", i, points[i].Status, want)
+		}
 	}
 }

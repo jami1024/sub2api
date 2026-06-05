@@ -206,6 +206,20 @@ type ChannelMonitorUsageLogLatest struct {
 	CreatedAt       time.Time
 }
 
+// ChannelMonitorUsageHealth describes real OpenAI request health for one model
+// over a window. Successes come from usage_logs; SLA errors come from
+// ops_error_logs using the same semantics as the ops dashboard.
+type ChannelMonitorUsageHealth struct {
+	Model           string
+	SuccessCount    int
+	ErrorCountSLA   int
+	AvailabilityPct float64
+	AvgLatencyMs    *int
+	LatestStatus    string
+	LatestLatencyMs *int
+	LatestCheckedAt time.Time
+}
+
 // ChannelMonitorAvailability 单个模型在某窗口内的可用率与平均延迟（用于 UserMonitorDetail 聚合）。
 type ChannelMonitorAvailability struct {
 	Model             string
