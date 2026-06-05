@@ -32,15 +32,21 @@ func (s *ChannelMonitorService) BatchMonitorStatusSummary(
 	}
 	usageLatest := s.batchOpenAIUsageLatest(ctx, ids, providerByID, primaryByID, extrasByID, intervalByID)
 	now := time.Now()
-	latestMap, err := s.repo.ListLatestForMonitorIDs(ctx, ids)
-	if err != nil {
-		slog.Warn("channel_monitor: batch load latest failed", "error", err)
-		latestMap = map[int64][]*ChannelMonitorLatest{}
-	}
-	availMap, err := s.repo.ComputeAvailabilityForMonitors(ctx, ids, monitorAvailability7Days)
-	if err != nil {
-		slog.Warn("channel_monitor: batch compute availability failed", "error", err)
-		availMap = map[int64][]*ChannelMonitorAvailability{}
+	historyIDs := nonOpenAIMonitorIDs(ids, providerByID)
+	latestMap := map[int64][]*ChannelMonitorLatest{}
+	availMap := map[int64][]*ChannelMonitorAvailability{}
+	if len(historyIDs) > 0 {
+		var err error
+		latestMap, err = s.repo.ListLatestForMonitorIDs(ctx, historyIDs)
+		if err != nil {
+			slog.Warn("channel_monitor: batch load latest failed", "error", err)
+			latestMap = map[int64][]*ChannelMonitorLatest{}
+		}
+		availMap, err = s.repo.ComputeAvailabilityForMonitors(ctx, historyIDs, monitorAvailability7Days)
+		if err != nil {
+			slog.Warn("channel_monitor: batch compute availability failed", "error", err)
+			availMap = map[int64][]*ChannelMonitorAvailability{}
+		}
 	}
 
 	for _, id := range ids {
@@ -151,7 +157,7 @@ func (s *ChannelMonitorService) ListUserView(ctx context.Context) ([]*UserMonito
 
 	ids, providerByID, primaryByID, extrasByID, intervalByID := collectMonitorIndexes(monitors)
 	summaries := s.BatchMonitorStatusSummary(ctx, ids, providerByID, primaryByID, extrasByID, intervalByID)
-	latestMap := s.batchLatest(ctx, ids)
+	latestMap := s.batchLatest(ctx, nonOpenAIMonitorIDs(ids, providerByID))
 	timelineMap := s.batchTimeline(ctx, ids, primaryByID)
 
 	views := make([]*UserMonitorView, 0, len(monitors))
@@ -184,8 +190,21 @@ func collectMonitorIndexes(monitors []*ChannelMonitor) ([]int64, map[int64]strin
 	return ids, providerByID, primaryByID, extrasByID, intervalByID
 }
 
+func nonOpenAIMonitorIDs(ids []int64, providerByID map[int64]string) []int64 {
+	out := make([]int64, 0, len(ids))
+	for _, id := range ids {
+		if providerByID[id] != MonitorProviderOpenAI {
+			out = append(out, id)
+		}
+	}
+	return out
+}
+
 // batchLatest 批量取 latest per model，失败仅日志（与现有 BatchMonitorStatusSummary 一致，不阻断列表渲染）。
 func (s *ChannelMonitorService) batchLatest(ctx context.Context, ids []int64) map[int64][]*ChannelMonitorLatest {
+	if len(ids) == 0 {
+		return map[int64][]*ChannelMonitorLatest{}
+	}
 	latestMap, err := s.repo.ListLatestForMonitorIDs(ctx, ids)
 	if err != nil {
 		slog.Warn("channel_monitor: user view batch latest failed", "error", err)

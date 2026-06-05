@@ -7,13 +7,15 @@ import (
 )
 
 type channelMonitorUsageRepoStub struct {
-	monitor           *ChannelMonitor
-	latest            map[string]*ChannelMonitorUsageLogLatest
-	latestForMonitors map[int64][]*ChannelMonitorLatest
-	insertedRows      []*ChannelMonitorHistoryRow
-	markedChecked     []time.Time
-	latestPerModelN   int
-	availabilityN     int
+	monitor             *ChannelMonitor
+	latest              map[string]*ChannelMonitorUsageLogLatest
+	latestForMonitors   map[int64][]*ChannelMonitorLatest
+	insertedRows        []*ChannelMonitorHistoryRow
+	markedChecked       []time.Time
+	latestPerModelN     int
+	availabilityN       int
+	latestForIDsN       int
+	availabilityForIDsN int
 }
 
 func (s *channelMonitorUsageRepoStub) Create(context.Context, *ChannelMonitor) error { return nil }
@@ -51,9 +53,11 @@ func (s *channelMonitorUsageRepoStub) ComputeAvailability(context.Context, int64
 	return nil, nil
 }
 func (s *channelMonitorUsageRepoStub) ListLatestForMonitorIDs(context.Context, []int64) (map[int64][]*ChannelMonitorLatest, error) {
+	s.latestForIDsN++
 	return s.latestForMonitors, nil
 }
 func (s *channelMonitorUsageRepoStub) ComputeAvailabilityForMonitors(context.Context, []int64, int) (map[int64][]*ChannelMonitorAvailability, error) {
+	s.availabilityForIDsN++
 	return nil, nil
 }
 func (s *channelMonitorUsageRepoStub) ListLatestSuccessfulOpenAIUsageByModels(context.Context, []string, time.Time) (map[string]*ChannelMonitorUsageLogLatest, error) {
@@ -209,6 +213,41 @@ func TestChannelMonitorRunCheckDoesNotPersistWhenNoUsageLog(t *testing.T) {
 	}
 	if len(repo.markedChecked) != 0 {
 		t.Fatalf("len(markedChecked) = %d, want 0 without usage log", len(repo.markedChecked))
+	}
+	if repo.latestForIDsN != 0 {
+		t.Fatalf("latest history queries = %d, want 0 without usage-backed rows", repo.latestForIDsN)
+	}
+}
+
+func TestChannelMonitorBatchSummarySkipsHistoryQueriesForOpenAIOnly(t *testing.T) {
+	firstTokenMs := 900
+	avgFirstTokenMs := 450
+	repo := &channelMonitorUsageRepoStub{
+		latest: map[string]*ChannelMonitorUsageLogLatest{
+			"gpt-5.4": {
+				Model:           "gpt-5.4",
+				FirstTokenMs:    &firstTokenMs,
+				AvgFirstTokenMs: &avgFirstTokenMs,
+				CreatedAt:       time.Now(),
+			},
+		},
+	}
+	svc := NewChannelMonitorService(repo, channelMonitorPassEncryptor{})
+
+	got := svc.BatchMonitorStatusSummary(
+		context.Background(),
+		[]int64{9},
+		map[int64]string{9: MonitorProviderOpenAI},
+		map[int64]string{9: "gpt-5.4"},
+		map[int64][]string{9: {"gpt-5.4-mini"}},
+		map[int64]int{9: monitorMinIntervalSeconds},
+	)
+
+	if got[9].PrimaryStatus != MonitorStatusOperational {
+		t.Fatalf("primary status = %q, want %q", got[9].PrimaryStatus, MonitorStatusOperational)
+	}
+	if repo.latestForIDsN != 0 || repo.availabilityForIDsN != 0 {
+		t.Fatalf("history queries latest=%d availability=%d, want both 0 for OpenAI-only summary", repo.latestForIDsN, repo.availabilityForIDsN)
 	}
 }
 

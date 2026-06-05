@@ -413,29 +413,66 @@ func (r *channelMonitorRepository) ListLatestSuccessfulOpenAIUsageByModels(
 		    SELECT unnest($1::text[]) AS model
 		),
 		matched AS (
-		    SELECT
-		        t.model AS target_model,
-		        ul.duration_ms,
-		        ul.first_token_ms,
-		        ROUND(AVG(ul.first_token_ms) OVER (PARTITION BY t.model))::bigint AS avg_first_token_ms,
-		        ul.created_at,
-		        ROW_NUMBER() OVER (PARTITION BY t.model ORDER BY ul.created_at DESC, ul.id DESC) AS rn
+		    SELECT t.model AS target_model,
+		           ul.id,
+		           ul.duration_ms,
+		           ul.first_token_ms,
+		           ul.created_at
 		    FROM targets t
-		    JOIN usage_logs ul ON ul.actual_cost > 0
-		     AND (
-		        ul.model = t.model
-		        OR ul.requested_model = t.model
-		        OR ul.upstream_model = t.model
-		     )
-		     AND ul.created_at >= $2
+		    JOIN usage_logs ul ON ul.model = t.model
 		    WHERE (
-		        COALESCE(ul.inbound_endpoint, '') IN ('/v1/chat/completions', '/v1/responses', '/v1/responses/compact')
-		        OR COALESCE(ul.upstream_endpoint, '') IN ('/v1/chat/completions', '/v1/responses', '/v1/responses/compact')
+		        ul.inbound_endpoint IN ('/v1/chat/completions', '/v1/responses', '/v1/responses/compact')
+		        OR ul.upstream_endpoint IN ('/v1/chat/completions', '/v1/responses', '/v1/responses/compact')
 		    )
+		      AND ul.actual_cost > 0
+		      AND ul.created_at >= $2
+		    UNION
+		    SELECT t.model AS target_model,
+		           ul.id,
+		           ul.duration_ms,
+		           ul.first_token_ms,
+		           ul.created_at
+		    FROM targets t
+		    JOIN usage_logs ul ON ul.requested_model = t.model
+		    WHERE (
+		        ul.inbound_endpoint IN ('/v1/chat/completions', '/v1/responses', '/v1/responses/compact')
+		        OR ul.upstream_endpoint IN ('/v1/chat/completions', '/v1/responses', '/v1/responses/compact')
+		    )
+		      AND ul.actual_cost > 0
+		      AND ul.created_at >= $2
+		    UNION
+		    SELECT t.model AS target_model,
+		           ul.id,
+		           ul.duration_ms,
+		           ul.first_token_ms,
+		           ul.created_at
+		    FROM targets t
+		    JOIN usage_logs ul ON ul.upstream_model = t.model
+		    WHERE (
+		        ul.inbound_endpoint IN ('/v1/chat/completions', '/v1/responses', '/v1/responses/compact')
+		        OR ul.upstream_endpoint IN ('/v1/chat/completions', '/v1/responses', '/v1/responses/compact')
+		    )
+		      AND ul.actual_cost > 0
+		      AND ul.created_at >= $2
+		),
+		stats AS (
+		    SELECT target_model,
+		           ROUND(AVG(first_token_ms))::bigint AS avg_first_token_ms
+		    FROM matched
+		    GROUP BY target_model
+		),
+		latest AS (
+		    SELECT DISTINCT ON (target_model)
+		           target_model,
+		           duration_ms,
+		           first_token_ms,
+		           created_at
+		    FROM matched
+		    ORDER BY target_model, created_at DESC, id DESC
 		)
-		SELECT target_model, duration_ms, first_token_ms, avg_first_token_ms, created_at
-		FROM matched
-		WHERE rn = 1
+		SELECT l.target_model, l.duration_ms, l.first_token_ms, s.avg_first_token_ms, l.created_at
+		FROM latest l
+		JOIN stats s ON s.target_model = l.target_model
 	`
 
 	rows, err := r.db.QueryContext(ctx, q, pq.Array(models), since)
@@ -506,21 +543,17 @@ func (r *channelMonitorRepository) ListRecentHistoryForMonitors(
 		WITH targets AS (
 		    SELECT unnest($1::bigint[]) AS monitor_id,
 		           unnest($2::text[])   AS model
-		),
-		ranked AS (
-		    SELECT h.monitor_id,
-		           h.status,
-		           h.latency_ms,
-		           h.ping_latency_ms,
-		           h.checked_at,
-		           ROW_NUMBER() OVER (PARTITION BY h.monitor_id ORDER BY h.checked_at DESC) AS rn
-		    FROM channel_monitor_histories h
-		    JOIN targets t
-		      ON t.monitor_id = h.monitor_id AND t.model = h.model
 		)
-		SELECT monitor_id, status, latency_ms, ping_latency_ms, checked_at
-		FROM ranked
-		WHERE rn <= $3
+		SELECT t.monitor_id, h.status, h.latency_ms, h.ping_latency_ms, h.checked_at
+		FROM targets t
+		JOIN LATERAL (
+		    SELECT status, latency_ms, ping_latency_ms, checked_at
+		    FROM channel_monitor_histories h
+		    WHERE h.monitor_id = t.monitor_id
+		      AND h.model = t.model
+		    ORDER BY h.checked_at DESC
+		    LIMIT $3
+		) h ON true
 		ORDER BY monitor_id, checked_at DESC
 	`
 	rows, err := r.db.QueryContext(ctx, q, pq.Array(pairIDs), pq.Array(pairModels), perMonitorLimit)

@@ -354,13 +354,9 @@ func (s *ChannelMonitorService) usageLogCheckHistoryRows(ctx context.Context, m 
 	if m == nil || len(results) == 0 {
 		return nil
 	}
-	latestByModel := s.latestMonitorHistoryByModel(ctx, m.ID)
 	rows := make([]*ChannelMonitorHistoryRow, 0, len(results))
 	for _, r := range results {
 		if r == nil || !isUsageLogBackedMonitorStatus(r.Status) {
-			continue
-		}
-		if latest := latestByModel[r.Model]; latest != nil && !latest.CheckedAt.Before(r.CheckedAt) {
 			continue
 		}
 		rows = append(rows, &ChannelMonitorHistoryRow{
@@ -373,7 +369,18 @@ func (s *ChannelMonitorService) usageLogCheckHistoryRows(ctx context.Context, m 
 			CheckedAt:     r.CheckedAt,
 		})
 	}
-	return rows
+	if len(rows) == 0 {
+		return nil
+	}
+	latestByModel := s.latestMonitorHistoryByModel(ctx, m.ID)
+	out := rows[:0]
+	for _, row := range rows {
+		if latest := latestByModel[row.Model]; latest != nil && !latest.CheckedAt.Before(row.CheckedAt) {
+			continue
+		}
+		out = append(out, row)
+	}
+	return out
 }
 
 func (s *ChannelMonitorService) latestMonitorHistoryByModel(ctx context.Context, monitorID int64) map[string]*ChannelMonitorLatest {
