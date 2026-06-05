@@ -21,7 +21,8 @@
 
     <MonitorDetailDialog
       :show="showDetail"
-      :monitor-id="detailTarget?.id ?? null"
+      :detail="activeDetail"
+      :loading="activeDetailLoading"
       :title="detailTitle"
       @close="closeDetail"
     />
@@ -57,6 +58,8 @@ const items = ref<UserMonitorView[]>([])
 const loading = ref(false)
 const currentWindow = ref<MonitorWindow>('7d')
 const detailCache = reactive<Record<number, UserMonitorDetail>>({})
+const detailLoading = reactive<Record<number, boolean>>({})
+const detailInFlight = new Map<number, Promise<void>>()
 const showDetail = ref(false)
 const detailTarget = ref<UserMonitorView | null>(null)
 
@@ -83,6 +86,16 @@ const overallStatus = computed<OverallStatus>(() => {
 
 const detailTitle = computed(() => {
   return detailTarget.value?.name || t('channelStatus.detailTitle')
+})
+
+const activeDetail = computed(() => {
+  const id = detailTarget.value?.id
+  return id == null ? null : detailCache[id] || null
+})
+
+const activeDetailLoading = computed(() => {
+  const id = detailTarget.value?.id
+  return id != null && !!detailLoading[id]
 })
 
 // ── Loaders ──
@@ -119,11 +132,23 @@ async function manualReload() {
 
 async function loadDetail(id: number, force = false) {
   if (!force && detailCache[id]) return
-  try {
-    detailCache[id] = await fetchChannelMonitorDetail(id)
-  } catch (err: unknown) {
-    appStore.showError(extractApiErrorMessage(err, t('channelStatus.detailLoadError')))
-  }
+  const existing = detailInFlight.get(id)
+  if (existing) return existing
+
+  const task = (async () => {
+    detailLoading[id] = true
+    try {
+      detailCache[id] = await fetchChannelMonitorDetail(id)
+    } catch (err: unknown) {
+      appStore.showError(extractApiErrorMessage(err, t('channelStatus.detailLoadError')))
+    } finally {
+      detailLoading[id] = false
+      detailInFlight.delete(id)
+    }
+  })()
+
+  detailInFlight.set(id, task)
+  return task
 }
 
 async function ensureDetailsForWindow() {
@@ -140,6 +165,7 @@ async function handleWindowChange(value: MonitorWindow) {
 function openDetail(row: UserMonitorView) {
   detailTarget.value = row
   showDetail.value = true
+  void loadDetail(row.id)
 }
 
 function closeDetail() {

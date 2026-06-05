@@ -259,6 +259,31 @@ func timelineEntriesForUserView(m *ChannelMonitor, entries []*ChannelMonitorHist
 // GetUserDetail 用户只读视图：单个监控详情（每个模型 7d/15d/30d 可用率与平均延迟）。
 // 不暴露 api_key。
 func (s *ChannelMonitorService) GetUserDetail(ctx context.Context, id int64) (*UserMonitorDetail, error) {
+	if cached := s.getCachedUserDetail(id); cached != nil {
+		return cached, nil
+	}
+	v, err, _ := s.userDetailGroup.Do(fmt.Sprintf("user-detail:%d", id), func() (any, error) {
+		if cached := s.getCachedUserDetail(id); cached != nil {
+			return cached, nil
+		}
+		detail, err := s.loadUserDetail(ctx, id)
+		if err != nil {
+			return nil, err
+		}
+		s.setCachedUserDetail(id, detail)
+		return cloneUserMonitorDetail(detail), nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	detail, ok := v.(*UserMonitorDetail)
+	if !ok || detail == nil {
+		return nil, fmt.Errorf("load user monitor detail: unexpected cache value")
+	}
+	return detail, nil
+}
+
+func (s *ChannelMonitorService) loadUserDetail(ctx context.Context, id int64) (*UserMonitorDetail, error) {
 	m, err := s.repo.GetByID(ctx, id)
 	if err != nil {
 		return nil, err
@@ -287,6 +312,55 @@ func (s *ChannelMonitorService) GetUserDetail(ctx context.Context, id int64) (*U
 		GroupName: m.GroupName,
 		Models:    models,
 	}, nil
+}
+
+func (s *ChannelMonitorService) getCachedUserDetail(id int64) *UserMonitorDetail {
+	if s == nil {
+		return nil
+	}
+	s.userDetailMu.RLock()
+	entry, ok := s.userDetailCache[id]
+	s.userDetailMu.RUnlock()
+	if !ok || time.Now().After(entry.expiresAt) {
+		if ok {
+			s.invalidateUserDetailCache(id)
+		}
+		return nil
+	}
+	return cloneUserMonitorDetail(entry.detail)
+}
+
+func (s *ChannelMonitorService) setCachedUserDetail(id int64, detail *UserMonitorDetail) {
+	if s == nil || detail == nil {
+		return
+	}
+	s.userDetailMu.Lock()
+	s.userDetailCache[id] = channelMonitorUserDetailCacheEntry{
+		detail:    cloneUserMonitorDetail(detail),
+		expiresAt: time.Now().Add(monitorUserDetailCacheTTL),
+	}
+	s.userDetailMu.Unlock()
+}
+
+func (s *ChannelMonitorService) invalidateUserDetailCache(id int64) {
+	if s == nil {
+		return
+	}
+	s.userDetailMu.Lock()
+	delete(s.userDetailCache, id)
+	s.userDetailMu.Unlock()
+	s.userDetailGroup.Forget(fmt.Sprintf("user-detail:%d", id))
+}
+
+func cloneUserMonitorDetail(in *UserMonitorDetail) *UserMonitorDetail {
+	if in == nil {
+		return nil
+	}
+	out := *in
+	if in.Models != nil {
+		out.Models = append([]ModelDetail(nil), in.Models...)
+	}
+	return &out
 }
 
 func (s *ChannelMonitorService) getOpenAIUsageLogUserDetail(ctx context.Context, m *ChannelMonitor) (*UserMonitorDetail, error) {

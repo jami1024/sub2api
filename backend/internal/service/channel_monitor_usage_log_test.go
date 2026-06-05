@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 )
@@ -16,6 +17,9 @@ type channelMonitorUsageRepoStub struct {
 	availabilityN       int
 	latestForIDsN       int
 	availabilityForIDsN int
+	latestUsageN        int
+	latestUsageBlock    chan struct{}
+	mu                  sync.Mutex
 }
 
 func (s *channelMonitorUsageRepoStub) Create(context.Context, *ChannelMonitor) error { return nil }
@@ -61,6 +65,12 @@ func (s *channelMonitorUsageRepoStub) ComputeAvailabilityForMonitors(context.Con
 	return nil, nil
 }
 func (s *channelMonitorUsageRepoStub) ListLatestSuccessfulOpenAIUsageByModels(context.Context, []string, time.Time) (map[string]*ChannelMonitorUsageLogLatest, error) {
+	s.mu.Lock()
+	s.latestUsageN++
+	s.mu.Unlock()
+	if s.latestUsageBlock != nil {
+		<-s.latestUsageBlock
+	}
 	return s.latest, nil
 }
 func (s *channelMonitorUsageRepoStub) ListRecentHistoryForMonitors(context.Context, []int64, map[int64]string, int) (map[int64][]*ChannelMonitorHistoryEntry, error) {
@@ -300,6 +310,104 @@ func TestChannelMonitorGetUserDetailUsesOpenAIUsageLogs(t *testing.T) {
 	}
 	if model.AvgLatency7dMs == nil || *model.AvgLatency7dMs != avgFirstTokenMs {
 		t.Fatalf("avg latency = %v, want average first token %d", model.AvgLatency7dMs, avgFirstTokenMs)
+	}
+}
+
+func TestChannelMonitorGetUserDetailCachesOpenAIUsageLogs(t *testing.T) {
+	createdAt := time.Now().UTC()
+	firstTokenMs := 900
+	avgFirstTokenMs := 450
+	repo := &channelMonitorUsageRepoStub{
+		monitor: &ChannelMonitor{
+			ID:              9,
+			Provider:        MonitorProviderOpenAI,
+			Enabled:         true,
+			Name:            "OpenAI",
+			PrimaryModel:    "gpt-5.4",
+			IntervalSeconds: monitorMinIntervalSeconds,
+		},
+		latest: map[string]*ChannelMonitorUsageLogLatest{
+			"gpt-5.4": {
+				Model:           "gpt-5.4",
+				FirstTokenMs:    &firstTokenMs,
+				AvgFirstTokenMs: &avgFirstTokenMs,
+				CreatedAt:       createdAt,
+			},
+		},
+	}
+	svc := NewChannelMonitorService(repo, channelMonitorPassEncryptor{})
+
+	for i := 0; i < 2; i++ {
+		if _, err := svc.GetUserDetail(context.Background(), 9); err != nil {
+			t.Fatalf("GetUserDetail #%d returned error: %v", i+1, err)
+		}
+	}
+
+	if repo.latestUsageN != 1 {
+		t.Fatalf("usage log detail queries = %d, want 1 within cache TTL", repo.latestUsageN)
+	}
+}
+
+func TestChannelMonitorGetUserDetailCoalescesConcurrentOpenAIUsageLogLoads(t *testing.T) {
+	createdAt := time.Now().UTC()
+	firstTokenMs := 900
+	avgFirstTokenMs := 450
+	block := make(chan struct{})
+	repo := &channelMonitorUsageRepoStub{
+		monitor: &ChannelMonitor{
+			ID:              9,
+			Provider:        MonitorProviderOpenAI,
+			Enabled:         true,
+			Name:            "OpenAI",
+			PrimaryModel:    "gpt-5.4",
+			IntervalSeconds: monitorMinIntervalSeconds,
+		},
+		latest: map[string]*ChannelMonitorUsageLogLatest{
+			"gpt-5.4": {
+				Model:           "gpt-5.4",
+				FirstTokenMs:    &firstTokenMs,
+				AvgFirstTokenMs: &avgFirstTokenMs,
+				CreatedAt:       createdAt,
+			},
+		},
+		latestUsageBlock: block,
+	}
+	svc := NewChannelMonitorService(repo, channelMonitorPassEncryptor{})
+
+	const callers = 8
+	var wg sync.WaitGroup
+	errs := make(chan error, callers)
+	started := make(chan struct{})
+	for i := 0; i < callers; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			<-started
+			_, err := svc.GetUserDetail(context.Background(), 9)
+			errs <- err
+		}()
+	}
+	close(started)
+	for {
+		repo.mu.Lock()
+		n := repo.latestUsageN
+		repo.mu.Unlock()
+		if n > 0 {
+			break
+		}
+		time.Sleep(time.Millisecond)
+	}
+	close(block)
+	wg.Wait()
+	close(errs)
+	for err := range errs {
+		if err != nil {
+			t.Fatalf("GetUserDetail returned error: %v", err)
+		}
+	}
+
+	if repo.latestUsageN != 1 {
+		t.Fatalf("usage log detail queries = %d, want 1 for concurrent callers", repo.latestUsageN)
 	}
 }
 

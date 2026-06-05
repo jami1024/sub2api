@@ -60,20 +60,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useAppStore } from '@/stores/app'
-import { extractApiErrorMessage } from '@/utils/apiError'
-import {
-  status as fetchChannelMonitorDetail,
-  type UserMonitorDetail,
-} from '@/api/channelMonitor'
+import type { UserMonitorDetail } from '@/api/channelMonitor'
 import BaseDialog from '@/components/common/BaseDialog.vue'
 import { useChannelMonitorFormat } from '@/composables/useChannelMonitorFormat'
 
-const props = defineProps<{
+defineProps<{
   show: boolean
-  monitorId: number | null
+  detail: UserMonitorDetail | null
+  loading: boolean
   title: string
 }>()
 
@@ -82,33 +77,5 @@ defineEmits<{
 }>()
 
 const { t } = useI18n()
-const appStore = useAppStore()
 const { statusLabel, statusBadgeClass, formatLatency, formatPercent } = useChannelMonitorFormat()
-
-const detail = ref<UserMonitorDetail | null>(null)
-const loading = ref(false)
-
-async function load(id: number) {
-  detail.value = null
-  loading.value = true
-  try {
-    detail.value = await fetchChannelMonitorDetail(id)
-  } catch (err: unknown) {
-    appStore.showError(extractApiErrorMessage(err, t('channelStatus.detailLoadError')))
-  } finally {
-    loading.value = false
-  }
-}
-
-watch(
-  () => [props.show, props.monitorId] as const,
-  ([show, id]) => {
-    if (!show) {
-      detail.value = null
-      return
-    }
-    if (id != null) void load(id)
-  },
-  { immediate: true },
-)
 </script>

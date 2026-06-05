@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"golang.org/x/sync/errgroup"
+	"golang.org/x/sync/singleflight"
 )
 
 // ChannelMonitorRepository 渠道监控数据访问接口。
@@ -67,11 +68,25 @@ type ChannelMonitorService struct {
 	// scheduler 由 wire 通过 SetScheduler 注入；CRUD 后调用对应钩子即时同步任务。
 	// 测试或未注入场景下保持 nil，所有钩子调用变为 no-op。
 	scheduler MonitorScheduler
+
+	userDetailMu    sync.RWMutex
+	userDetailCache map[int64]channelMonitorUserDetailCacheEntry
+	userDetailGroup singleflight.Group
+}
+
+type channelMonitorUserDetailCacheEntry struct {
+	detail    *UserMonitorDetail
+	expiresAt time.Time
 }
 
 // NewChannelMonitorService 创建渠道监控服务实例。
 func NewChannelMonitorService(repo ChannelMonitorRepository, encryptor SecretEncryptor) *ChannelMonitorService {
-	return &ChannelMonitorService{repo: repo, encryptor: encryptor}
+	return &ChannelMonitorService{
+		repo:            repo,
+		encryptor:       encryptor,
+		userDetailCache: make(map[int64]channelMonitorUserDetailCacheEntry),
+		userDetailGroup: singleflight.Group{},
+	}
 }
 
 // ---------- CRUD ----------
@@ -202,6 +217,7 @@ func (s *ChannelMonitorService) Update(ctx context.Context, id int64, p ChannelM
 		// IntervalSeconds 变化也会被自然吸收（旧 task 取消 + 新 task 用新 interval）。
 		s.scheduler.Schedule(existing)
 	}
+	s.invalidateUserDetailCache(id)
 	return existing, nil
 }
 
@@ -230,6 +246,7 @@ func (s *ChannelMonitorService) Delete(ctx context.Context, id int64) error {
 	if s.scheduler != nil {
 		s.scheduler.Unschedule(id)
 	}
+	s.invalidateUserDetailCache(id)
 	return nil
 }
 
