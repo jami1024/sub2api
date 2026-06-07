@@ -78,7 +78,7 @@ INSERT INTO ops_system_metrics (
 
   goroutine_count,
   concurrency_queue_depth
-) VALUES (
+) SELECT
   $1,$2,$3,$4,
   $5,$6,$7,$8,
   $9,$10,$11,
@@ -90,6 +90,14 @@ INSERT INTO ops_system_metrics (
   $34,$35,
   $36,$37,$38,
   $39,$40
+WHERE NOT EXISTS (
+  SELECT 1
+  FROM ops_system_metrics existing
+  WHERE existing.created_at = $1
+    AND existing.window_minutes = $2
+    AND existing.platform IS NOT DISTINCT FROM $3
+    AND existing.group_id IS NOT DISTINCT FROM $4
+  LIMIT 1
 )`
 
 	_, err := r.db.ExecContext(

@@ -90,3 +90,27 @@ func TestOpsMetricsCollectorUsesHostCPUCountWhenCgroupHasNoLimit(t *testing.T) {
 	require.NotNil(t, got)
 	require.Equal(t, 50.0, *got)
 }
+
+func TestOpsMetricsCollectorLeaderLockUsesDatabaseWhenRedisMissing(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer func() { _ = db.Close() }()
+
+	mock.ExpectQuery("SELECT pg_try_advisory_lock\\(\\$1\\)").
+		WithArgs(opsMetricsCollectorAdvisoryLockID).
+		WillReturnRows(sqlmock.NewRows([]string{"pg_try_advisory_lock"}).AddRow(true))
+	mock.ExpectExec("SELECT pg_advisory_unlock\\(\\$1\\)").
+		WithArgs(opsMetricsCollectorAdvisoryLockID).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+
+	collector := &OpsMetricsCollector{
+		db:         db,
+		instanceID: "test-instance",
+	}
+
+	release, ok := collector.tryAcquireLeaderLock(context.Background())
+	require.True(t, ok)
+	require.NotNil(t, release)
+	release()
+	require.NoError(t, mock.ExpectationsWereMet())
+}

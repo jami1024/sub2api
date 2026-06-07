@@ -868,23 +868,36 @@ return 0
 `)
 
 func (c *OpsMetricsCollector) tryAcquireLeaderLock(ctx context.Context) (func(), bool) {
-	if c == nil || c.redisClient == nil {
-		return nil, true
+	if c == nil {
+		return nil, false
 	}
 	if ctx == nil {
 		ctx = context.Background()
 	}
 
-	ok, err := c.redisClient.SetNX(ctx, opsMetricsCollectorLeaderLockKey, c.instanceID, opsMetricsCollectorLeaderLockTTL).Result()
-	if err != nil {
-		// Prefer fail-closed to avoid stampeding the database when Redis is flaky.
-		// Fallback to a DB advisory lock when Redis is present but unavailable.
+	// Use the shared database as the leader lock because multiple deployments
+	// can point at the same Postgres while using different Redis instances or
+	// process lifecycles. If the DB lock is held, skip instead of falling back
+	// to Redis; otherwise a backup instance can still write duplicate global
+	// system metrics into the shared database.
+	if c.db != nil {
 		release, ok := tryAcquireDBAdvisoryLock(ctx, c.db, opsMetricsCollectorAdvisoryLockID)
 		if !ok {
 			c.maybeLogSkip()
 			return nil, false
 		}
 		return release, true
+	}
+
+	if c.redisClient == nil {
+		c.maybeLogSkip()
+		return nil, false
+	}
+
+	ok, err := c.redisClient.SetNX(ctx, opsMetricsCollectorLeaderLockKey, c.instanceID, opsMetricsCollectorLeaderLockTTL).Result()
+	if err != nil {
+		c.maybeLogSkip()
+		return nil, false
 	}
 	if !ok {
 		c.maybeLogSkip()
