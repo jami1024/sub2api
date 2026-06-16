@@ -244,6 +244,50 @@ export interface OpsOpenAITokenStatsParams {
   top_n?: number
 }
 
+export type OpsProviderStatusTimeRange = '15m' | '1h' | '6h' | '24h' | '7d'
+
+export interface OpsProviderStatusTimelinePoint {
+  provider?: string
+  bucket_start: string
+  request_count: number
+  success_count: number
+  failure_count: number
+  availability: number
+  p50_ms?: number | null
+  p95_ms?: number | null
+  p99_ms?: number | null
+}
+
+export interface OpsProviderStatusItem {
+  provider: string
+  request_count: number
+  success_count: number
+  failure_count: number
+  business_limited_count: number
+  availability: number
+  error_rate: number
+  p50_ms?: number | null
+  p95_ms?: number | null
+  p99_ms?: number | null
+  last_seen?: string | null
+  timeline?: OpsProviderStatusTimelinePoint[]
+}
+
+export interface OpsProviderStatusResponse {
+  start_time: string
+  end_time: string
+  bucket_seconds: number
+  items: OpsProviderStatusItem[]
+  timeline: OpsProviderStatusTimelinePoint[]
+}
+
+export interface OpsProviderStatusParams {
+  time_range?: OpsProviderStatusTimeRange
+  start_time?: string
+  end_time?: string
+  limit?: number
+}
+
 export interface OpsSystemMetricsSnapshot {
   id: number
   created_at: string
@@ -1077,6 +1121,17 @@ export async function getOpenAITokenStats(
   return data
 }
 
+export async function getProviderStatus(
+  params: OpsProviderStatusParams,
+  options: OpsRequestOptions = {}
+): Promise<OpsProviderStatusResponse> {
+  const { data } = await apiClient.get<OpsProviderStatusResponse>('/admin/ops/provider-status', {
+    params,
+    signal: options.signal
+  })
+  return data
+}
+
 export type OpsErrorListView = 'errors' | 'excluded' | 'all'
 
 export type OpsErrorListQueryParams = {
@@ -1305,6 +1360,7 @@ export const opsAPI = {
   getErrorTrend,
   getErrorDistribution,
   getOpenAITokenStats,
+  getProviderStatus,
   getConcurrencyStats,
   getUserConcurrencyStats,
   getAccountAvailabilityStats,

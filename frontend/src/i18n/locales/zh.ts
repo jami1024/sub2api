@@ -431,6 +431,7 @@ export default {
     proxies: 'IP管理',
     redeemCodes: '兑换码',
     ops: '运维监控',
+    providerStatus: '供应商状态',
     promoCodes: '优惠码',
     settings: '系统设置',
     myAccount: '我的账户',
@@ -5007,6 +5008,33 @@ export default {
           failed: '失败',
           canceled: '已取消'
         }
+      }
+    },
+
+    providerStatus: {
+      title: '供应商状态',
+      description: '基于真实使用记录查看各供应商可用率、错误和延迟表现，不主动探测上游。',
+      refresh: '刷新',
+      loadError: '加载供应商状态失败',
+      empty: '该时间窗口内暂无请求',
+      totalRequests: '总请求',
+      overallAvailability: '整体可用率',
+      errorRate: '错误率',
+      providerCount: '供应商数',
+      tableTitle: '供应商可用性',
+      latencyTrend: '延迟趋势',
+      provider: '供应商',
+      requests: '请求数',
+      availability: '可用率',
+      errors: '异常数',
+      timeline: '时间线',
+      lastSeen: '最近请求',
+      ranges: {
+        '15m': '15 分钟',
+        '1h': '1 小时',
+        '6h': '6 小时',
+        '24h': '24 小时',
+        '7d': '7 天'
       }
     },
 
