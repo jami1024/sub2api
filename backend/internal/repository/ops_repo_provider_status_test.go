@@ -93,6 +93,49 @@ func TestQueryProviderStatusUsesAccountNameAsProvider(t *testing.T) {
 	}
 }
 
+func TestQueryProviderStatusExcludesUnlinkedErrors(t *testing.T) {
+	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherFunc(func(expectedSQL, actualSQL string) error {
+		if strings.Contains(actualSQL, "NULLIF(oel.platform, '')") {
+			t.Fatalf("unlinked provider errors must not be displayed as the raw platform, sql=%s", actualSQL)
+		}
+		if !strings.Contains(actualSQL, "oel.account_id IS NOT NULL") {
+			t.Fatalf("provider status should exclude errors that are not linked to an account, sql=%s", actualSQL)
+		}
+		return nil
+	})))
+	if err != nil {
+		t.Fatalf("sqlmock.New returned error: %v", err)
+	}
+	defer func() { _ = db.Close() }()
+
+	repo := &opsRepository{db: db}
+	start := time.Date(2026, 6, 16, 0, 0, 0, 0, time.UTC)
+	end := start.Add(time.Hour)
+	mock.ExpectQuery("provider summary should exclude unlinked errors").
+		WillReturnRows(sqlmock.NewRows([]string{
+			"provider",
+			"request_count",
+			"success_count",
+			"failure_count",
+			"business_limited_count",
+			"p50_ms",
+			"p95_ms",
+			"p99_ms",
+			"last_seen",
+		}))
+
+	items, err := repo.queryProviderStatusSummary(context.Background(), start, end, 50)
+	if err != nil {
+		t.Fatalf("queryProviderStatusSummary returned error: %v", err)
+	}
+	if len(items) != 0 {
+		t.Fatalf("items = %#v, want no unlinked provider rows", items)
+	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Fatalf("unmet sql expectations: %v", err)
+	}
+}
+
 func TestScanProviderStatusSummaryCalculatesAvailability(t *testing.T) {
 	now := time.Date(2026, 6, 16, 12, 0, 0, 0, time.UTC)
 	scanner := &mockSummaryScanner{values: []any{

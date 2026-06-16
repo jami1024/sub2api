@@ -73,7 +73,7 @@ WITH success_rows AS (
 ),
 error_rows AS (
   SELECT
-    COALESCE(NULLIF(a.name, ''), NULLIF(oel.platform, ''), NULLIF(a.platform, ''), NULLIF(g.platform, ''), 'unknown') AS provider,
+    COALESCE(NULLIF(a.name, ''), NULLIF(a.platform, ''), NULLIF(g.platform, ''), 'unknown') AS provider,
     oel.created_at,
     oel.time_to_first_token_ms,
     oel.is_business_limited,
@@ -82,6 +82,7 @@ error_rows AS (
   LEFT JOIN groups g ON g.id = oel.group_id
   LEFT JOIN accounts a ON a.id = oel.account_id
   WHERE oel.created_at >= $1 AND oel.created_at < $2
+    AND oel.account_id IS NOT NULL
     AND oel.is_count_tokens = FALSE
 ),
 providers AS (
@@ -182,7 +183,7 @@ success_rows AS (
 ),
 error_rows AS (
   SELECT
-    COALESCE(NULLIF(a.name, ''), NULLIF(oel.platform, ''), NULLIF(a.platform, ''), NULLIF(g.platform, ''), 'unknown') AS provider,
+    COALESCE(NULLIF(a.name, ''), NULLIF(a.platform, ''), NULLIF(g.platform, ''), 'unknown') AS provider,
     oel.created_at,
     COALESCE(oel.status_code, 0) AS status_code,
     oel.is_business_limited
@@ -190,6 +191,7 @@ error_rows AS (
   LEFT JOIN groups g ON g.id = oel.group_id
   LEFT JOIN accounts a ON a.id = oel.account_id
   WHERE oel.created_at >= $1 AND oel.created_at < $2
+    AND oel.account_id IS NOT NULL
     AND oel.is_count_tokens = FALSE
 ),
 bucket_start_expr AS (
