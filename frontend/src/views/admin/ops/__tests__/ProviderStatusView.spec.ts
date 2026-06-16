@@ -20,6 +20,12 @@ vi.mock('@/utils/apiError', () => ({
   extractApiErrorMessage: (_error: unknown, fallback: string) => fallback,
 }))
 
+vi.mock('@/components/layout/AppLayout.vue', () => ({
+  default: {
+    template: '<div data-testid="app-layout"><slot /></div>',
+  },
+}))
+
 vi.mock('vue-i18n', async (importOriginal) => {
   const actual = await importOriginal<typeof import('vue-i18n')>()
   return {
@@ -68,7 +74,6 @@ function mountView() {
   return mount(ProviderStatusView, {
     global: {
       stubs: {
-        AppLayout: { template: '<div><slot /></div>' },
         ProviderStatusFilters: {
           props: ['modelValue'],
           emits: ['update:modelValue', 'refresh'],
@@ -98,5 +103,12 @@ describe('ProviderStatusView', () => {
     await flushPromises()
 
     expect(mockGetProviderStatus).toHaveBeenCalledWith(expect.objectContaining({ time_range: '24h' }), expect.any(Object))
+  })
+
+  it('renders inside the admin app layout', async () => {
+    const wrapper = mountView()
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="app-layout"]').exists()).toBe(true)
   })
 })

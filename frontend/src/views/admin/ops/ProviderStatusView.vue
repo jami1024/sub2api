@@ -1,17 +1,19 @@
 <template>
-  <div class="space-y-5 p-4 sm:p-6">
-    <div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-      <div>
-        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{{ t('admin.providerStatus.title') }}</h1>
-        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ t('admin.providerStatus.description') }}</p>
+  <AppLayout>
+    <div class="space-y-6 pb-12">
+      <div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{{ t('admin.providerStatus.title') }}</h1>
+          <p class="mt-1 max-w-3xl text-sm text-gray-500 dark:text-gray-400">{{ t('admin.providerStatus.description') }}</p>
+        </div>
       </div>
-    </div>
 
-    <ProviderStatusFilters v-model="timeRange" :loading="loading" @refresh="reload" />
-    <ProviderStatusSummaryCards :items="items" />
-    <ProviderStatusTable :items="items" :loading="loading" />
-    <ProviderStatusLatencyChart :points="latencyPoints" :loading="loading" />
-  </div>
+      <ProviderStatusFilters v-model="timeRange" :loading="loading" @refresh="reload" />
+      <ProviderStatusSummaryCards :items="items" />
+      <ProviderStatusTable :items="items" :loading="loading" />
+      <ProviderStatusLatencyChart :points="latencyPoints" :loading="loading" />
+    </div>
+  </AppLayout>
 </template>
 
 <script setup lang="ts">
@@ -20,6 +22,7 @@ import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'
 import { extractApiErrorMessage } from '@/utils/apiError'
 import { opsAPI, type OpsProviderStatusItem, type OpsProviderStatusTimeRange } from '@/api/admin/ops'
+import AppLayout from '@/components/layout/AppLayout.vue'
 import ProviderStatusFilters from './components/ProviderStatusFilters.vue'
 import ProviderStatusSummaryCards from './components/ProviderStatusSummaryCards.vue'
 import ProviderStatusTable from './components/ProviderStatusTable.vue'
