@@ -29,6 +29,8 @@ RUN pnpm install --frozen-lockfile --registry=https://registry.npmmirror.com
 
 # Copy frontend source and build
 COPY frontend/ ./
+COPY docs/legal/admin-compliance.zh.md ../docs/legal/admin-compliance.zh.md
+COPY docs/legal/admin-compliance.en.md ../docs/legal/admin-compliance.en.md
 RUN pnpm run build
 
 # -----------------------------------------------------------------------------
