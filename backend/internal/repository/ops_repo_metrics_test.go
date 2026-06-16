@@ -31,6 +31,29 @@ func TestInsertSystemMetricsSkipsDuplicateGlobalMinute(t *testing.T) {
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
+func TestInsertSystemMetricsCastsNullableDimensionParams(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer func() { _ = db.Close() }()
+
+	repo := NewOpsRepository(db)
+	groupID := int64(12)
+	platform := "openai"
+
+	mock.ExpectExec(`(?s)\$3::varchar.*\$4::bigint.*existing\.platform IS NOT DISTINCT FROM \$3::varchar.*existing\.group_id IS NOT DISTINCT FROM \$4::bigint`).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+
+	err = repo.InsertSystemMetrics(context.Background(), &service.OpsInsertSystemMetricsInput{
+		CreatedAt:     time.Date(2026, 6, 16, 14, 10, 0, 0, time.UTC),
+		WindowMinutes: 1,
+		Platform:      &platform,
+		GroupID:       &groupID,
+	})
+
+	require.NoError(t, err)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
 func ptrFloat64ForOpsRepoMetricsTest(v float64) *float64 {
 	return &v
 }

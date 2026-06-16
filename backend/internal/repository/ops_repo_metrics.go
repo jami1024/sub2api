@@ -79,7 +79,7 @@ INSERT INTO ops_system_metrics (
   goroutine_count,
   concurrency_queue_depth
 ) SELECT
-  $1,$2,$3,$4,
+  $1::timestamptz,$2::int,$3::varchar,$4::bigint,
   $5,$6,$7,$8,
   $9,$10,$11,
   $12,$13,$14,$15,
@@ -93,10 +93,10 @@ INSERT INTO ops_system_metrics (
 WHERE NOT EXISTS (
   SELECT 1
   FROM ops_system_metrics existing
-  WHERE existing.created_at = $1
-    AND existing.window_minutes = $2
-    AND existing.platform IS NOT DISTINCT FROM $3
-    AND existing.group_id IS NOT DISTINCT FROM $4
+  WHERE existing.created_at = $1::timestamptz
+    AND existing.window_minutes = $2::int
+    AND existing.platform IS NOT DISTINCT FROM $3::varchar
+    AND existing.group_id IS NOT DISTINCT FROM $4::bigint
   LIMIT 1
 )`
 
