@@ -301,7 +301,7 @@
               <span class="font-medium text-pink-300">${{ tooltipData.image_output_cost.toFixed(6) }}</span>
             </div>
             <!-- Token billing: show unit prices per 1M tokens -->
-            <template v-if="!tooltipData?.billing_mode || tooltipData.billing_mode === BILLING_MODE_TOKEN">
+            <template v-if="!isImageUsage(tooltipData)">
               <div v-if="tooltipData && tooltipData.input_tokens > 0" class="flex items-center justify-between gap-4">
                 <span class="text-gray-400">{{ t('usage.inputTokenPrice') }}</span>
                 <span class="font-medium text-sky-300">{{ formatTokenPricePerMillion(tooltipData.input_cost, tooltipData.input_tokens) }} {{ t('usage.perMillionTokens') }}</span>
@@ -315,7 +315,7 @@
                 <span class="font-medium text-pink-300">{{ formatTokenPricePerMillion(tooltipData.image_output_cost ?? 0, tooltipData.image_output_tokens) }} {{ t('usage.perMillionTokens') }}</span>
               </div>
             </template>
-            <template v-else-if="isImageUsage(tooltipData)">
+            <template v-else-if="tooltipData && isImageUsage(tooltipData)">
               <div class="flex items-center justify-between gap-4">
                 <span class="text-gray-400">{{ t('usage.imageCount') }}</span>
                 <span class="font-medium text-white">{{ tooltipData.image_count }}{{ t('usage.imageUnit') }}</span>
@@ -336,7 +336,7 @@
                 <span class="text-gray-400">{{ t('usage.imageOutputSize') }}</span>
                 <span class="font-medium text-white">{{ formatImageOutputSize(tooltipData, t) }}</span>
               </div>
-              <div v-if="formatImageSizeBreakdown(tooltipData)" class="flex items-center justify-between gap-4">
+              <div v-if="tooltipData && formatImageSizeBreakdown(tooltipData)" class="flex items-center justify-between gap-4">
                 <span class="text-gray-400">{{ t('usage.imageSizeBreakdown') }}</span>
                 <span class="font-medium text-white">{{ formatImageSizeBreakdown(tooltipData) }}</span>
               </div>
@@ -409,14 +409,7 @@ import { formatCacheTokens, formatMultiplier } from '@/utils/formatters'
 import { formatTokenPricePerMillion } from '@/utils/usagePricing'
 import { getUsageServiceTierLabel } from '@/utils/usageServiceTier'
 import { resolveUsageRequestType } from '@/utils/usageRequestType'
-import {
-  BILLING_MODE_TOKEN,
-  getBillingModeLabel,
-  getBillingModeBadgeClass,
-  isImageUsage,
-  getDisplayBillingMode,
-  imageUnitPrice,
-} from '@/utils/billingMode'
+import { getBillingModeLabel, getBillingModeBadgeClass, isImageUsage, getDisplayBillingMode, imageUnitPrice } from '@/utils/billingMode'
 import {
   formatImageBillingSize,
   formatImageInputSize,
