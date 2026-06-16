@@ -5023,6 +5023,7 @@ export default {
       providerCount: '供应商账号数',
       tableTitle: '供应商账号可用性',
       latencyTrend: '延迟趋势',
+      peak: '峰值',
       provider: '供应商账号',
       requests: '请求数',
       availability: '可用率',

@@ -4870,6 +4870,7 @@ export default {
       providerCount: 'Provider accounts',
       tableTitle: 'Provider account availability',
       latencyTrend: 'Latency trend',
+      peak: 'Peak',
       provider: 'Provider account',
       requests: 'Requests',
       availability: 'Availability',
