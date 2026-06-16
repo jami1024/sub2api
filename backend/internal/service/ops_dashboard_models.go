@@ -85,3 +85,45 @@ type OpsLatencyHistogramResponse struct {
 	TotalRequests int64                        `json:"total_requests"`
 	Buckets       []*OpsLatencyHistogramBucket `json:"buckets"`
 }
+
+type OpsProviderStatusFilter struct {
+	StartTime     time.Time
+	EndTime       time.Time
+	BucketSeconds int
+	Limit         int
+}
+
+type OpsProviderStatusSummaryItem struct {
+	Provider             string                            `json:"provider"`
+	RequestCount         int64                             `json:"request_count"`
+	SuccessCount         int64                             `json:"success_count"`
+	FailureCount         int64                             `json:"failure_count"`
+	BusinessLimitedCount int64                             `json:"business_limited_count"`
+	Availability         float64                           `json:"availability"`
+	ErrorRate            float64                           `json:"error_rate"`
+	P50Ms                *int                              `json:"p50_ms"`
+	P95Ms                *int                              `json:"p95_ms"`
+	P99Ms                *int                              `json:"p99_ms"`
+	LastSeen             *time.Time                        `json:"last_seen"`
+	Timeline             []*OpsProviderStatusTimelinePoint `json:"timeline,omitempty"`
+}
+
+type OpsProviderStatusTimelinePoint struct {
+	Provider     string    `json:"provider,omitempty"`
+	BucketStart  time.Time `json:"bucket_start"`
+	RequestCount int64     `json:"request_count"`
+	SuccessCount int64     `json:"success_count"`
+	FailureCount int64     `json:"failure_count"`
+	Availability float64   `json:"availability"`
+	P50Ms        *int      `json:"p50_ms"`
+	P95Ms        *int      `json:"p95_ms"`
+	P99Ms        *int      `json:"p99_ms"`
+}
+
+type OpsProviderStatusResponse struct {
+	StartTime     time.Time                         `json:"start_time"`
+	EndTime       time.Time                         `json:"end_time"`
+	BucketSeconds int                               `json:"bucket_seconds"`
+	Items         []*OpsProviderStatusSummaryItem   `json:"items"`
+	Timeline      []*OpsProviderStatusTimelinePoint `json:"timeline"`
+}

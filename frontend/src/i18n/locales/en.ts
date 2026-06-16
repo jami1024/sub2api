@@ -431,6 +431,7 @@ export default {
     proxies: 'Proxies',
     redeemCodes: 'Redeem Codes',
     ops: 'Ops',
+    providerStatus: 'Provider Status',
     promoCodes: 'Promo Codes',
     settings: 'Settings',
     myAccount: 'My Account',
@@ -4854,6 +4855,33 @@ export default {
           failed: 'Failed',
           canceled: 'Canceled'
         }
+      }
+    },
+
+    providerStatus: {
+      title: 'Provider Status',
+      description: 'View provider availability, errors, and latency from real usage records without proactive upstream probes.',
+      refresh: 'Refresh',
+      loadError: 'Failed to load provider status',
+      empty: 'No requests in this time window',
+      totalRequests: 'Total requests',
+      overallAvailability: 'Overall availability',
+      errorRate: 'Error rate',
+      providerCount: 'Providers',
+      tableTitle: 'Provider availability',
+      latencyTrend: 'Latency trend',
+      provider: 'Provider',
+      requests: 'Requests',
+      availability: 'Availability',
+      errors: 'Errors',
+      timeline: 'Timeline',
+      lastSeen: 'Last request',
+      ranges: {
+        '15m': '15 min',
+        '1h': '1 hour',
+        '6h': '6 hours',
+        '24h': '24 hours',
+        '7d': '7 days'
       }
     },
 
