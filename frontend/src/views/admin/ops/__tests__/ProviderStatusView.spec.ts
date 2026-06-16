@@ -36,7 +36,7 @@ const sample = {
   bucket_seconds: 60,
   items: [
     {
-      provider: 'openai',
+      provider: 'gzw plus',
       request_count: 120,
       success_count: 118,
       failure_count: 2,

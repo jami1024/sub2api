@@ -63,7 +63,7 @@ func (r *opsRepository) queryProviderStatusSummary(ctx context.Context, start, e
 	const q = `
 WITH success_rows AS (
   SELECT
-    COALESCE(NULLIF(g.platform, ''), NULLIF(a.platform, ''), 'unknown') AS provider,
+    COALESCE(NULLIF(a.name, ''), NULLIF(a.platform, ''), NULLIF(g.platform, ''), 'unknown') AS provider,
     ul.created_at,
     ul.duration_ms
   FROM usage_logs ul
@@ -73,7 +73,7 @@ WITH success_rows AS (
 ),
 error_rows AS (
   SELECT
-    COALESCE(NULLIF(oel.platform, ''), NULLIF(g.platform, ''), NULLIF(a.platform, ''), 'unknown') AS provider,
+    COALESCE(NULLIF(a.name, ''), NULLIF(oel.platform, ''), NULLIF(a.platform, ''), NULLIF(g.platform, ''), 'unknown') AS provider,
     oel.created_at,
     oel.time_to_first_token_ms,
     oel.is_business_limited,
@@ -172,7 +172,7 @@ buckets AS (
 ),
 success_rows AS (
   SELECT
-    COALESCE(NULLIF(g.platform, ''), NULLIF(a.platform, ''), 'unknown') AS provider,
+    COALESCE(NULLIF(a.name, ''), NULLIF(a.platform, ''), NULLIF(g.platform, ''), 'unknown') AS provider,
     ul.created_at,
     ul.duration_ms
   FROM usage_logs ul
@@ -182,7 +182,7 @@ success_rows AS (
 ),
 error_rows AS (
   SELECT
-    COALESCE(NULLIF(oel.platform, ''), NULLIF(g.platform, ''), NULLIF(a.platform, ''), 'unknown') AS provider,
+    COALESCE(NULLIF(a.name, ''), NULLIF(oel.platform, ''), NULLIF(a.platform, ''), NULLIF(g.platform, ''), 'unknown') AS provider,
     oel.created_at,
     COALESCE(oel.status_code, 0) AS status_code,
     oel.is_business_limited

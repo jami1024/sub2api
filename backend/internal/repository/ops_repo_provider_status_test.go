@@ -50,6 +50,49 @@ func TestQueryProviderStatusTimelineUsesSetBasedAggregation(t *testing.T) {
 	}
 }
 
+func TestQueryProviderStatusUsesAccountNameAsProvider(t *testing.T) {
+	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherFunc(func(expectedSQL, actualSQL string) error {
+		if !strings.Contains(actualSQL, "NULLIF(a.name, '')") {
+			t.Fatalf("provider status query must prefer accounts.name as provider, sql=%s", actualSQL)
+		}
+		if strings.Contains(actualSQL, "COALESCE(NULLIF(g.platform, ''), NULLIF(a.platform, ''), 'unknown') AS provider") {
+			t.Fatalf("provider status query must not group all accounts by platform")
+		}
+		return nil
+	})))
+	if err != nil {
+		t.Fatalf("sqlmock.New returned error: %v", err)
+	}
+	defer func() { _ = db.Close() }()
+
+	repo := &opsRepository{db: db}
+	start := time.Date(2026, 6, 16, 0, 0, 0, 0, time.UTC)
+	end := start.Add(time.Hour)
+	mock.ExpectQuery("provider summary should use account name").
+		WillReturnRows(sqlmock.NewRows([]string{
+			"provider",
+			"request_count",
+			"success_count",
+			"failure_count",
+			"business_limited_count",
+			"p50_ms",
+			"p95_ms",
+			"p99_ms",
+			"last_seen",
+		}).AddRow("gzw plus", int64(80), int64(80), int64(0), int64(0), float64(120), float64(300), float64(500), end))
+
+	items, err := repo.queryProviderStatusSummary(context.Background(), start, end, 50)
+	if err != nil {
+		t.Fatalf("queryProviderStatusSummary returned error: %v", err)
+	}
+	if len(items) != 1 || items[0].Provider != "gzw plus" {
+		t.Fatalf("provider = %#v, want gzw plus", items)
+	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Fatalf("unmet sql expectations: %v", err)
+	}
+}
+
 func TestScanProviderStatusSummaryCalculatesAvailability(t *testing.T) {
 	now := time.Date(2026, 6, 16, 12, 0, 0, 0, time.UTC)
 	scanner := &mockSummaryScanner{values: []any{
