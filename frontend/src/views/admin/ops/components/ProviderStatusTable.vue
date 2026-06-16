@@ -38,10 +38,28 @@
                 <span
                   v-for="(point, idx) in compactTimeline(item.timeline || [])"
                   :key="`${item.provider}-${idx}`"
-                  class="h-2 flex-1 rounded-full"
+                  data-testid="provider-status-timeline-dot"
+                  class="relative h-2 flex-1 rounded-full"
                   :class="timelineClass(point)"
                   :title="timelineTitle(point)"
+                  @mouseenter="showTimelineTooltip($event, item.provider, idx, point)"
+                  @mousemove="moveTimelineTooltip"
+                  @mouseleave="hideTimelineTooltip"
                 />
+              </div>
+              <div
+                v-if="hoveredTimeline && hoveredTimeline.provider === item.provider"
+                class="pointer-events-none fixed z-50 rounded-lg bg-gray-950 px-3 py-2 text-xs leading-6 text-white shadow-xl"
+                :style="tooltipStyle"
+              >
+                <div>{{ formatTimelineTime(hoveredTimeline.point.bucket_start) }}</div>
+                <div>{{ formatNumber(hoveredTimeline.point.request_count) }} 个请求</div>
+                <div>可用性 {{ formatPercent(hoveredTimeline.point.availability) }}</div>
+                <div>延迟: {{ formatMs(hoveredTimeline.point.p50_ms) }}</div>
+                <div class="flex gap-2">
+                  <span class="text-emerald-400">OK: {{ formatNumber(hoveredTimeline.point.success_count) }}</span>
+                  <span class="text-rose-400">ERR: {{ formatNumber(hoveredTimeline.point.failure_count) }}</span>
+                </div>
               </div>
             </td>
             <td class="px-4 py-3 text-right text-xs text-gray-500 dark:text-gray-400">{{ formatDate(item.last_seen) }}</td>
@@ -53,6 +71,7 @@
 </template>
 
 <script setup lang="ts">
+import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { OpsProviderStatusItem, OpsProviderStatusTimelinePoint } from '@/api/admin/ops'
 
@@ -62,17 +81,52 @@ defineProps<{
   loading?: boolean
 }>()
 
+const hoveredTimeline = ref<{
+  provider: string
+  index: number
+  point: OpsProviderStatusTimelinePoint
+  x: number
+  y: number
+} | null>(null)
+
+const tooltipStyle = computed(() => {
+  if (!hoveredTimeline.value) return {}
+  return {
+    left: `${hoveredTimeline.value.x}px`,
+    top: `${hoveredTimeline.value.y}px`,
+    transform: 'translate(12px, -100%)',
+  }
+})
+
 function formatNumber(value: number): string {
   return value.toLocaleString()
 }
 
 function formatMs(value?: number | null): string {
-  return value == null ? '—' : `${value}ms`
+  if (value == null) return '—'
+  if (value < 1000) return `${Math.round(value)}ms`
+  if (value < 60_000) return `${trimFixed(value / 1000)}s`
+  return `${trimFixed(value / 60_000)}m`
 }
 
 function formatDate(value?: string | null): string {
   if (!value) return '—'
   return new Date(value).toLocaleString()
+}
+
+function formatTimelineTime(value: string): string {
+  return new Date(value).toLocaleTimeString([], {
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
+function formatPercent(value: number): string {
+  return `${trimFixed(value)}%`
+}
+
+function trimFixed(value: number): string {
+  return value.toFixed(2).replace(/\.?0+$/, '')
 }
 
 function availabilityClass(value: number): string {
@@ -96,6 +150,9 @@ function compactTimeline(points: OpsProviderStatusTimelinePoint[]): OpsProviderS
       success_count: success,
       failure_count: failure,
       availability: success + failure > 0 ? (success / (success + failure)) * 100 : 0,
+      p50_ms: firstDefinedNumber(slice.map(point => point.p50_ms)),
+      p95_ms: firstDefinedNumber(slice.map(point => point.p95_ms)),
+      p99_ms: firstDefinedNumber(slice.map(point => point.p99_ms)),
     })
   }
   return out
@@ -110,6 +167,38 @@ function timelineClass(point: OpsProviderStatusTimelinePoint): string {
 }
 
 function timelineTitle(point: OpsProviderStatusTimelinePoint): string {
-  return `${new Date(point.bucket_start).toLocaleString()} · ${point.request_count} req · ${point.availability.toFixed(1)}%`
+  return `${formatTimelineTime(point.bucket_start)} · ${point.request_count} 个请求 · 可用性 ${formatPercent(point.availability)} · 延迟: ${formatMs(point.p50_ms)} · OK: ${point.success_count} · ERR: ${point.failure_count}`
+}
+
+function showTimelineTooltip(event: MouseEvent, provider: string, index: number, point: OpsProviderStatusTimelinePoint) {
+  hoveredTimeline.value = {
+    provider,
+    index,
+    point,
+    x: event.clientX,
+    y: event.clientY - 8,
+  }
+}
+
+function moveTimelineTooltip(event: MouseEvent) {
+  if (!hoveredTimeline.value) return
+  hoveredTimeline.value = {
+    ...hoveredTimeline.value,
+    x: event.clientX,
+    y: event.clientY - 8,
+  }
+}
+
+function hideTimelineTooltip() {
+  hoveredTimeline.value = null
+}
+
+function firstDefinedNumber(values: Array<number | null | undefined>): number | null {
+  for (const value of values) {
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      return value
+    }
+  }
+  return null
 }
 </script>
