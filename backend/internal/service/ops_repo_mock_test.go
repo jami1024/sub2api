@@ -14,6 +14,7 @@ type opsRepoMock struct {
 	DeleteSystemLogsFn            func(ctx context.Context, filter *OpsSystemLogCleanupFilter) (int64, error)
 	InsertSystemLogCleanupAuditFn func(ctx context.Context, input *OpsSystemLogCleanupAudit) error
 	LookupDeletedKeyAuditFn       func(ctx context.Context, key string) (*DeletedKeyAuditResult, error)
+	GetClientFailureStatsFn       func(ctx context.Context, filter *OpsClientFailureStatsFilter) (*OpsClientFailureStatsResponse, error)
 }
 
 func (m *opsRepoMock) InsertErrorLog(ctx context.Context, input *OpsInsertErrorLogInput) (int64, error) {
@@ -108,6 +109,13 @@ func (m *opsRepoMock) GetOpenAITokenStats(ctx context.Context, filter *OpsOpenAI
 
 func (m *opsRepoMock) GetProviderStatus(ctx context.Context, filter *OpsProviderStatusFilter) (*OpsProviderStatusResponse, error) {
 	return &OpsProviderStatusResponse{}, nil
+}
+
+func (m *opsRepoMock) GetClientFailureStats(ctx context.Context, filter *OpsClientFailureStatsFilter) (*OpsClientFailureStatsResponse, error) {
+	if m.GetClientFailureStatsFn != nil {
+		return m.GetClientFailureStatsFn(ctx, filter)
+	}
+	return &OpsClientFailureStatsResponse{}, nil
 }
 
 func (m *opsRepoMock) InsertSystemMetrics(ctx context.Context, input *OpsInsertSystemMetricsInput) error {

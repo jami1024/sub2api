@@ -139,3 +139,27 @@ type OpsProviderStatusResponse struct {
 	Items         []*OpsProviderStatusSummaryItem   `json:"items"`
 	Timeline      []*OpsProviderStatusTimelinePoint `json:"timeline"`
 }
+
+type OpsClientFailureStatsFilter struct {
+	StartTime time.Time
+	EndTime   time.Time
+	Limit     int
+}
+
+type OpsClientFailureStatsItem struct {
+	UserID             *int64     `json:"user_id,omitempty"`
+	UserEmail          string     `json:"user_email"`
+	FailureCount       int64      `json:"failure_count"`
+	AffectedKeyCount   int64      `json:"affected_key_count"`
+	TopErrorMessage    string     `json:"top_error_message"`
+	TopErrorCount      int64      `json:"top_error_count"`
+	LastSeen           *time.Time `json:"last_seen,omitempty"`
+	TopInboundEndpoint string     `json:"top_inbound_endpoint"`
+	TopPlatform        string     `json:"top_platform"`
+}
+
+type OpsClientFailureStatsResponse struct {
+	StartTime time.Time                    `json:"start_time"`
+	EndTime   time.Time                    `json:"end_time"`
+	Items     []*OpsClientFailureStatsItem `json:"items"`
+}

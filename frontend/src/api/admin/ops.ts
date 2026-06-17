@@ -300,6 +300,33 @@ export interface OpsProviderStatusParams {
   limit?: number
 }
 
+export type OpsClientFailureStatsTimeRange = '15m' | '1h' | '6h' | '24h' | '7d'
+
+export interface OpsClientFailureStatsItem {
+  user_id?: number | null
+  user_email: string
+  failure_count: number
+  affected_key_count: number
+  top_error_message: string
+  top_error_count: number
+  last_seen?: string | null
+  top_inbound_endpoint: string
+  top_platform: string
+}
+
+export interface OpsClientFailureStatsResponse {
+  start_time: string
+  end_time: string
+  items: OpsClientFailureStatsItem[]
+}
+
+export interface OpsClientFailureStatsParams {
+  time_range?: OpsClientFailureStatsTimeRange
+  start_time?: string
+  end_time?: string
+  limit?: number
+}
+
 export interface OpsSystemMetricsSnapshot {
   id: number
   created_at: string
@@ -1144,6 +1171,17 @@ export async function getProviderStatus(
   return data
 }
 
+export async function getClientFailureStats(
+  params: OpsClientFailureStatsParams,
+  options: OpsRequestOptions = {}
+): Promise<OpsClientFailureStatsResponse> {
+  const { data } = await apiClient.get<OpsClientFailureStatsResponse>('/admin/ops/client-failures', {
+    params,
+    signal: options.signal
+  })
+  return data
+}
+
 export type OpsErrorListView = 'errors' | 'excluded' | 'all'
 
 export type OpsErrorListQueryParams = {
@@ -1373,6 +1411,7 @@ export const opsAPI = {
   getErrorDistribution,
   getOpenAITokenStats,
   getProviderStatus,
+  getClientFailureStats,
   getConcurrencyStats,
   getUserConcurrencyStats,
   getAccountAvailabilityStats,

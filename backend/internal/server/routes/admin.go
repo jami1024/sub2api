@@ -218,6 +218,7 @@ func registerOpsRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 		ops.GET("/dashboard/error-distribution", h.Admin.Ops.GetDashboardErrorDistribution)
 		ops.GET("/dashboard/openai-token-stats", h.Admin.Ops.GetDashboardOpenAITokenStats)
 		ops.GET("/provider-status", h.Admin.Ops.GetProviderStatus)
+		ops.GET("/client-failures", h.Admin.Ops.GetClientFailureStats)
 	}
 }
 

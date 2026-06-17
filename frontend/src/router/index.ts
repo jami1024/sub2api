@@ -427,6 +427,18 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
+    path: '/admin/client-failures',
+    name: 'AdminClientFailures',
+    component: () => import('@/views/admin/ops/ClientFailureStatsView.vue'),
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: true,
+      title: 'Client Failures',
+      titleKey: 'admin.clientFailures.title',
+      descriptionKey: 'admin.clientFailures.description'
+    }
+  },
+  {
     path: '/admin/users',
     name: 'AdminUsers',
     component: () => import('@/views/admin/UsersView.vue'),
