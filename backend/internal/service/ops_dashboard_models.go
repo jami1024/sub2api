@@ -104,20 +104,32 @@ type OpsProviderStatusSummaryItem struct {
 	P50Ms                *int                              `json:"p50_ms"`
 	P95Ms                *int                              `json:"p95_ms"`
 	P99Ms                *int                              `json:"p99_ms"`
+	DurationAvgMs        *int                              `json:"duration_avg_ms"`
+	DurationMaxMs        *int                              `json:"duration_max_ms"`
+	TTFTAvgMs            *int                              `json:"ttft_avg_ms"`
+	TTFTP95Ms            *int                              `json:"ttft_p95_ms"`
+	TTFTSampleCount      int64                             `json:"ttft_sample_count"`
+	Timeout524Count      int64                             `json:"timeout_524_count"`
+	Timeout524AvgMs      *int                              `json:"timeout_524_avg_ms"`
 	LastSeen             *time.Time                        `json:"last_seen"`
 	Timeline             []*OpsProviderStatusTimelinePoint `json:"timeline,omitempty"`
 }
 
 type OpsProviderStatusTimelinePoint struct {
-	Provider     string    `json:"provider,omitempty"`
-	BucketStart  time.Time `json:"bucket_start"`
-	RequestCount int64     `json:"request_count"`
-	SuccessCount int64     `json:"success_count"`
-	FailureCount int64     `json:"failure_count"`
-	Availability float64   `json:"availability"`
-	P50Ms        *int      `json:"p50_ms"`
-	P95Ms        *int      `json:"p95_ms"`
-	P99Ms        *int      `json:"p99_ms"`
+	Provider        string    `json:"provider,omitempty"`
+	BucketStart     time.Time `json:"bucket_start"`
+	RequestCount    int64     `json:"request_count"`
+	SuccessCount    int64     `json:"success_count"`
+	FailureCount    int64     `json:"failure_count"`
+	Availability    float64   `json:"availability"`
+	P50Ms           *int      `json:"p50_ms"`
+	P95Ms           *int      `json:"p95_ms"`
+	P99Ms           *int      `json:"p99_ms"`
+	DurationAvgMs   *int      `json:"duration_avg_ms"`
+	TTFTAvgMs       *int      `json:"ttft_avg_ms"`
+	TTFTSampleCount int64     `json:"ttft_sample_count"`
+	Timeout524Count int64     `json:"timeout_524_count"`
+	Timeout524AvgMs *int      `json:"timeout_524_avg_ms"`
 }
 
 type OpsProviderStatusResponse struct {

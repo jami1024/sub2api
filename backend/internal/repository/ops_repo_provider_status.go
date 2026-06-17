@@ -65,7 +65,8 @@ WITH success_rows AS (
   SELECT
     COALESCE(NULLIF(a.name, ''), NULLIF(a.platform, ''), NULLIF(g.platform, ''), 'unknown') AS provider,
     ul.created_at,
-    ul.duration_ms
+    ul.duration_ms,
+    ul.first_token_ms
   FROM usage_logs ul
   LEFT JOIN groups g ON g.id = ul.group_id
   LEFT JOIN accounts a ON a.id = ul.account_id
@@ -75,6 +76,7 @@ error_rows AS (
   SELECT
     COALESCE(NULLIF(a.name, ''), NULLIF(a.platform, ''), NULLIF(g.platform, ''), 'unknown') AS provider,
     oel.created_at,
+    oel.duration_ms,
     oel.time_to_first_token_ms,
     oel.is_business_limited,
     COALESCE(oel.status_code, 0) AS status_code
@@ -99,7 +101,14 @@ stats AS (
     GREATEST(s.last_seen, e.last_seen) AS last_seen,
     s.p50_ms,
     s.p95_ms,
-    s.p99_ms
+    s.p99_ms,
+    s.duration_avg_ms,
+    s.duration_max_ms,
+    s.ttft_avg_ms,
+    s.ttft_p95_ms,
+    s.ttft_sample_count,
+    e.timeout_524_count,
+    e.timeout_524_avg_ms
   FROM providers p
   LEFT JOIN (
     SELECT provider,
@@ -107,7 +116,12 @@ stats AS (
            MAX(created_at) AS last_seen,
            percentile_cont(0.50) WITHIN GROUP (ORDER BY duration_ms) FILTER (WHERE duration_ms IS NOT NULL) AS p50_ms,
            percentile_cont(0.95) WITHIN GROUP (ORDER BY duration_ms) FILTER (WHERE duration_ms IS NOT NULL) AS p95_ms,
-           percentile_cont(0.99) WITHIN GROUP (ORDER BY duration_ms) FILTER (WHERE duration_ms IS NOT NULL) AS p99_ms
+           percentile_cont(0.99) WITHIN GROUP (ORDER BY duration_ms) FILTER (WHERE duration_ms IS NOT NULL) AS p99_ms,
+           AVG(duration_ms) FILTER (WHERE duration_ms IS NOT NULL) AS duration_avg_ms,
+           MAX(duration_ms) AS duration_max_ms,
+           AVG(first_token_ms) FILTER (WHERE first_token_ms IS NOT NULL) AS ttft_avg_ms,
+           percentile_cont(0.95) WITHIN GROUP (ORDER BY first_token_ms) FILTER (WHERE first_token_ms IS NOT NULL) AS ttft_p95_ms,
+           COUNT(first_token_ms) AS ttft_sample_count
     FROM success_rows
     GROUP BY provider
   ) s ON s.provider = p.provider
@@ -115,6 +129,8 @@ stats AS (
     SELECT provider,
            COUNT(*) FILTER (WHERE status_code >= 400 AND NOT is_business_limited) AS failure_count,
            COUNT(*) FILTER (WHERE status_code >= 400 AND is_business_limited) AS business_limited_count,
+           COUNT(*) FILTER (WHERE status_code = 524) AS timeout_524_count,
+           AVG(duration_ms) FILTER (WHERE status_code = 524 AND duration_ms IS NOT NULL) AS timeout_524_avg_ms,
            MAX(created_at) AS last_seen
     FROM error_rows
     WHERE status_code >= 400
@@ -129,6 +145,13 @@ SELECT provider,
        p50_ms,
        p95_ms,
        p99_ms,
+       duration_avg_ms,
+       duration_max_ms,
+       ttft_avg_ms,
+       ttft_p95_ms,
+       COALESCE(ttft_sample_count, 0) AS ttft_sample_count,
+       COALESCE(timeout_524_count, 0) AS timeout_524_count,
+       timeout_524_avg_ms,
        last_seen
 FROM stats
 WHERE (success_count + failure_count + business_limited_count) > 0
@@ -175,7 +198,8 @@ success_rows AS (
   SELECT
     COALESCE(NULLIF(a.name, ''), NULLIF(a.platform, ''), NULLIF(g.platform, ''), 'unknown') AS provider,
     ul.created_at,
-    ul.duration_ms
+    ul.duration_ms,
+    ul.first_token_ms
   FROM usage_logs ul
   LEFT JOIN groups g ON g.id = ul.group_id
   LEFT JOIN accounts a ON a.id = ul.account_id
@@ -185,6 +209,8 @@ error_rows AS (
   SELECT
     COALESCE(NULLIF(a.name, ''), NULLIF(a.platform, ''), NULLIF(g.platform, ''), 'unknown') AS provider,
     oel.created_at,
+    oel.duration_ms,
+    oel.time_to_first_token_ms,
     COALESCE(oel.status_code, 0) AS status_code,
     oel.is_business_limited
   FROM ops_error_logs oel
@@ -199,6 +225,7 @@ bucket_start_expr AS (
     provider,
     created_at,
     duration_ms,
+    first_token_ms,
     $1::timestamptz + (FLOOR(EXTRACT(EPOCH FROM (created_at - $1::timestamptz)) / $3::int) * ($3::int * interval '1 second')) AS bucket_start
   FROM success_rows
   WHERE provider = ANY($4::text[])
@@ -210,7 +237,10 @@ bucketed_success AS (
     COUNT(*) AS success_count,
     percentile_cont(0.50) WITHIN GROUP (ORDER BY duration_ms) FILTER (WHERE duration_ms IS NOT NULL) AS p50_ms,
     percentile_cont(0.95) WITHIN GROUP (ORDER BY duration_ms) FILTER (WHERE duration_ms IS NOT NULL) AS p95_ms,
-    percentile_cont(0.99) WITHIN GROUP (ORDER BY duration_ms) FILTER (WHERE duration_ms IS NOT NULL) AS p99_ms
+    percentile_cont(0.99) WITHIN GROUP (ORDER BY duration_ms) FILTER (WHERE duration_ms IS NOT NULL) AS p99_ms,
+    AVG(duration_ms) FILTER (WHERE duration_ms IS NOT NULL) AS duration_avg_ms,
+    AVG(first_token_ms) FILTER (WHERE first_token_ms IS NOT NULL) AS ttft_avg_ms,
+    COUNT(first_token_ms) AS ttft_sample_count
   FROM bucket_start_expr
   GROUP BY provider, bucket_start
 ),
@@ -218,7 +248,9 @@ bucketed_error AS (
   SELECT
     provider,
     $1::timestamptz + (FLOOR(EXTRACT(EPOCH FROM (created_at - $1::timestamptz)) / $3::int) * ($3::int * interval '1 second')) AS bucket_start,
-    COUNT(*) AS failure_count
+    COUNT(*) AS failure_count,
+    COUNT(*) FILTER (WHERE status_code = 524) AS timeout_524_count,
+    AVG(duration_ms) FILTER (WHERE status_code = 524 AND duration_ms IS NOT NULL) AS timeout_524_avg_ms
   FROM error_rows
   WHERE provider = ANY($4::text[])
     AND status_code >= 400
@@ -233,12 +265,17 @@ bucket_stats AS (
     COALESCE(e.failure_count, 0) AS failure_count,
     s.p50_ms,
     s.p95_ms,
-    s.p99_ms
+    s.p99_ms,
+    s.duration_avg_ms,
+    s.ttft_avg_ms,
+    COALESCE(s.ttft_sample_count, 0) AS ttft_sample_count,
+    COALESCE(e.timeout_524_count, 0) AS timeout_524_count,
+    e.timeout_524_avg_ms
   FROM buckets b
   LEFT JOIN bucketed_success s ON s.provider = b.provider AND s.bucket_start = b.bucket_start
   LEFT JOIN bucketed_error e ON e.provider = b.provider AND e.bucket_start = b.bucket_start
 )
-SELECT provider, bucket_start, (success_count + failure_count) AS request_count, success_count, failure_count, p50_ms, p95_ms, p99_ms
+SELECT provider, bucket_start, (success_count + failure_count) AS request_count, success_count, failure_count, p50_ms, p95_ms, p99_ms, duration_avg_ms, ttft_avg_ms, ttft_sample_count, timeout_524_count, timeout_524_avg_ms
 FROM bucket_stats
 ORDER BY provider ASC, bucket_start ASC`
 
@@ -264,6 +301,7 @@ ORDER BY provider ASC, bucket_start ASC`
 
 func scanProviderStatusSummary(rows interface{ Scan(...any) error }) (*service.OpsProviderStatusSummaryItem, error) {
 	var p50, p95, p99 sql.NullFloat64
+	var durationAvg, durationMax, ttftAvg, ttftP95, timeout524Avg sql.NullFloat64
 	var lastSeen sql.NullTime
 	item := &service.OpsProviderStatusSummaryItem{}
 	if err := rows.Scan(
@@ -275,6 +313,13 @@ func scanProviderStatusSummary(rows interface{ Scan(...any) error }) (*service.O
 		&p50,
 		&p95,
 		&p99,
+		&durationAvg,
+		&durationMax,
+		&ttftAvg,
+		&ttftP95,
+		&item.TTFTSampleCount,
+		&item.Timeout524Count,
+		&timeout524Avg,
 		&lastSeen,
 	); err != nil {
 		return nil, err
@@ -282,6 +327,11 @@ func scanProviderStatusSummary(rows interface{ Scan(...any) error }) (*service.O
 	item.P50Ms = floatToIntPtr(p50)
 	item.P95Ms = floatToIntPtr(p95)
 	item.P99Ms = floatToIntPtr(p99)
+	item.DurationAvgMs = floatToIntPtr(durationAvg)
+	item.DurationMaxMs = floatToIntPtr(durationMax)
+	item.TTFTAvgMs = floatToIntPtr(ttftAvg)
+	item.TTFTP95Ms = floatToIntPtr(ttftP95)
+	item.Timeout524AvgMs = floatToIntPtr(timeout524Avg)
 	if lastSeen.Valid {
 		v := lastSeen.Time.UTC()
 		item.LastSeen = &v
@@ -294,6 +344,7 @@ func scanProviderStatusSummary(rows interface{ Scan(...any) error }) (*service.O
 
 func scanProviderStatusTimelinePoint(rows interface{ Scan(...any) error }) (*service.OpsProviderStatusTimelinePoint, error) {
 	var p50, p95, p99 sql.NullFloat64
+	var durationAvg, ttftAvg, timeout524Avg sql.NullFloat64
 	point := &service.OpsProviderStatusTimelinePoint{}
 	if err := rows.Scan(
 		&point.Provider,
@@ -304,6 +355,11 @@ func scanProviderStatusTimelinePoint(rows interface{ Scan(...any) error }) (*ser
 		&p50,
 		&p95,
 		&p99,
+		&durationAvg,
+		&ttftAvg,
+		&point.TTFTSampleCount,
+		&point.Timeout524Count,
+		&timeout524Avg,
 	); err != nil {
 		return nil, err
 	}
@@ -311,6 +367,9 @@ func scanProviderStatusTimelinePoint(rows interface{ Scan(...any) error }) (*ser
 	point.P50Ms = floatToIntPtr(p50)
 	point.P95Ms = floatToIntPtr(p95)
 	point.P99Ms = floatToIntPtr(p99)
+	point.DurationAvgMs = floatToIntPtr(durationAvg)
+	point.TTFTAvgMs = floatToIntPtr(ttftAvg)
+	point.Timeout524AvgMs = floatToIntPtr(timeout524Avg)
 	denom := point.SuccessCount + point.FailureCount
 	point.Availability = roundTo4DP(safeDivideFloat64(float64(point.SuccessCount), float64(denom)) * 100)
 	return point, nil

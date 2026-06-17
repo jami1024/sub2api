@@ -20,6 +20,9 @@
             <th class="px-4 py-3 text-right">P50</th>
             <th class="px-4 py-3 text-right">P95</th>
             <th class="px-4 py-3 text-right">P99</th>
+            <th class="px-4 py-3 text-right">总耗时</th>
+            <th class="px-4 py-3 text-right">首响应</th>
+            <th class="px-4 py-3 text-right">524</th>
             <th class="px-4 py-3 text-left">{{ t('admin.providerStatus.timeline') }}</th>
             <th class="px-4 py-3 text-right">{{ t('admin.providerStatus.lastSeen') }}</th>
           </tr>
@@ -33,6 +36,19 @@
             <td class="px-4 py-3 text-right text-gray-700 dark:text-gray-300">{{ formatMs(item.p50_ms) }}</td>
             <td class="px-4 py-3 text-right text-gray-700 dark:text-gray-300">{{ formatMs(item.p95_ms) }}</td>
             <td class="px-4 py-3 text-right text-gray-700 dark:text-gray-300">{{ formatMs(item.p99_ms) }}</td>
+            <td class="px-4 py-3 text-right text-xs text-gray-700 dark:text-gray-300">
+              <div>平均 {{ formatMs(item.duration_avg_ms) }}</div>
+              <div class="text-gray-500 dark:text-gray-400">最大 {{ formatMs(item.duration_max_ms) }}</div>
+            </td>
+            <td class="px-4 py-3 text-right text-xs text-gray-700 dark:text-gray-300">
+              <div>平均 {{ formatMs(item.ttft_avg_ms) }}</div>
+              <div class="text-gray-500 dark:text-gray-400">P95 {{ formatMs(item.ttft_p95_ms) }}</div>
+              <div class="text-gray-400 dark:text-gray-500">样本 {{ formatNumber(item.ttft_sample_count || 0) }}</div>
+            </td>
+            <td class="px-4 py-3 text-right text-xs text-gray-700 dark:text-gray-300">
+              <div>{{ formatNumber(item.timeout_524_count || 0) }} 次</div>
+              <div class="text-gray-500 dark:text-gray-400">平均 {{ formatMs(item.timeout_524_avg_ms) }}</div>
+            </td>
             <td class="px-4 py-3">
               <div class="flex min-w-[160px] gap-1">
                 <span
@@ -56,6 +72,9 @@
                 <div>{{ formatNumber(hoveredTimeline.point.request_count) }} 个请求</div>
                 <div>可用性 {{ formatPercent(hoveredTimeline.point.availability) }}</div>
                 <div>延迟: {{ formatMs(hoveredTimeline.point.p50_ms) }}</div>
+                <div>总耗时均值: {{ formatMs(hoveredTimeline.point.duration_avg_ms) }}</div>
+                <div>首响应均值: {{ formatMs(hoveredTimeline.point.ttft_avg_ms) }} / 样本 {{ formatNumber(hoveredTimeline.point.ttft_sample_count || 0) }}</div>
+                <div>524: {{ formatNumber(hoveredTimeline.point.timeout_524_count || 0) }} 次 / 平均 {{ formatMs(hoveredTimeline.point.timeout_524_avg_ms) }}</div>
                 <div class="flex gap-2">
                   <span class="text-emerald-400">OK: {{ formatNumber(hoveredTimeline.point.success_count) }}</span>
                   <span class="text-rose-400">ERR: {{ formatNumber(hoveredTimeline.point.failure_count) }}</span>
@@ -153,6 +172,11 @@ function compactTimeline(points: OpsProviderStatusTimelinePoint[]): OpsProviderS
       p50_ms: firstDefinedNumber(slice.map(point => point.p50_ms)),
       p95_ms: firstDefinedNumber(slice.map(point => point.p95_ms)),
       p99_ms: firstDefinedNumber(slice.map(point => point.p99_ms)),
+      duration_avg_ms: weightedAverageMs(slice, 'duration_avg_ms', 'request_count'),
+      ttft_avg_ms: weightedAverageMs(slice, 'ttft_avg_ms', 'ttft_sample_count'),
+      ttft_sample_count: slice.reduce((sum, p) => sum + (p.ttft_sample_count || 0), 0),
+      timeout_524_count: slice.reduce((sum, p) => sum + (p.timeout_524_count || 0), 0),
+      timeout_524_avg_ms: weightedAverageMs(slice, 'timeout_524_avg_ms', 'timeout_524_count'),
     })
   }
   return out
@@ -167,7 +191,7 @@ function timelineClass(point: OpsProviderStatusTimelinePoint): string {
 }
 
 function timelineTitle(point: OpsProviderStatusTimelinePoint): string {
-  return `${formatTimelineTime(point.bucket_start)} · ${point.request_count} 个请求 · 可用性 ${formatPercent(point.availability)} · 延迟: ${formatMs(point.p50_ms)} · OK: ${point.success_count} · ERR: ${point.failure_count}`
+  return `${formatTimelineTime(point.bucket_start)} · ${point.request_count} 个请求 · 可用性 ${formatPercent(point.availability)} · 延迟: ${formatMs(point.p50_ms)} · 总耗时: ${formatMs(point.duration_avg_ms)} · 首响应: ${formatMs(point.ttft_avg_ms)} · 524: ${point.timeout_524_count || 0} 次 · OK: ${point.success_count} · ERR: ${point.failure_count}`
 }
 
 function showTimelineTooltip(event: MouseEvent, provider: string, index: number, point: OpsProviderStatusTimelinePoint) {
@@ -191,6 +215,20 @@ function moveTimelineTooltip(event: MouseEvent) {
 
 function hideTimelineTooltip() {
   hoveredTimeline.value = null
+}
+
+function weightedAverageMs(points: OpsProviderStatusTimelinePoint[], valueKey: 'duration_avg_ms' | 'ttft_avg_ms' | 'timeout_524_avg_ms', weightKey: 'request_count' | 'ttft_sample_count' | 'timeout_524_count'): number | null {
+  let weighted = 0
+  let weightSum = 0
+  for (const point of points) {
+    const value = point[valueKey]
+    const weight = point[weightKey] || 0
+    if (typeof value === 'number' && Number.isFinite(value) && weight > 0) {
+      weighted += value * weight
+      weightSum += weight
+    }
+  }
+  return weightSum > 0 ? Math.round(weighted / weightSum) : null
 }
 
 function firstDefinedNumber(values: Array<number | null | undefined>): number | null {

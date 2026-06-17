@@ -256,6 +256,11 @@ export interface OpsProviderStatusTimelinePoint {
   p50_ms?: number | null
   p95_ms?: number | null
   p99_ms?: number | null
+  duration_avg_ms?: number | null
+  ttft_avg_ms?: number | null
+  ttft_sample_count?: number
+  timeout_524_count?: number
+  timeout_524_avg_ms?: number | null
 }
 
 export interface OpsProviderStatusItem {
@@ -269,6 +274,13 @@ export interface OpsProviderStatusItem {
   p50_ms?: number | null
   p95_ms?: number | null
   p99_ms?: number | null
+  duration_avg_ms?: number | null
+  duration_max_ms?: number | null
+  ttft_avg_ms?: number | null
+  ttft_p95_ms?: number | null
+  ttft_sample_count?: number
+  timeout_524_count?: number
+  timeout_524_avg_ms?: number | null
   last_seen?: string | null
   timeline?: OpsProviderStatusTimelinePoint[]
 }

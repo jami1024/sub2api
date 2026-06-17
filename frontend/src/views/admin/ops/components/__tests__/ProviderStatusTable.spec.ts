@@ -23,6 +23,13 @@ const item = {
   p50_ms: 8_080,
   p95_ms: 188_185,
   p99_ms: 325_089,
+  duration_avg_ms: 42_000,
+  duration_max_ms: 101_000,
+  ttft_avg_ms: 2_400,
+  ttft_p95_ms: 8_800,
+  ttft_sample_count: 9,
+  timeout_524_count: 2,
+  timeout_524_avg_ms: 91_000,
   last_seen: '2026-06-16T06:38:45Z',
   timeline: [
     {
@@ -34,6 +41,11 @@ const item = {
       p50_ms: 8_080,
       p95_ms: 188_185,
       p99_ms: 325_089,
+      duration_avg_ms: 42_000,
+      ttft_avg_ms: 2_400,
+      ttft_sample_count: 9,
+      timeout_524_count: 2,
+      timeout_524_avg_ms: 91_000,
     },
   ],
 }
@@ -51,6 +63,26 @@ describe('ProviderStatusTable', () => {
     expect(wrapper.text()).toContain('3.14m')
     expect(wrapper.text()).toContain('5.42m')
     expect(wrapper.text()).not.toContain('8080ms')
+  })
+
+  it('显示首响应、总耗时和 524 超时统计', () => {
+    const wrapper = mount(ProviderStatusTable, {
+      props: {
+        loading: false,
+        items: [item],
+      },
+    })
+
+    expect(wrapper.text()).toContain('总耗时')
+    expect(wrapper.text()).toContain('平均 42s')
+    expect(wrapper.text()).toContain('最大 1.68m')
+    expect(wrapper.text()).toContain('首响应')
+    expect(wrapper.text()).toContain('平均 2.4s')
+    expect(wrapper.text()).toContain('P95 8.8s')
+    expect(wrapper.text()).toContain('样本 9')
+    expect(wrapper.text()).toContain('524')
+    expect(wrapper.text()).toContain('2 次')
+    expect(wrapper.text()).toContain('平均 1.52m')
   })
 
   it('鼠标移动到时间线点时显示详细提示信息', async () => {
