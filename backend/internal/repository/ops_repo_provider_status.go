@@ -79,7 +79,9 @@ error_rows AS (
     oel.duration_ms,
     oel.time_to_first_token_ms,
     oel.is_business_limited,
-    COALESCE(oel.status_code, 0) AS status_code
+    COALESCE(oel.status_code, 0) AS status_code,
+    COALESCE(oel.upstream_status_code, 0) AS upstream_status_code,
+    (COALESCE(oel.status_code, 0) = 524 OR COALESCE(oel.upstream_status_code, 0) = 524) AS is_timeout_524
   FROM ops_error_logs oel
   LEFT JOIN groups g ON g.id = oel.group_id
   LEFT JOIN accounts a ON a.id = oel.account_id
@@ -129,8 +131,8 @@ stats AS (
     SELECT provider,
            COUNT(*) FILTER (WHERE status_code >= 400 AND NOT is_business_limited) AS failure_count,
            COUNT(*) FILTER (WHERE status_code >= 400 AND is_business_limited) AS business_limited_count,
-           COUNT(*) FILTER (WHERE status_code = 524) AS timeout_524_count,
-           AVG(duration_ms) FILTER (WHERE status_code = 524 AND duration_ms IS NOT NULL) AS timeout_524_avg_ms,
+           COUNT(*) FILTER (WHERE is_timeout_524) AS timeout_524_count,
+           AVG(duration_ms) FILTER (WHERE is_timeout_524 AND duration_ms IS NOT NULL) AS timeout_524_avg_ms,
            MAX(created_at) AS last_seen
     FROM error_rows
     WHERE status_code >= 400
@@ -212,6 +214,8 @@ error_rows AS (
     oel.duration_ms,
     oel.time_to_first_token_ms,
     COALESCE(oel.status_code, 0) AS status_code,
+    COALESCE(oel.upstream_status_code, 0) AS upstream_status_code,
+    (COALESCE(oel.status_code, 0) = 524 OR COALESCE(oel.upstream_status_code, 0) = 524) AS is_timeout_524,
     oel.is_business_limited
   FROM ops_error_logs oel
   LEFT JOIN groups g ON g.id = oel.group_id

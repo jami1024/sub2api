@@ -161,8 +161,9 @@ func TestQueryProviderStatusSummaryIncludesTimingDiagnostics(t *testing.T) {
 			"ul.first_token_ms",
 			"oel.duration_ms",
 			"oel.time_to_first_token_ms",
-			"COUNT(*) FILTER (WHERE status_code = 524)",
-			"AVG(duration_ms) FILTER (WHERE status_code = 524",
+			"oel.upstream_status_code",
+			"COUNT(*) FILTER (WHERE is_timeout_524)",
+			"AVG(duration_ms) FILTER (WHERE is_timeout_524",
 		} {
 			if !strings.Contains(actualSQL, want) {
 				t.Fatalf("provider status diagnostics query missing %q, sql=%s", want, actualSQL)
