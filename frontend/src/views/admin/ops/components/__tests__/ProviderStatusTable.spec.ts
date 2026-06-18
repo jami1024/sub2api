@@ -31,6 +31,15 @@ const item = {
   timeout_524_count: 2,
   timeout_524_avg_ms: 91_000,
   last_seen: '2026-06-16T06:38:45Z',
+  fingerprint: {
+    headers: {
+      server: 'cloudflare',
+      'cf-ray': 'abc-HKG',
+      via: '1.1 proxy',
+      'x-request-id': 'req_123',
+    },
+    last_seen: '2026-06-16T06:39:00Z',
+  },
   timeline: [
     {
       bucket_start: '2026-06-16T05:12:00Z',
@@ -83,6 +92,26 @@ describe('ProviderStatusTable', () => {
     expect(wrapper.text()).toContain('524')
     expect(wrapper.text()).toContain('2 次')
     expect(wrapper.text()).toContain('平均 1.52m')
+  })
+
+  it('在供应商状态表格展示上游指纹摘要', async () => {
+    const wrapper = mount(ProviderStatusTable, {
+      props: {
+        loading: false,
+        items: [item],
+      },
+    })
+
+    expect(wrapper.text()).toContain('admin.providerStatus.fingerprint')
+    expect(wrapper.text()).toContain('server: cloudflare')
+    expect(wrapper.text()).toContain('+2')
+
+    await wrapper.get('[data-testid="provider-fingerprint-toggle"]').trigger('click')
+
+    expect(wrapper.text()).toContain('via')
+    expect(wrapper.text()).toContain('1.1 proxy')
+    expect(wrapper.text()).toContain('x-request-id')
+    expect(wrapper.text()).toContain('req_123')
   })
 
   it('鼠标移动到时间线点时显示详细提示信息', async () => {

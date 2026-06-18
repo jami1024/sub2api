@@ -5029,6 +5029,9 @@ export default {
       requests: '请求数',
       availability: '可用率',
       errors: '异常数',
+      fingerprint: '上游指纹',
+      fingerprintSeenAt: '采集于',
+      noFingerprint: '暂无指纹',
       timeline: '时间线',
       lastSeen: '最近请求',
       ranges: {

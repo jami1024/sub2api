@@ -112,7 +112,13 @@ type OpsProviderStatusSummaryItem struct {
 	Timeout524Count      int64                             `json:"timeout_524_count"`
 	Timeout524AvgMs      *int                              `json:"timeout_524_avg_ms"`
 	LastSeen             *time.Time                        `json:"last_seen"`
+	Fingerprint          *OpsProviderStatusFingerprint     `json:"fingerprint,omitempty"`
 	Timeline             []*OpsProviderStatusTimelinePoint `json:"timeline,omitempty"`
+}
+
+type OpsProviderStatusFingerprint struct {
+	Headers  map[string]string `json:"headers,omitempty"`
+	LastSeen *time.Time        `json:"last_seen,omitempty"`
 }
 
 type OpsProviderStatusTimelinePoint struct {

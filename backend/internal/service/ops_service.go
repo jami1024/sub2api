@@ -308,18 +308,7 @@ func sanitizeOpsUpstreamErrors(entry *OpsInsertErrorLogInput) error {
 			out.Detail = ""
 		}
 		if out.Fingerprint != nil {
-			cleanHeaders := make(map[string]string, len(out.Fingerprint.Headers))
-			for k, v := range out.Fingerprint.Headers {
-				key := truncateString(strings.ToLower(strings.TrimSpace(k)), 64)
-				if !isOpsUpstreamFingerprintHeaderAllowed(key) {
-					continue
-				}
-				value := truncateString(strings.TrimSpace(v), 256)
-				value = opsHeaderSecretPattern.ReplaceAllString(value, "[redacted]")
-				if key != "" && value != "" {
-					cleanHeaders[key] = value
-				}
-			}
+			cleanHeaders := NormalizeOpsUpstreamFingerprintHeaders(out.Fingerprint.Headers)
 			if len(cleanHeaders) > 0 {
 				out.Fingerprint = &OpsUpstreamFingerprint{Headers: cleanHeaders}
 			} else {

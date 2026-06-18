@@ -4875,6 +4875,9 @@ export default {
       requests: 'Requests',
       availability: 'Availability',
       errors: 'Errors',
+      fingerprint: 'Upstream fingerprint',
+      fingerprintSeenAt: 'Captured at',
+      noFingerprint: 'No fingerprint',
       timeline: 'Timeline',
       lastSeen: 'Last request',
       ranges: {

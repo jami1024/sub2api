@@ -198,6 +198,28 @@ func isOpsUpstreamFingerprintHeaderAllowed(name string) bool {
 	return ok
 }
 
+func NormalizeOpsUpstreamFingerprintHeaders(headers map[string]string) map[string]string {
+	if len(headers) == 0 {
+		return nil
+	}
+	out := make(map[string]string, len(headers))
+	for key, rawValue := range headers {
+		name := truncateString(strings.ToLower(strings.TrimSpace(key)), 64)
+		if !isOpsUpstreamFingerprintHeaderAllowed(name) {
+			continue
+		}
+		value := truncateString(strings.TrimSpace(rawValue), 256)
+		value = opsHeaderSecretPattern.ReplaceAllString(value, "[redacted]")
+		if name != "" && value != "" {
+			out[name] = value
+		}
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
+}
+
 func buildOpsUpstreamFingerprint(headers http.Header) *OpsUpstreamFingerprint {
 	if len(headers) == 0 {
 		return nil

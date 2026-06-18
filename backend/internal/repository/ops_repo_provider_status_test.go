@@ -233,6 +233,91 @@ func TestQueryProviderStatusSummaryIncludesTimingDiagnostics(t *testing.T) {
 	}
 }
 
+func TestGetProviderStatusAttachesLatestFingerprints(t *testing.T) {
+	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherFunc(func(expectedSQL, actualSQL string) error {
+		if strings.Contains(actualSQL, "SELECT provider, headers_json") && !strings.Contains(actualSQL, "jsonb_array_elements") {
+			t.Fatalf("fingerprint query must expand upstream_errors events, sql=%s", actualSQL)
+		}
+		if strings.Contains(actualSQL, "SELECT provider, headers_json") && !strings.Contains(actualSQL, "ev->'fingerprint'->'headers'") {
+			t.Fatalf("fingerprint query must read event fingerprint headers, sql=%s", actualSQL)
+		}
+		return nil
+	})))
+	if err != nil {
+		t.Fatalf("sqlmock.New returned error: %v", err)
+	}
+	defer func() { _ = db.Close() }()
+
+	repo := &opsRepository{db: db}
+	start := time.Date(2026, 6, 16, 0, 0, 0, 0, time.UTC)
+	end := start.Add(time.Hour)
+	mock.ExpectQuery("provider summary").
+		WillReturnRows(sqlmock.NewRows([]string{
+			"provider",
+			"request_count",
+			"success_count",
+			"failure_count",
+			"business_limited_count",
+			"p50_ms",
+			"p95_ms",
+			"p99_ms",
+			"duration_avg_ms",
+			"duration_max_ms",
+			"ttft_avg_ms",
+			"ttft_p95_ms",
+			"ttft_sample_count",
+			"timeout_524_count",
+			"timeout_524_avg_ms",
+			"last_seen",
+		}).AddRow("xixi", int64(2), int64(1), int64(1), int64(0), float64(120), float64(300), float64(500), float64(250), float64(500), float64(180), float64(300), int64(1), int64(1), float64(90000), end))
+	mock.ExpectQuery("provider timeline").
+		WillReturnRows(sqlmock.NewRows([]string{
+			"provider",
+			"bucket_start",
+			"request_count",
+			"success_count",
+			"failure_count",
+			"p50_ms",
+			"p95_ms",
+			"p99_ms",
+			"duration_avg_ms",
+			"ttft_avg_ms",
+			"ttft_sample_count",
+			"timeout_524_count",
+			"timeout_524_avg_ms",
+		}).AddRow("xixi", start, int64(2), int64(1), int64(1), float64(120), float64(300), float64(500), float64(250), float64(180), int64(1), int64(1), float64(90000)))
+	mock.ExpectQuery("provider fingerprints").
+		WillReturnRows(sqlmock.NewRows([]string{
+			"provider",
+			"headers_json",
+			"last_seen",
+		}).AddRow("xixi", `{"server":"cloudflare","cf-ray":"abc-HKG","authorization":"Bearer should-not-exist"}`, end))
+
+	resp, err := repo.GetProviderStatus(context.Background(), &service.OpsProviderStatusFilter{StartTime: start, EndTime: end, BucketSeconds: 300, Limit: 50})
+	if err != nil {
+		t.Fatalf("GetProviderStatus returned error: %v", err)
+	}
+	if len(resp.Items) != 1 {
+		t.Fatalf("items len = %d, want 1", len(resp.Items))
+	}
+	fp := resp.Items[0].Fingerprint
+	if fp == nil {
+		t.Fatal("expected provider fingerprint")
+	}
+	if fp.Headers["server"] != "cloudflare" || fp.Headers["cf-ray"] != "abc-HKG" {
+		t.Fatalf("fingerprint headers = %#v", fp.Headers)
+	}
+	if _, ok := fp.Headers["authorization"]; ok {
+		t.Fatalf("sensitive header leaked: %#v", fp.Headers)
+	}
+	if fp.LastSeen == nil || !fp.LastSeen.Equal(end) {
+		t.Fatalf("fingerprint last_seen = %#v, want %s", fp.LastSeen, end)
+	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Fatalf("unmet sql expectations: %v", err)
+	}
+}
+
 func TestScanProviderStatusSummaryCalculatesAvailability(t *testing.T) {
 	now := time.Date(2026, 6, 16, 12, 0, 0, 0, time.UTC)
 	scanner := &mockSummaryScanner{values: []any{

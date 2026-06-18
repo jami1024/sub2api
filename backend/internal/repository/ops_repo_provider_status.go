@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -49,6 +50,11 @@ func (r *opsRepository) GetProviderStatus(ctx context.Context, filter *service.O
 		return nil, err
 	}
 	attachProviderTimeline(items, timeline)
+	fingerprints, err := r.queryProviderStatusFingerprints(ctx, start, end, providerNames(items))
+	if err != nil {
+		return nil, err
+	}
+	attachProviderFingerprints(items, fingerprints)
 
 	return &service.OpsProviderStatusResponse{
 		StartTime:     start,
@@ -57,6 +63,70 @@ func (r *opsRepository) GetProviderStatus(ctx context.Context, filter *service.O
 		Items:         items,
 		Timeline:      timeline,
 	}, nil
+}
+
+func (r *opsRepository) queryProviderStatusFingerprints(ctx context.Context, start, end time.Time, providers []string) (map[string]*service.OpsProviderStatusFingerprint, error) {
+	if len(providers) == 0 {
+		return map[string]*service.OpsProviderStatusFingerprint{}, nil
+	}
+	const q = `
+WITH error_events AS (
+  SELECT
+    COALESCE(NULLIF(a.name, ''), NULLIF(a.platform, ''), NULLIF(g.platform, ''), 'unknown') AS provider,
+    oel.created_at,
+    ev->'fingerprint'->'headers' AS headers_json
+  FROM ops_error_logs oel
+  LEFT JOIN groups g ON g.id = oel.group_id
+  LEFT JOIN accounts a ON a.id = oel.account_id
+  CROSS JOIN LATERAL jsonb_array_elements(
+    COALESCE(NULLIF(oel.upstream_errors, 'null'::jsonb), '[]'::jsonb)
+  ) AS ev
+  WHERE oel.created_at >= $1 AND oel.created_at < $2
+    AND oel.account_id IS NOT NULL
+    AND oel.is_count_tokens = FALSE
+    AND COALESCE(oel.status_code, 0) >= 400
+    AND COALESCE(NULLIF(a.name, ''), NULLIF(a.platform, ''), NULLIF(g.platform, ''), 'unknown') = ANY($3::text[])
+    AND jsonb_typeof(ev->'fingerprint'->'headers') = 'object'
+)
+SELECT DISTINCT ON (provider)
+       provider,
+       headers_json::text AS headers_json,
+       created_at AS last_seen
+FROM error_events
+ORDER BY provider ASC, created_at DESC`
+
+	rows, err := r.db.QueryContext(ctx, q, start, end, pq.Array(providers))
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+
+	out := make(map[string]*service.OpsProviderStatusFingerprint)
+	for rows.Next() {
+		var provider string
+		var rawHeaders string
+		var lastSeen time.Time
+		if err := rows.Scan(&provider, &rawHeaders, &lastSeen); err != nil {
+			return nil, err
+		}
+		var parsed map[string]string
+		if err := json.Unmarshal([]byte(rawHeaders), &parsed); err != nil {
+			continue
+		}
+		headers := service.NormalizeOpsUpstreamFingerprintHeaders(parsed)
+		if len(headers) == 0 {
+			continue
+		}
+		last := lastSeen.UTC()
+		out[provider] = &service.OpsProviderStatusFingerprint{
+			Headers:  headers,
+			LastSeen: &last,
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func (r *opsRepository) queryProviderStatusSummary(ctx context.Context, start, end time.Time, limit int) ([]*service.OpsProviderStatusSummaryItem, error) {
@@ -402,5 +472,17 @@ func attachProviderTimeline(items []*service.OpsProviderStatusSummaryItem, point
 			continue
 		}
 		item.Timeline = byProvider[item.Provider]
+	}
+}
+
+func attachProviderFingerprints(items []*service.OpsProviderStatusSummaryItem, fingerprints map[string]*service.OpsProviderStatusFingerprint) {
+	if len(fingerprints) == 0 {
+		return
+	}
+	for _, item := range items {
+		if item == nil {
+			continue
+		}
+		item.Fingerprint = fingerprints[item.Provider]
 	}
 }

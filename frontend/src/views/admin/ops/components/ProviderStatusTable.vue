@@ -23,6 +23,7 @@
             <th class="px-4 py-3 text-right">总耗时</th>
             <th class="px-4 py-3 text-right">首响应</th>
             <th class="px-4 py-3 text-right">524</th>
+            <th class="px-4 py-3 text-left">{{ t('admin.providerStatus.fingerprint') }}</th>
             <th class="px-4 py-3 text-left">{{ t('admin.providerStatus.timeline') }}</th>
             <th class="px-4 py-3 text-right">{{ t('admin.providerStatus.lastSeen') }}</th>
           </tr>
@@ -48,6 +49,41 @@
             <td class="px-4 py-3 text-right text-xs text-gray-700 dark:text-gray-300">
               <div>{{ formatNumber(item.timeout_524_count || 0) }} 次</div>
               <div class="text-gray-500 dark:text-gray-400">平均 {{ formatMs(item.timeout_524_avg_ms) }}</div>
+            </td>
+            <td class="px-4 py-3 align-top text-xs">
+              <div v-if="fingerprintEntries(item).length" class="min-w-[180px] space-y-1">
+                <div
+                  v-for="[key, value] in fingerprintPreviewEntries(item)"
+                  :key="key"
+                  class="max-w-[260px] truncate font-mono text-gray-700 dark:text-gray-200"
+                  :title="`${key}: ${value}`"
+                >
+                  <span class="text-gray-400">{{ key }}:</span> {{ value }}
+                </div>
+                <button
+                  v-if="fingerprintEntries(item).length > 2"
+                  type="button"
+                  data-testid="provider-fingerprint-toggle"
+                  class="mt-1 rounded-md bg-gray-100 px-2 py-1 text-[11px] font-semibold text-gray-600 hover:bg-gray-200 dark:bg-dark-700 dark:text-gray-200 dark:hover:bg-dark-600"
+                  @click="toggleFingerprint(item.provider)"
+                >
+                  {{ expandedFingerprintProvider === item.provider ? t('common.collapse') || '收起' : `+${fingerprintEntries(item).length - 2}` }}
+                </button>
+                <div v-if="expandedFingerprintProvider === item.provider" class="mt-2 rounded-lg bg-gray-50 p-2 dark:bg-dark-900">
+                  <div
+                    v-for="[key, value] in fingerprintEntries(item)"
+                    :key="`full-${key}`"
+                    class="grid grid-cols-[96px_1fr] gap-2 py-0.5 font-mono"
+                  >
+                    <span class="truncate text-gray-400">{{ key }}</span>
+                    <span class="break-all text-gray-700 dark:text-gray-200">{{ value }}</span>
+                  </div>
+                  <div v-if="item.fingerprint?.last_seen" class="mt-1 text-gray-400">
+                    {{ t('admin.providerStatus.fingerprintSeenAt') }} {{ formatDate(item.fingerprint.last_seen) }}
+                  </div>
+                </div>
+              </div>
+              <span v-else class="text-gray-400">{{ t('admin.providerStatus.noFingerprint') }}</span>
             </td>
             <td class="px-4 py-3">
               <div class="flex min-w-[160px] gap-1">
@@ -107,6 +143,7 @@ const hoveredTimeline = ref<{
   x: number
   y: number
 } | null>(null)
+const expandedFingerprintProvider = ref<string | null>(null)
 
 const tooltipStyle = computed(() => {
   if (!hoveredTimeline.value) return {}
@@ -215,6 +252,27 @@ function moveTimelineTooltip(event: MouseEvent) {
 
 function hideTimelineTooltip() {
   hoveredTimeline.value = null
+}
+
+function fingerprintEntries(item: OpsProviderStatusItem): Array<[string, string]> {
+  const headers = item.fingerprint?.headers || {}
+  return Object.entries(headers)
+    .filter(([, value]) => String(value || '').trim() !== '')
+    .sort(([a], [b]) => fingerprintHeaderPriority(a) - fingerprintHeaderPriority(b) || a.localeCompare(b))
+}
+
+function fingerprintPreviewEntries(item: OpsProviderStatusItem): Array<[string, string]> {
+  return fingerprintEntries(item).slice(0, 2)
+}
+
+function fingerprintHeaderPriority(header: string): number {
+  const order = ['server', 'via', 'cf-ray', 'cf-cache-status', 'x-request-id', 'openai-processing-ms']
+  const idx = order.indexOf(header)
+  return idx >= 0 ? idx : order.length
+}
+
+function toggleFingerprint(provider: string) {
+  expandedFingerprintProvider.value = expandedFingerprintProvider.value === provider ? null : provider
 }
 
 function weightedAverageMs(points: OpsProviderStatusTimelinePoint[], valueKey: 'duration_avg_ms' | 'ttft_avg_ms' | 'timeout_524_avg_ms', weightKey: 'request_count' | 'ttft_sample_count' | 'timeout_524_count'): number | null {

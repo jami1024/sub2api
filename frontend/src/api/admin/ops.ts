@@ -287,6 +287,10 @@ export interface OpsProviderStatusItem {
   timeout_524_count?: number
   timeout_524_avg_ms?: number | null
   last_seen?: string | null
+  fingerprint?: {
+    headers?: Record<string, string>
+    last_seen?: string | null
+  }
   timeline?: OpsProviderStatusTimelinePoint[]
 }
 
