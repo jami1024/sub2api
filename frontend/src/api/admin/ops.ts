@@ -20,6 +20,11 @@ export type OpsUpstreamErrorEvent = {
   account_name?: string
   upstream_status_code?: number
   upstream_request_id?: string
+  upstream_url?: string
+  upstream_response_body?: string
+  fingerprint?: {
+    headers?: Record<string, string>
+  }
   kind?: string
   message?: string
   detail?: string

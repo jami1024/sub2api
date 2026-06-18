@@ -307,9 +307,28 @@ func sanitizeOpsUpstreamErrors(entry *OpsInsertErrorLogInput) error {
 		} else {
 			out.Detail = ""
 		}
+		if out.Fingerprint != nil {
+			cleanHeaders := make(map[string]string, len(out.Fingerprint.Headers))
+			for k, v := range out.Fingerprint.Headers {
+				key := truncateString(strings.ToLower(strings.TrimSpace(k)), 64)
+				if !isOpsUpstreamFingerprintHeaderAllowed(key) {
+					continue
+				}
+				value := truncateString(strings.TrimSpace(v), 256)
+				value = opsHeaderSecretPattern.ReplaceAllString(value, "[redacted]")
+				if key != "" && value != "" {
+					cleanHeaders[key] = value
+				}
+			}
+			if len(cleanHeaders) > 0 {
+				out.Fingerprint = &OpsUpstreamFingerprint{Headers: cleanHeaders}
+			} else {
+				out.Fingerprint = nil
+			}
+		}
 
 		// Drop fully-empty events (can happen if only status code was known).
-		if out.UpstreamStatusCode == 0 && out.Message == "" && out.Detail == "" {
+		if out.UpstreamStatusCode == 0 && out.Message == "" && out.Detail == "" && out.Fingerprint == nil {
 			continue
 		}
 

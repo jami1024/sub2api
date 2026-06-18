@@ -5356,6 +5356,8 @@ export default {
           expand: '响应内容（点击展开）',
           collapse: '响应内容（点击收起）'
         },
+        upstreamFingerprint: '上游指纹',
+        upstreamFingerprintHint: '仅展示脱敏后的响应头白名单，用于判断中转层级和网关特征。',
         loading: '加载中…',
         requestId: '请求 ID',
         time: '时间',

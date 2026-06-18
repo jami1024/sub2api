@@ -2,6 +2,8 @@ package service
 
 import (
 	"encoding/json"
+	"net/http"
+	"regexp"
 	"strings"
 	"time"
 
@@ -134,11 +136,92 @@ type OpsUpstreamErrorEvent struct {
 	// Best-effort upstream response capture (sanitized+trimmed).
 	UpstreamResponseBody string `json:"upstream_response_body,omitempty"`
 
+	// Fingerprint stores a small, sanitized allowlist of upstream response headers.
+	// It helps identify whether an upstream is another gateway/proxy without
+	// storing credentials, cookies, or arbitrary headers.
+	Fingerprint *OpsUpstreamFingerprint `json:"fingerprint,omitempty"`
+
 	// Kind: http_error | request_error | retry_exhausted | failover
 	Kind string `json:"kind,omitempty"`
 
 	Message string `json:"message,omitempty"`
 	Detail  string `json:"detail,omitempty"`
+}
+
+type OpsUpstreamFingerprint struct {
+	Headers map[string]string `json:"headers,omitempty"`
+}
+
+func (ev *OpsUpstreamErrorEvent) AttachResponseHeaders(headers http.Header) {
+	if ev == nil {
+		return
+	}
+	ev.Fingerprint = buildOpsUpstreamFingerprint(headers)
+}
+
+func newOpsUpstreamErrorEventFromResponse(resp *http.Response, base OpsUpstreamErrorEvent) OpsUpstreamErrorEvent {
+	if resp != nil {
+		if base.UpstreamStatusCode <= 0 {
+			base.UpstreamStatusCode = resp.StatusCode
+		}
+		if strings.TrimSpace(base.UpstreamRequestID) == "" {
+			base.UpstreamRequestID = resp.Header.Get("x-request-id")
+		}
+		base.AttachResponseHeaders(resp.Header)
+	}
+	return base
+}
+
+var opsHeaderSecretPattern = regexp.MustCompile(`(?i)(sk-[a-z0-9_-]{8,}|bearer\s+[a-z0-9._~+/=-]{12,}|key-[a-z0-9_-]{8,})`)
+
+var opsUpstreamFingerprintAllowedHeaders = map[string]struct{}{
+	"server":                         {},
+	"via":                            {},
+	"cf-ray":                         {},
+	"cf-cache-status":                {},
+	"x-request-id":                   {},
+	"x-correlation-id":               {},
+	"x-amzn-requestid":               {},
+	"x-amzn-trace-id":                {},
+	"openai-processing-ms":           {},
+	"openai-organization":            {},
+	"x-ratelimit-limit-requests":     {},
+	"x-ratelimit-remaining-requests": {},
+	"x-ratelimit-reset-requests":     {},
+	"x-ratelimit-limit-tokens":       {},
+	"x-ratelimit-remaining-tokens":   {},
+	"x-ratelimit-reset-tokens":       {},
+}
+
+func isOpsUpstreamFingerprintHeaderAllowed(name string) bool {
+	_, ok := opsUpstreamFingerprintAllowedHeaders[strings.ToLower(strings.TrimSpace(name))]
+	return ok
+}
+
+func buildOpsUpstreamFingerprint(headers http.Header) *OpsUpstreamFingerprint {
+	if len(headers) == 0 {
+		return nil
+	}
+	out := make(map[string]string)
+	for key, values := range headers {
+		name := strings.ToLower(strings.TrimSpace(key))
+		if !isOpsUpstreamFingerprintHeaderAllowed(name) {
+			continue
+		}
+		value := strings.TrimSpace(strings.Join(values, ", "))
+		if value == "" {
+			continue
+		}
+		value = opsHeaderSecretPattern.ReplaceAllString(value, "[redacted]")
+		value = truncateString(value, 256)
+		if value != "" {
+			out[name] = value
+		}
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return &OpsUpstreamFingerprint{Headers: out}
 }
 
 func appendOpsUpstreamError(c *gin.Context, ev OpsUpstreamErrorEvent) {

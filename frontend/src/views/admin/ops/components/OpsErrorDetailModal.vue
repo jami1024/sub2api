@@ -139,6 +139,33 @@
         <pre class="mt-4 max-h-[520px] overflow-auto rounded-xl border border-gray-200 bg-white p-4 text-xs text-gray-800 dark:border-dark-700 dark:bg-dark-800 dark:text-gray-100"><code>{{ prettyJSON(primaryResponseBody || '') }}</code></pre>
       </div>
 
+      <div v-if="upstreamFingerprintEvents.length" class="rounded-xl bg-gray-50 p-6 dark:bg-dark-900">
+        <h3 class="text-sm font-black uppercase tracking-wider text-gray-900 dark:text-white">{{ t('admin.ops.errorDetail.upstreamFingerprint') }}</h3>
+        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ t('admin.ops.errorDetail.upstreamFingerprintHint') }}</p>
+        <div class="mt-4 space-y-3">
+          <div
+            v-for="(ev, idx) in upstreamFingerprintEvents"
+            :key="`${idx}-${ev.upstream_request_id || ev.at_unix_ms || idx}`"
+            class="rounded-xl border border-gray-200 bg-white p-4 dark:border-dark-700 dark:bg-dark-800"
+          >
+            <div class="flex flex-wrap items-center justify-between gap-2 text-xs">
+              <div class="font-black text-gray-900 dark:text-white">
+                #{{ idx + 1 }}
+                <span v-if="ev.kind" class="ml-2 rounded-md bg-gray-100 px-2 py-0.5 font-mono text-[10px] font-bold text-gray-700 dark:bg-dark-700 dark:text-gray-200">{{ ev.kind }}</span>
+              </div>
+              <div class="font-mono text-gray-500 dark:text-gray-400">{{ ev.upstream_status_code || '—' }}</div>
+            </div>
+            <div v-if="ev.upstream_url" class="mt-3 break-all font-mono text-xs text-gray-600 dark:text-gray-300">{{ ev.upstream_url }}</div>
+            <div class="mt-3 grid grid-cols-1 gap-2 text-xs sm:grid-cols-2 lg:grid-cols-3">
+              <div v-for="[key, value] in fingerprintHeaderEntries(ev)" :key="key" class="rounded-lg bg-gray-50 px-3 py-2 dark:bg-dark-900">
+                <div class="font-mono text-[10px] uppercase tracking-wide text-gray-400">{{ key }}</div>
+                <div class="mt-1 break-all font-mono text-gray-800 dark:text-gray-100">{{ value }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Upstream errors list (only for request errors) -->
       <div v-if="showUpstreamList" class="rounded-xl bg-gray-50 p-6 dark:bg-dark-900">
         <div class="flex flex-wrap items-center justify-between gap-2">
@@ -218,7 +245,7 @@ import { useI18n } from 'vue-i18n'
 import BaseDialog from '@/components/common/BaseDialog.vue'
 import Icon from '@/components/icons/Icon.vue'
 import { useAppStore } from '@/stores'
-import { opsAPI, type OpsErrorDetail } from '@/api/admin/ops'
+import { opsAPI, type OpsErrorDetail, type OpsUpstreamErrorEvent } from '@/api/admin/ops'
 import { formatDateTime } from '@/utils/format'
 import { resolvePrimaryResponseBody, resolveUpstreamPayload } from '../utils/errorDetailResponse'
 
@@ -249,7 +276,22 @@ const primaryResponseBody = computed(() => {
   return resolvePrimaryResponseBody(detail.value, props.errorType)
 })
 
+const upstreamFingerprintEvents = computed<OpsUpstreamErrorEvent[]>(() => {
+  const raw = String(detail.value?.upstream_errors || '').trim()
+  if (!raw) return []
+  try {
+    const parsed = JSON.parse(raw)
+    if (!Array.isArray(parsed)) return []
+    return parsed.filter((ev) => ev?.fingerprint?.headers && Object.keys(ev.fingerprint.headers).length > 0)
+  } catch {
+    return []
+  }
+})
 
+function fingerprintHeaderEntries(ev: OpsUpstreamErrorEvent): Array<[string, string]> {
+  const headers = ev.fingerprint?.headers || {}
+  return Object.entries(headers).sort(([a], [b]) => a.localeCompare(b))
+}
 
 
 const title = computed(() => {
