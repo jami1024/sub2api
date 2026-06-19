@@ -33,6 +33,9 @@ type OpsRepository interface {
 	GetOpenAITokenStats(ctx context.Context, filter *OpsOpenAITokenStatsFilter) (*OpsOpenAITokenStatsResponse, error)
 	GetProviderStatus(ctx context.Context, filter *OpsProviderStatusFilter) (*OpsProviderStatusResponse, error)
 	GetClientFailureStats(ctx context.Context, filter *OpsClientFailureStatsFilter) (*OpsClientFailureStatsResponse, error)
+	InsertUpstreamMultiplierSample(ctx context.Context, input *OpsUpstreamMultiplierSample) (*OpsUpstreamMultiplierSample, error)
+	ListUpstreamMultiplierSamples(ctx context.Context, filter *OpsUpstreamMultiplierSamplesFilter) ([]*OpsUpstreamMultiplierSample, error)
+	GetLatestUpstreamMultiplierSamples(ctx context.Context, model string, accountIDs []int64) (map[int64]*OpsUpstreamMultiplierSample, error)
 
 	InsertSystemMetrics(ctx context.Context, input *OpsInsertSystemMetricsInput) error
 	GetLatestSystemMetrics(ctx context.Context, windowMinutes int) (*OpsSystemMetricsSnapshot, error)

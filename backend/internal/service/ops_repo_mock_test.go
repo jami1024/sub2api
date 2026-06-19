@@ -7,14 +7,17 @@ import (
 
 // opsRepoMock is a test-only OpsRepository implementation with optional function hooks.
 type opsRepoMock struct {
-	InsertErrorLogFn              func(ctx context.Context, input *OpsInsertErrorLogInput) (int64, error)
-	BatchInsertErrorLogsFn        func(ctx context.Context, inputs []*OpsInsertErrorLogInput) (int64, error)
-	BatchInsertSystemLogsFn       func(ctx context.Context, inputs []*OpsInsertSystemLogInput) (int64, error)
-	ListSystemLogsFn              func(ctx context.Context, filter *OpsSystemLogFilter) (*OpsSystemLogList, error)
-	DeleteSystemLogsFn            func(ctx context.Context, filter *OpsSystemLogCleanupFilter) (int64, error)
-	InsertSystemLogCleanupAuditFn func(ctx context.Context, input *OpsSystemLogCleanupAudit) error
-	LookupDeletedKeyAuditFn       func(ctx context.Context, key string) (*DeletedKeyAuditResult, error)
-	GetClientFailureStatsFn       func(ctx context.Context, filter *OpsClientFailureStatsFilter) (*OpsClientFailureStatsResponse, error)
+	InsertErrorLogFn                     func(ctx context.Context, input *OpsInsertErrorLogInput) (int64, error)
+	BatchInsertErrorLogsFn               func(ctx context.Context, inputs []*OpsInsertErrorLogInput) (int64, error)
+	BatchInsertSystemLogsFn              func(ctx context.Context, inputs []*OpsInsertSystemLogInput) (int64, error)
+	ListSystemLogsFn                     func(ctx context.Context, filter *OpsSystemLogFilter) (*OpsSystemLogList, error)
+	DeleteSystemLogsFn                   func(ctx context.Context, filter *OpsSystemLogCleanupFilter) (int64, error)
+	InsertSystemLogCleanupAuditFn        func(ctx context.Context, input *OpsSystemLogCleanupAudit) error
+	LookupDeletedKeyAuditFn              func(ctx context.Context, key string) (*DeletedKeyAuditResult, error)
+	GetClientFailureStatsFn              func(ctx context.Context, filter *OpsClientFailureStatsFilter) (*OpsClientFailureStatsResponse, error)
+	InsertUpstreamMultiplierSampleFn     func(ctx context.Context, input *OpsUpstreamMultiplierSample) (*OpsUpstreamMultiplierSample, error)
+	ListUpstreamMultiplierSamplesFn      func(ctx context.Context, filter *OpsUpstreamMultiplierSamplesFilter) ([]*OpsUpstreamMultiplierSample, error)
+	GetLatestUpstreamMultiplierSamplesFn func(ctx context.Context, model string, accountIDs []int64) (map[int64]*OpsUpstreamMultiplierSample, error)
 }
 
 func (m *opsRepoMock) InsertErrorLog(ctx context.Context, input *OpsInsertErrorLogInput) (int64, error) {
@@ -116,6 +119,27 @@ func (m *opsRepoMock) GetClientFailureStats(ctx context.Context, filter *OpsClie
 		return m.GetClientFailureStatsFn(ctx, filter)
 	}
 	return &OpsClientFailureStatsResponse{}, nil
+}
+
+func (m *opsRepoMock) InsertUpstreamMultiplierSample(ctx context.Context, input *OpsUpstreamMultiplierSample) (*OpsUpstreamMultiplierSample, error) {
+	if m.InsertUpstreamMultiplierSampleFn != nil {
+		return m.InsertUpstreamMultiplierSampleFn(ctx, input)
+	}
+	return input, nil
+}
+
+func (m *opsRepoMock) ListUpstreamMultiplierSamples(ctx context.Context, filter *OpsUpstreamMultiplierSamplesFilter) ([]*OpsUpstreamMultiplierSample, error) {
+	if m.ListUpstreamMultiplierSamplesFn != nil {
+		return m.ListUpstreamMultiplierSamplesFn(ctx, filter)
+	}
+	return []*OpsUpstreamMultiplierSample{}, nil
+}
+
+func (m *opsRepoMock) GetLatestUpstreamMultiplierSamples(ctx context.Context, model string, accountIDs []int64) (map[int64]*OpsUpstreamMultiplierSample, error) {
+	if m.GetLatestUpstreamMultiplierSamplesFn != nil {
+		return m.GetLatestUpstreamMultiplierSamplesFn(ctx, model, accountIDs)
+	}
+	return map[int64]*OpsUpstreamMultiplierSample{}, nil
 }
 
 func (m *opsRepoMock) InsertSystemMetrics(ctx context.Context, input *OpsInsertSystemMetricsInput) error {

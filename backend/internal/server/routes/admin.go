@@ -219,6 +219,9 @@ func registerOpsRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 		ops.GET("/dashboard/openai-token-stats", h.Admin.Ops.GetDashboardOpenAITokenStats)
 		ops.GET("/provider-status", h.Admin.Ops.GetProviderStatus)
 		ops.GET("/client-failures", h.Admin.Ops.GetClientFailureStats)
+		ops.GET("/upstream-multipliers/accounts", h.Admin.Ops.GetUpstreamMultiplierAccounts)
+		ops.GET("/upstream-multipliers/samples", h.Admin.Ops.GetUpstreamMultiplierSamples)
+		ops.POST("/upstream-multipliers/measure", h.Admin.Ops.MeasureUpstreamMultipliers)
 	}
 }
 

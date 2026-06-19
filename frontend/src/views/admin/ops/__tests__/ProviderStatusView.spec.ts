@@ -3,10 +3,16 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import ProviderStatusView from '../ProviderStatusView.vue'
 
 const mockGetProviderStatus = vi.hoisted(() => vi.fn())
+const mockGetUpstreamMultiplierAccounts = vi.hoisted(() => vi.fn())
+const mockGetUpstreamMultiplierSamples = vi.hoisted(() => vi.fn())
+const mockMeasureUpstreamMultipliers = vi.hoisted(() => vi.fn())
 
 vi.mock('@/api/admin/ops', () => ({
   opsAPI: {
     getProviderStatus: mockGetProviderStatus,
+    getUpstreamMultiplierAccounts: mockGetUpstreamMultiplierAccounts,
+    getUpstreamMultiplierSamples: mockGetUpstreamMultiplierSamples,
+    measureUpstreamMultipliers: mockMeasureUpstreamMultipliers,
   },
 }))
 
@@ -90,6 +96,55 @@ function mountView() {
 describe('ProviderStatusView', () => {
   beforeEach(() => {
     mockGetProviderStatus.mockReset().mockResolvedValue(sample)
+    mockGetUpstreamMultiplierAccounts.mockReset().mockResolvedValue({
+      model: 'gpt-5.4',
+      accounts: [
+        {
+          account_id: 12,
+          account_name: 'xixi',
+          platform: 'openai',
+          base_url: 'https://xixiapi.cc',
+          key_prefix: 'sk-live-',
+          supported: true,
+          latest_sample: {
+            id: 2,
+            account_id: 12,
+            account_name_snapshot: 'xixi',
+            platform: 'openai',
+            base_url_snapshot: 'https://xixiapi.cc',
+            key_prefix_snapshot: 'sk-live-',
+            model: 'gpt-5.4',
+            status: 'success',
+            standard_cost_delta: 0.1,
+            actual_cost_delta: 0.012,
+            multiplier: 0.12,
+            measured_at: '2026-06-19T10:00:00Z',
+            created_at: '2026-06-19T10:00:00Z',
+          },
+        },
+      ],
+    })
+    mockGetUpstreamMultiplierSamples.mockReset().mockResolvedValue({
+      model: 'gpt-5.4',
+      samples: [
+        {
+          id: 2,
+          account_id: 12,
+          account_name_snapshot: 'xixi',
+          platform: 'openai',
+          base_url_snapshot: 'https://xixiapi.cc',
+          key_prefix_snapshot: 'sk-live-',
+          model: 'gpt-5.4',
+          status: 'success',
+          standard_cost_delta: 0.1,
+          actual_cost_delta: 0.012,
+          multiplier: 0.12,
+          measured_at: '2026-06-19T10:00:00Z',
+          created_at: '2026-06-19T10:00:00Z',
+        },
+      ],
+    })
+    mockMeasureUpstreamMultipliers.mockReset().mockResolvedValue({ model: 'gpt-5.4', samples: [] })
   })
 
   it('loads provider status and reloads when range changes', async () => {
@@ -110,5 +165,23 @@ describe('ProviderStatusView', () => {
     await flushPromises()
 
     expect(wrapper.find('[data-testid="app-layout"]').exists()).toBe(true)
+  })
+
+  it('loads multiplier monitor inside provider status page and measures selected account', async () => {
+    const wrapper = mountView()
+    await flushPromises()
+
+    expect(mockGetUpstreamMultiplierAccounts).toHaveBeenCalledWith({ model: 'gpt-5.4' })
+    expect(mockGetUpstreamMultiplierSamples).toHaveBeenCalledWith({ model: 'gpt-5.4', limit: 100 })
+    expect(wrapper.text()).toContain('上游倍率监测')
+    expect(wrapper.text()).toContain('xixi')
+    expect(wrapper.text()).toContain('0.12x')
+
+    await wrapper.get('[data-testid="measure-upstream-12"]').trigger('click')
+    await flushPromises()
+
+    expect(mockMeasureUpstreamMultipliers).toHaveBeenCalledWith({ model: 'gpt-5.4', account_ids: [12] })
+    expect(mockGetUpstreamMultiplierAccounts).toHaveBeenCalledTimes(2)
+    expect(mockGetUpstreamMultiplierSamples).toHaveBeenCalledTimes(2)
   })
 })

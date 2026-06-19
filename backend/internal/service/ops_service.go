@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"log"
+	"net/http"
 	"strings"
 	"time"
 
@@ -30,6 +31,10 @@ type OpsService struct {
 
 	// getAccountAvailability is a unit-test hook for overriding account availability lookup.
 	getAccountAvailability func(ctx context.Context, platformFilter string, groupIDFilter *int64) (*OpsAccountAvailability, error)
+
+	upstreamMultiplierHTTPClient   *http.Client
+	upstreamMultiplierPollAttempts int
+	upstreamMultiplierPollInterval time.Duration
 
 	concurrencyService        *ConcurrencyService
 	gatewayService            *GatewayService

@@ -323,6 +323,87 @@ func (h *OpsHandler) GetClientFailureStats(c *gin.Context) {
 	response.Success(c, data)
 }
 
+// GetUpstreamMultiplierAccounts returns eligible upstream API Key accounts and latest multiplier samples.
+// GET /api/v1/admin/ops/upstream-multipliers/accounts
+func (h *OpsHandler) GetUpstreamMultiplierAccounts(c *gin.Context) {
+	if h.opsService == nil {
+		response.Error(c, http.StatusServiceUnavailable, "Ops service not available")
+		return
+	}
+	if err := h.opsService.RequireMonitoringEnabled(c.Request.Context()); err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	data, err := h.opsService.ListUpstreamMultiplierAccounts(c.Request.Context(), strings.TrimSpace(c.Query("model")))
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, data)
+}
+
+// GetUpstreamMultiplierSamples returns retained multiplier measurement history.
+// GET /api/v1/admin/ops/upstream-multipliers/samples
+func (h *OpsHandler) GetUpstreamMultiplierSamples(c *gin.Context) {
+	if h.opsService == nil {
+		response.Error(c, http.StatusServiceUnavailable, "Ops service not available")
+		return
+	}
+	if err := h.opsService.RequireMonitoringEnabled(c.Request.Context()); err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	filter := &service.OpsUpstreamMultiplierSamplesFilter{
+		Model: strings.TrimSpace(c.Query("model")),
+	}
+	if v := strings.TrimSpace(c.Query("account_id")); v != "" {
+		id, err := strconv.ParseInt(v, 10, 64)
+		if err != nil || id <= 0 {
+			response.BadRequest(c, "Invalid account_id")
+			return
+		}
+		filter.AccountID = &id
+	}
+	if v := strings.TrimSpace(c.Query("limit")); v != "" {
+		limit, err := strconv.Atoi(v)
+		if err != nil || limit <= 0 {
+			response.BadRequest(c, "Invalid limit")
+			return
+		}
+		filter.Limit = limit
+	}
+	data, err := h.opsService.ListUpstreamMultiplierSamples(c.Request.Context(), filter)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, data)
+}
+
+// MeasureUpstreamMultipliers manually probes selected upstream accounts and stores samples.
+// POST /api/v1/admin/ops/upstream-multipliers/measure
+func (h *OpsHandler) MeasureUpstreamMultipliers(c *gin.Context) {
+	if h.opsService == nil {
+		response.Error(c, http.StatusServiceUnavailable, "Ops service not available")
+		return
+	}
+	if err := h.opsService.RequireMonitoringEnabled(c.Request.Context()); err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	var req service.OpsMeasureUpstreamMultiplierRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "Invalid request body")
+		return
+	}
+	data, err := h.opsService.MeasureUpstreamMultipliers(c.Request.Context(), req)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, data)
+}
+
 func parseOpsOpenAITokenStatsFilter(c *gin.Context) (*service.OpsOpenAITokenStatsFilter, error) {
 	if c == nil {
 		return nil, fmt.Errorf("invalid request")

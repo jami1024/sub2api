@@ -12,6 +12,17 @@
       <ProviderStatusSummaryCards :items="items" />
       <ProviderStatusTable :items="items" :loading="loading" />
       <ProviderStatusLatencyChart :points="latencyPoints" :loading="loading" />
+      <UpstreamMultiplierPanel
+        v-model:model="multiplierModel"
+        :accounts="multiplierAccounts"
+        :samples="multiplierSamples"
+        :loading="multiplierLoading"
+        :measuring="multiplierMeasuring"
+        :measuring-account-id="multiplierMeasuringAccountId"
+        @refresh="loadUpstreamMultipliers"
+        @measure-account="measureUpstreamAccount"
+        @measure-all="measureAllUpstreamAccounts"
+      />
     </div>
   </AppLayout>
 </template>
@@ -21,12 +32,19 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'
 import { extractApiErrorMessage } from '@/utils/apiError'
-import { opsAPI, type OpsProviderStatusItem, type OpsProviderStatusTimeRange } from '@/api/admin/ops'
+import {
+  opsAPI,
+  type OpsProviderStatusItem,
+  type OpsProviderStatusTimeRange,
+  type OpsUpstreamMultiplierAccount,
+  type OpsUpstreamMultiplierSample,
+} from '@/api/admin/ops'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import ProviderStatusFilters from './components/ProviderStatusFilters.vue'
 import ProviderStatusSummaryCards from './components/ProviderStatusSummaryCards.vue'
 import ProviderStatusTable from './components/ProviderStatusTable.vue'
 import ProviderStatusLatencyChart from './components/ProviderStatusLatencyChart.vue'
+import UpstreamMultiplierPanel from './components/UpstreamMultiplierPanel.vue'
 
 const { t } = useI18n()
 const appStore = useAppStore()
@@ -34,6 +52,12 @@ const appStore = useAppStore()
 const timeRange = ref<OpsProviderStatusTimeRange>('1h')
 const loading = ref(false)
 const items = ref<OpsProviderStatusItem[]>([])
+const multiplierModel = ref('gpt-5.4')
+const multiplierLoading = ref(false)
+const multiplierMeasuring = ref(false)
+const multiplierMeasuringAccountId = ref<number | null>(null)
+const multiplierAccounts = ref<OpsUpstreamMultiplierAccount[]>([])
+const multiplierSamples = ref<OpsUpstreamMultiplierSample[]>([])
 let abortController: AbortController | null = null
 
 const latencyPoints = computed(() => {
@@ -62,12 +86,65 @@ async function reload() {
   }
 }
 
+async function loadUpstreamMultipliers() {
+  multiplierLoading.value = true
+  try {
+    const model = multiplierModel.value.trim() || 'gpt-5.4'
+    const [accounts, samples] = await Promise.all([
+      opsAPI.getUpstreamMultiplierAccounts({ model }),
+      opsAPI.getUpstreamMultiplierSamples({ model, limit: 100 }),
+    ])
+    multiplierAccounts.value = accounts.accounts || []
+    multiplierSamples.value = samples.samples || []
+  } catch (err: unknown) {
+    appStore.showError(extractApiErrorMessage(err, '加载上游倍率记录失败'))
+  } finally {
+    multiplierLoading.value = false
+  }
+}
+
+async function measureUpstreamAccount(accountID: number) {
+  multiplierMeasuring.value = true
+  multiplierMeasuringAccountId.value = accountID
+  try {
+    const model = multiplierModel.value.trim() || 'gpt-5.4'
+    await opsAPI.measureUpstreamMultipliers({ model, account_ids: [accountID] })
+    await loadUpstreamMultipliers()
+  } catch (err: unknown) {
+    appStore.showError(extractApiErrorMessage(err, '上游倍率检测失败'))
+  } finally {
+    multiplierMeasuring.value = false
+    multiplierMeasuringAccountId.value = null
+  }
+}
+
+async function measureAllUpstreamAccounts() {
+  const ids = multiplierAccounts.value.filter(account => account.supported).map(account => account.account_id)
+  if (ids.length === 0) return
+  if (!window.confirm(`将对 ${ids.length} 个上游账号发起真实小请求，确认继续？`)) return
+  multiplierMeasuring.value = true
+  try {
+    const model = multiplierModel.value.trim() || 'gpt-5.4'
+    await opsAPI.measureUpstreamMultipliers({ model, account_ids: ids })
+    await loadUpstreamMultipliers()
+  } catch (err: unknown) {
+    appStore.showError(extractApiErrorMessage(err, '上游倍率检测失败'))
+  } finally {
+    multiplierMeasuring.value = false
+  }
+}
+
 watch(timeRange, () => {
   void reload()
 })
 
+watch(multiplierModel, () => {
+  void loadUpstreamMultipliers()
+})
+
 onMounted(() => {
   void reload()
+  void loadUpstreamMultipliers()
 })
 
 onBeforeUnmount(() => {

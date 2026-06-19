@@ -169,3 +169,66 @@ type OpsClientFailureStatsResponse struct {
 	EndTime   time.Time                    `json:"end_time"`
 	Items     []*OpsClientFailureStatsItem `json:"items"`
 }
+
+const (
+	OpsUpstreamMultiplierStatusSuccess = "success"
+	OpsUpstreamMultiplierStatusSkipped = "skipped"
+	OpsUpstreamMultiplierStatusError   = "error"
+)
+
+type OpsUpstreamMultiplierAccount struct {
+	AccountID    int64                        `json:"account_id"`
+	AccountName  string                       `json:"account_name"`
+	Platform     string                       `json:"platform"`
+	BaseURL      string                       `json:"base_url"`
+	KeyPrefix    string                       `json:"key_prefix"`
+	Supported    bool                         `json:"supported"`
+	SkipReason   string                       `json:"skip_reason,omitempty"`
+	LatestSample *OpsUpstreamMultiplierSample `json:"latest_sample,omitempty"`
+}
+
+type OpsUpstreamMultiplierSample struct {
+	ID                  int64     `json:"id"`
+	AccountID           int64     `json:"account_id"`
+	AccountNameSnapshot string    `json:"account_name_snapshot"`
+	Platform            string    `json:"platform"`
+	BaseURLSnapshot     string    `json:"base_url_snapshot"`
+	KeyPrefixSnapshot   string    `json:"key_prefix_snapshot"`
+	Model               string    `json:"model"`
+	Status              string    `json:"status"`
+	HTTPStatus          *int      `json:"http_status,omitempty"`
+	StandardCostDelta   *float64  `json:"standard_cost_delta,omitempty"`
+	ActualCostDelta     *float64  `json:"actual_cost_delta,omitempty"`
+	Multiplier          *float64  `json:"multiplier,omitempty"`
+	BalanceBefore       *float64  `json:"balance_before,omitempty"`
+	BalanceAfter        *float64  `json:"balance_after,omitempty"`
+	ErrorMessage        string    `json:"error_message,omitempty"`
+	MeasuredAt          time.Time `json:"measured_at"`
+	CreatedAt           time.Time `json:"created_at"`
+}
+
+type OpsUpstreamMultiplierSamplesFilter struct {
+	Model     string
+	AccountID *int64
+	Limit     int
+}
+
+type OpsUpstreamMultiplierAccountsResponse struct {
+	Model    string                          `json:"model"`
+	Accounts []*OpsUpstreamMultiplierAccount `json:"accounts"`
+}
+
+type OpsUpstreamMultiplierSamplesResponse struct {
+	Model   string                         `json:"model"`
+	Samples []*OpsUpstreamMultiplierSample `json:"samples"`
+}
+
+type OpsMeasureUpstreamMultiplierRequest struct {
+	Model      string  `json:"model"`
+	AccountIDs []int64 `json:"account_ids"`
+}
+
+type OpsMeasureUpstreamMultiplierResponse struct {
+	Model   string                         `json:"model"`
+	Samples []*OpsUpstreamMultiplierSample `json:"samples"`
+}

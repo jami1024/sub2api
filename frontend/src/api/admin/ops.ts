@@ -336,6 +336,69 @@ export interface OpsClientFailureStatsParams {
   limit?: number
 }
 
+export type OpsUpstreamMultiplierStatus = 'success' | 'skipped' | 'error'
+
+export interface OpsUpstreamMultiplierSample {
+  id: number
+  account_id: number
+  account_name_snapshot: string
+  platform: string
+  base_url_snapshot: string
+  key_prefix_snapshot: string
+  model: string
+  status: OpsUpstreamMultiplierStatus
+  http_status?: number | null
+  standard_cost_delta?: number | null
+  actual_cost_delta?: number | null
+  multiplier?: number | null
+  balance_before?: number | null
+  balance_after?: number | null
+  error_message?: string
+  measured_at: string
+  created_at: string
+}
+
+export interface OpsUpstreamMultiplierAccount {
+  account_id: number
+  account_name: string
+  platform: string
+  base_url: string
+  key_prefix: string
+  supported: boolean
+  skip_reason?: string
+  latest_sample?: OpsUpstreamMultiplierSample | null
+}
+
+export interface OpsUpstreamMultiplierAccountsResponse {
+  model: string
+  accounts: OpsUpstreamMultiplierAccount[]
+}
+
+export interface OpsUpstreamMultiplierSamplesResponse {
+  model: string
+  samples: OpsUpstreamMultiplierSample[]
+}
+
+export interface OpsUpstreamMultiplierAccountsParams {
+  model?: string
+}
+
+export interface OpsUpstreamMultiplierSamplesParams {
+  model?: string
+  account_id?: number
+  limit?: number
+}
+
+export interface OpsMeasureUpstreamMultiplierRequest {
+  model?: string
+  account_ids?: number[]
+}
+
+export interface OpsMeasureUpstreamMultiplierResponse {
+  model: string
+  samples: OpsUpstreamMultiplierSample[]
+}
+
 export interface OpsSystemMetricsSnapshot {
   id: number
   created_at: string
@@ -540,6 +603,21 @@ export async function getRealtimeTrafficSummary(
   }
 
   const { data } = await apiClient.get<OpsRealtimeTrafficSummaryResponse>('/admin/ops/realtime-traffic', { params })
+  return data
+}
+
+async function getUpstreamMultiplierAccounts(params: OpsUpstreamMultiplierAccountsParams): Promise<OpsUpstreamMultiplierAccountsResponse> {
+  const { data } = await apiClient.get<OpsUpstreamMultiplierAccountsResponse>('/admin/ops/upstream-multipliers/accounts', { params })
+  return data
+}
+
+async function getUpstreamMultiplierSamples(params: OpsUpstreamMultiplierSamplesParams): Promise<OpsUpstreamMultiplierSamplesResponse> {
+  const { data } = await apiClient.get<OpsUpstreamMultiplierSamplesResponse>('/admin/ops/upstream-multipliers/samples', { params })
+  return data
+}
+
+async function measureUpstreamMultipliers(payload: OpsMeasureUpstreamMultiplierRequest): Promise<OpsMeasureUpstreamMultiplierResponse> {
+  const { data } = await apiClient.post<OpsMeasureUpstreamMultiplierResponse>('/admin/ops/upstream-multipliers/measure', payload)
   return data
 }
 
@@ -1421,6 +1499,9 @@ export const opsAPI = {
   getOpenAITokenStats,
   getProviderStatus,
   getClientFailureStats,
+  getUpstreamMultiplierAccounts,
+  getUpstreamMultiplierSamples,
+  measureUpstreamMultipliers,
   getConcurrencyStats,
   getUserConcurrencyStats,
   getAccountAvailabilityStats,
