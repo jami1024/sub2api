@@ -58,27 +58,17 @@ func TestMeasureUpstreamMultipliersCalculatesMultiplierFromUsageDelta(t *testing
 		case "/v1/usage":
 			w.Header().Set("Content-Type", "application/json")
 			_ = json.NewEncoder(w).Encode(map[string]any{
-				"code":    0,
-				"message": "success",
-				"data": map[string]any{
-					"items": []any{},
-					"total": 0,
+				"mode": "unrestricted",
+				"usage": map[string]any{
+					"total": map[string]any{
+						"cost":        []float64{1.00, 1.10}[min(usageCalls, 1)],
+						"actual_cost": []float64{0.50, 0.512}[min(usageCalls, 1)],
+					},
 				},
 			})
-		case "/v1/usage/stats":
 			usageCalls++
-			w.Header().Set("Content-Type", "application/json")
-			if usageCalls == 1 {
-				_ = json.NewEncoder(w).Encode(map[string]any{
-					"total_cost":        1.00,
-					"total_actual_cost": 0.50,
-				})
-				return
-			}
-			_ = json.NewEncoder(w).Encode(map[string]any{
-				"total_cost":        1.10,
-				"total_actual_cost": 0.512,
-			})
+		case "/v1/usage/stats":
+			http.NotFound(w, r)
 		case "/v1/chat/completions":
 			w.Header().Set("Content-Type", "application/json")
 			_ = json.NewEncoder(w).Encode(map[string]any{

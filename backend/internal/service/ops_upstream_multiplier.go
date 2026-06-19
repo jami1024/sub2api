@@ -251,7 +251,7 @@ type upstreamUsageTotals struct {
 }
 
 func (s *OpsService) fetchUpstreamUsageTotals(ctx context.Context, account *Account) (*upstreamUsageTotals, *int, error) {
-	endpoint := buildOpenAIEndpointURL(account.GetOpenAIBaseURL(), "/v1/usage/stats")
+	endpoint := buildOpenAIEndpointURL(account.GetOpenAIBaseURL(), "/v1/usage")
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
 	if err != nil {
 		return nil, nil, err
@@ -351,7 +351,13 @@ func parseUpstreamUsageTotals(body []byte) (*upstreamUsageTotals, error) {
 		TotalCost       *float64 `json:"total_cost"`
 		TotalActualCost *float64 `json:"total_actual_cost"`
 		Balance         *float64 `json:"balance"`
-		Data            *struct {
+		Usage           *struct {
+			Total *struct {
+				Cost       *float64 `json:"cost"`
+				ActualCost *float64 `json:"actual_cost"`
+			} `json:"total"`
+		} `json:"usage"`
+		Data *struct {
 			TotalCost       *float64 `json:"total_cost"`
 			TotalActualCost *float64 `json:"total_actual_cost"`
 			Balance         *float64 `json:"balance"`
@@ -364,6 +370,14 @@ func parseUpstreamUsageTotals(body []byte) (*upstreamUsageTotals, error) {
 		payload.TotalCost = payload.Data.TotalCost
 		payload.TotalActualCost = payload.Data.TotalActualCost
 		payload.Balance = payload.Data.Balance
+	}
+	if payload.Usage != nil && payload.Usage.Total != nil {
+		if payload.TotalCost == nil {
+			payload.TotalCost = payload.Usage.Total.Cost
+		}
+		if payload.TotalActualCost == nil {
+			payload.TotalActualCost = payload.Usage.Total.ActualCost
+		}
 	}
 	if payload.TotalCost == nil || payload.TotalActualCost == nil {
 		return nil, fmt.Errorf("usage response missing total_cost or total_actual_cost")
