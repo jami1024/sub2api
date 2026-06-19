@@ -56,6 +56,16 @@ func TestMeasureUpstreamMultipliersCalculatesMultiplierFromUsageDelta(t *testing
 		require.Equal(t, "Bearer sk-live-secret", r.Header.Get("Authorization"))
 		switch r.URL.Path {
 		case "/v1/usage":
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"code":    0,
+				"message": "success",
+				"data": map[string]any{
+					"items": []any{},
+					"total": 0,
+				},
+			})
+		case "/v1/usage/stats":
 			usageCalls++
 			w.Header().Set("Content-Type", "application/json")
 			if usageCalls == 1 {

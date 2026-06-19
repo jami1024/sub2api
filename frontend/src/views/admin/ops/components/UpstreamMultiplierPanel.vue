@@ -4,7 +4,7 @@
       <div>
         <h3 class="text-sm font-semibold text-gray-900 dark:text-white">上游倍率监测</h3>
         <p class="mt-1 max-w-3xl text-xs leading-5 text-gray-500 dark:text-gray-400">
-          只在手动点击检测时请求上游。通过上游 /v1/usage 前后差值计算倍率，并保留历史趋势。
+          只在手动点击检测时请求上游。通过上游 /v1/usage/stats 前后差值计算倍率，并保留历史趋势。
         </p>
       </div>
       <div class="flex flex-col gap-2 sm:flex-row sm:items-center">

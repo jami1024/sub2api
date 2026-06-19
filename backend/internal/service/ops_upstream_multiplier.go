@@ -251,7 +251,7 @@ type upstreamUsageTotals struct {
 }
 
 func (s *OpsService) fetchUpstreamUsageTotals(ctx context.Context, account *Account) (*upstreamUsageTotals, *int, error) {
-	endpoint := buildOpenAIEndpointURL(account.GetOpenAIBaseURL(), "/v1/usage")
+	endpoint := buildOpenAIEndpointURL(account.GetOpenAIBaseURL(), "/v1/usage/stats")
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
 	if err != nil {
 		return nil, nil, err
