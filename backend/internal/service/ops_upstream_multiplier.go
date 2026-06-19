@@ -166,7 +166,7 @@ func (s *OpsService) measureOneUpstreamMultiplier(ctx context.Context, account *
 
 	if ok, reason := isAccountSupportedForUpstreamMultiplier(account, model); !ok {
 		sample.Status = OpsUpstreamMultiplierStatusSkipped
-		sample.ErrorMessage = reason
+		sample.ErrorMessage = sanitizeUpstreamMultiplierErrorMessage(reason)
 		return sample
 	}
 
@@ -176,7 +176,7 @@ func (s *OpsService) measureOneUpstreamMultiplier(ctx context.Context, account *
 	}
 	if err != nil {
 		sample.Status = OpsUpstreamMultiplierStatusError
-		sample.ErrorMessage = truncateString(err.Error(), 500)
+		sample.ErrorMessage = sanitizeUpstreamMultiplierErrorMessage(err.Error())
 		return sample
 	}
 	sample.BalanceBefore = before.Balance
@@ -186,7 +186,7 @@ func (s *OpsService) measureOneUpstreamMultiplier(ctx context.Context, account *
 			sample.HTTPStatus = status
 		}
 		sample.Status = OpsUpstreamMultiplierStatusError
-		sample.ErrorMessage = truncateString(err.Error(), 500)
+		sample.ErrorMessage = sanitizeUpstreamMultiplierErrorMessage(err.Error())
 		return sample
 	}
 
@@ -196,7 +196,7 @@ func (s *OpsService) measureOneUpstreamMultiplier(ctx context.Context, account *
 	}
 	if err != nil {
 		sample.Status = OpsUpstreamMultiplierStatusError
-		sample.ErrorMessage = truncateString(err.Error(), 500)
+		sample.ErrorMessage = sanitizeUpstreamMultiplierErrorMessage(err.Error())
 		return sample
 	}
 	sample.BalanceAfter = after.Balance
@@ -207,7 +207,7 @@ func (s *OpsService) measureOneUpstreamMultiplier(ctx context.Context, account *
 	sample.ActualCostDelta = &actualDelta
 	if standardDelta <= 0 {
 		sample.Status = OpsUpstreamMultiplierStatusError
-		sample.ErrorMessage = "usage delta is zero; upstream usage may be delayed"
+		sample.ErrorMessage = sanitizeUpstreamMultiplierErrorMessage("usage delta is zero; upstream usage may be delayed")
 		return sample
 	}
 	multiplier := roundFloat(actualDelta/standardDelta, 12)
@@ -403,6 +403,15 @@ func keyPrefix(key string) string {
 		return key
 	}
 	return key[:8]
+}
+
+func sanitizeUpstreamMultiplierErrorMessage(message string) string {
+	message = strings.TrimSpace(message)
+	if message == "" {
+		return ""
+	}
+	message = opsHeaderSecretPattern.ReplaceAllString(message, "[redacted]")
+	return truncateString(message, 500)
 }
 
 func roundFloat(v float64, places int) float64 {

@@ -176,6 +176,8 @@ describe('ProviderStatusView', () => {
     expect(wrapper.text()).toContain('上游倍率监测')
     expect(wrapper.text()).toContain('xixi')
     expect(wrapper.text()).toContain('0.12x')
+    expect(wrapper.text()).toContain('sk-li…')
+    expect(wrapper.text()).not.toContain('sk-live-')
 
     await wrapper.get('[data-testid="measure-upstream-12"]').trigger('click')
     await flushPromises()

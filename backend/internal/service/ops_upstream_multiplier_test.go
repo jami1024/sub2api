@@ -121,6 +121,14 @@ func TestMeasureUpstreamMultipliersCalculatesMultiplierFromUsageDelta(t *testing
 	require.Equal(t, "sk-live-", saved[0].KeyPrefixSnapshot)
 }
 
+func TestSanitizeUpstreamMultiplierErrorMessageRedactsSecrets(t *testing.T) {
+	msg := sanitizeUpstreamMultiplierErrorMessage("upstream rejected Authorization: Bearer sk-leaky-secret-token-123456 and key-live-secret-abcdef")
+
+	require.NotContains(t, msg, "sk-leaky-secret-token")
+	require.NotContains(t, msg, "key-live-secret")
+	require.Contains(t, msg, "[redacted]")
+}
+
 type opsUpstreamMultiplierAccountRepo struct {
 	accounts []Account
 }

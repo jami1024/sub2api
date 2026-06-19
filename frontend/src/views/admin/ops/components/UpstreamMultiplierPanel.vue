@@ -60,7 +60,7 @@
             <tr v-for="account in accounts" :key="account.account_id" class="hover:bg-gray-50/80 dark:hover:bg-dark-700/40">
               <td class="px-3 py-3 font-semibold text-gray-900 dark:text-white">{{ account.account_name }}</td>
               <td class="max-w-[240px] truncate px-3 py-3 text-xs text-gray-600 dark:text-gray-300" :title="account.base_url">{{ hostOf(account.base_url) }}</td>
-              <td class="px-3 py-3 font-mono text-xs text-gray-500 dark:text-gray-400">{{ account.key_prefix || '—' }}</td>
+              <td class="px-3 py-3 font-mono text-xs text-gray-500 dark:text-gray-400" :title="account.key_prefix || ''">{{ formatKeyPrefix(account.key_prefix) }}</td>
               <td class="px-3 py-3 text-right font-semibold text-gray-900 dark:text-white">
                 {{ formatMultiplier(account.latest_sample?.multiplier) }}
               </td>
@@ -183,6 +183,13 @@ function formatMultiplier(value?: number | null): string {
 function formatCost(value?: number | null): string {
   if (typeof value !== 'number' || !Number.isFinite(value)) return '—'
   return `$${value.toFixed(6).replace(/0+$/, '').replace(/\.$/, '')}`
+}
+
+function formatKeyPrefix(value?: string | null): string {
+  const key = String(value || '').trim()
+  if (!key) return '—'
+  if (key.length <= 5) return key
+  return `${key.slice(0, 5)}…`
 }
 
 function formatDate(value?: string | null): string {
