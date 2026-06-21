@@ -399,6 +399,71 @@ export interface OpsMeasureUpstreamMultiplierResponse {
   samples: OpsUpstreamMultiplierSample[]
 }
 
+export type OpsGroupRateRecommendationStatus = 'safe' | 'basic_safe' | 'low' | 'insufficient_data'
+
+export interface OpsGroupRateRecommendationParams {
+  model?: string
+  package_scope?: string
+  profit_margin?: number
+  safety_factor?: number
+  usage_days?: number
+  include_unschedulable?: boolean
+  include_self_hosted?: boolean
+}
+
+export interface OpsGroupRateRecommendationPackageBasis {
+  package_id: number
+  name: string
+  price: number
+  credit_amount: number
+  package_scope: string
+  revenue_per_credit: number
+}
+
+export interface OpsGroupRateRecommendationAccount {
+  account_id: number
+  account_name: string
+  base_url: string
+  key_prefix: string
+  schedulable: boolean
+  status: string
+  current_priority: number
+  binding_priority: number
+  upstream_multiplier?: number | null
+  multiplier_status?: string
+  multiplier_measured_at?: string | null
+  request_count: number
+  request_share: number
+  standard_cost: number
+  standard_cost_share: number
+  recommended_weight: number
+  recommended_priority: number
+  participates_in_advice: boolean
+  note?: string
+}
+
+export interface OpsGroupRateRecommendationGroup {
+  group_id: number
+  group_name: string
+  current_group_multiplier: number
+  package_scope: string
+  schedulable_account_count: number
+  actual_blended_multiplier?: number | null
+  recommended_blended_multiplier?: number | null
+  worst_case_multiplier?: number | null
+  minimum_group_multiplier?: number | null
+  safe_group_multiplier?: number | null
+  status: OpsGroupRateRecommendationStatus
+  notes?: string[]
+  accounts: OpsGroupRateRecommendationAccount[]
+}
+
+export interface OpsGroupRateRecommendationsResponse {
+  params: OpsGroupRateRecommendationParams
+  package_basis?: OpsGroupRateRecommendationPackageBasis | null
+  groups: OpsGroupRateRecommendationGroup[]
+}
+
 export interface OpsSystemMetricsSnapshot {
   id: number
   created_at: string
@@ -618,6 +683,11 @@ async function getUpstreamMultiplierSamples(params: OpsUpstreamMultiplierSamples
 
 async function measureUpstreamMultipliers(payload: OpsMeasureUpstreamMultiplierRequest): Promise<OpsMeasureUpstreamMultiplierResponse> {
   const { data } = await apiClient.post<OpsMeasureUpstreamMultiplierResponse>('/admin/ops/upstream-multipliers/measure', payload)
+  return data
+}
+
+async function getGroupRateRecommendations(params: OpsGroupRateRecommendationParams): Promise<OpsGroupRateRecommendationsResponse> {
+  const { data } = await apiClient.get<OpsGroupRateRecommendationsResponse>('/admin/ops/group-rate-recommendations', { params })
   return data
 }
 
@@ -1502,6 +1572,7 @@ export const opsAPI = {
   getUpstreamMultiplierAccounts,
   getUpstreamMultiplierSamples,
   measureUpstreamMultipliers,
+  getGroupRateRecommendations,
   getConcurrencyStats,
   getUserConcurrencyStats,
   getAccountAvailabilityStats,
