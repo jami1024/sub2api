@@ -232,3 +232,109 @@ type OpsMeasureUpstreamMultiplierResponse struct {
 	Model   string                         `json:"model"`
 	Samples []*OpsUpstreamMultiplierSample `json:"samples"`
 }
+
+const (
+	OpsGroupRateRecommendationStatusSafe         = "safe"
+	OpsGroupRateRecommendationStatusBasicSafe    = "basic_safe"
+	OpsGroupRateRecommendationStatusLow          = "low"
+	OpsGroupRateRecommendationStatusInsufficient = "insufficient_data"
+)
+
+type OpsGroupRateRecommendationFilter struct {
+	Model                string  `json:"model"`
+	PackageScope         string  `json:"package_scope"`
+	ProfitMargin         float64 `json:"profit_margin"`
+	SafetyFactor         float64 `json:"safety_factor"`
+	UsageDays            int     `json:"usage_days"`
+	IncludeUnschedulable bool    `json:"include_unschedulable"`
+	IncludeSelfHosted    bool    `json:"include_self_hosted"`
+}
+
+type OpsGroupRateRecommendationPackageBasis struct {
+	PackageID        int64   `json:"package_id"`
+	Name             string  `json:"name"`
+	Price            float64 `json:"price"`
+	CreditAmount     float64 `json:"credit_amount"`
+	PackageScope     string  `json:"package_scope"`
+	RevenuePerCredit float64 `json:"revenue_per_credit"`
+}
+
+type OpsGroupRateRecommendationUsageShare struct {
+	RequestCount      int64   `json:"request_count"`
+	RequestShare      float64 `json:"request_share"`
+	StandardCost      float64 `json:"standard_cost"`
+	StandardCostShare float64 `json:"standard_cost_share"`
+}
+
+type OpsGroupRateRecommendationAccount struct {
+	AccountID            int64      `json:"account_id"`
+	AccountName          string     `json:"account_name"`
+	BaseURL              string     `json:"base_url"`
+	KeyPrefix            string     `json:"key_prefix"`
+	Schedulable          bool       `json:"schedulable"`
+	Status               string     `json:"status"`
+	CurrentPriority      int        `json:"current_priority"`
+	BindingPriority      int        `json:"binding_priority"`
+	UpstreamMultiplier   *float64   `json:"upstream_multiplier,omitempty"`
+	MultiplierStatus     string     `json:"multiplier_status"`
+	MultiplierMeasuredAt *time.Time `json:"multiplier_measured_at,omitempty"`
+	RequestCount         int64      `json:"request_count"`
+	RequestShare         float64    `json:"request_share"`
+	StandardCost         float64    `json:"standard_cost"`
+	StandardCostShare    float64    `json:"standard_cost_share"`
+	RecommendedWeight    float64    `json:"recommended_weight"`
+	RecommendedPriority  int        `json:"recommended_priority"`
+	ParticipatesInAdvice bool       `json:"participates_in_advice"`
+	Note                 string     `json:"note"`
+}
+
+type OpsGroupRateRecommendationGroup struct {
+	GroupID                      int64                                `json:"group_id"`
+	GroupName                    string                               `json:"group_name"`
+	CurrentGroupMultiplier       float64                              `json:"current_group_multiplier"`
+	PackageScope                 string                               `json:"package_scope"`
+	SchedulableAccountCount      int                                  `json:"schedulable_account_count"`
+	ActualBlendedMultiplier      *float64                             `json:"actual_blended_multiplier,omitempty"`
+	RecommendedBlendedMultiplier *float64                             `json:"recommended_blended_multiplier,omitempty"`
+	WorstCaseMultiplier          *float64                             `json:"worst_case_multiplier,omitempty"`
+	MinimumGroupMultiplier       *float64                             `json:"minimum_group_multiplier,omitempty"`
+	SafeGroupMultiplier          *float64                             `json:"safe_group_multiplier,omitempty"`
+	Status                       string                               `json:"status"`
+	Notes                        []string                             `json:"notes,omitempty"`
+	Accounts                     []*OpsGroupRateRecommendationAccount `json:"accounts"`
+}
+
+type OpsGroupRateRecommendationResponse struct {
+	Params       OpsGroupRateRecommendationFilter        `json:"params"`
+	PackageBasis *OpsGroupRateRecommendationPackageBasis `json:"package_basis,omitempty"`
+	Groups       []*OpsGroupRateRecommendationGroup      `json:"groups"`
+}
+
+type OpsGroupRateRecommendationSourceData struct {
+	Packages []*OpsGroupRateRecommendationPackageBasis
+	Groups   []*OpsGroupRateRecommendationSourceGroup
+	Usage    map[int64]map[int64]OpsGroupRateRecommendationUsageShare
+	Samples  map[int64]*OpsUpstreamMultiplierSample
+}
+
+type OpsGroupRateRecommendationSourceGroup struct {
+	GroupID              int64
+	GroupName            string
+	RateMultiplier       float64
+	PackageScope         string
+	AllowImageGeneration bool
+	Accounts             []*OpsGroupRateRecommendationSourceAccount
+}
+
+type OpsGroupRateRecommendationSourceAccount struct {
+	AccountID       int64
+	AccountName     string
+	Platform        string
+	Type            string
+	Status          string
+	Schedulable     bool
+	CurrentPriority int
+	BindingPriority int
+	BaseURL         string
+	KeyPrefix       string
+}

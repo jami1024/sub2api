@@ -23,6 +23,15 @@
         @measure-account="measureUpstreamAccount"
         @measure-all="measureAllUpstreamAccounts"
       />
+      <GroupRateRecommendationsPanel
+        v-model:profit-margin="recommendationProfitMargin"
+        v-model:safety-factor="recommendationSafetyFactor"
+        v-model:usage-days="recommendationUsageDays"
+        :model="multiplierModel"
+        :data="recommendationData"
+        :loading="recommendationLoading"
+        @refresh="loadGroupRateRecommendations"
+      />
     </div>
   </AppLayout>
 </template>
@@ -34,6 +43,7 @@ import { useAppStore } from '@/stores/app'
 import { extractApiErrorMessage } from '@/utils/apiError'
 import {
   opsAPI,
+  type OpsGroupRateRecommendationsResponse,
   type OpsProviderStatusItem,
   type OpsProviderStatusTimeRange,
   type OpsUpstreamMultiplierAccount,
@@ -45,6 +55,7 @@ import ProviderStatusSummaryCards from './components/ProviderStatusSummaryCards.
 import ProviderStatusTable from './components/ProviderStatusTable.vue'
 import ProviderStatusLatencyChart from './components/ProviderStatusLatencyChart.vue'
 import UpstreamMultiplierPanel from './components/UpstreamMultiplierPanel.vue'
+import GroupRateRecommendationsPanel from './components/GroupRateRecommendationsPanel.vue'
 
 const { t } = useI18n()
 const appStore = useAppStore()
@@ -58,6 +69,11 @@ const multiplierMeasuring = ref(false)
 const multiplierMeasuringAccountId = ref<number | null>(null)
 const multiplierAccounts = ref<OpsUpstreamMultiplierAccount[]>([])
 const multiplierSamples = ref<OpsUpstreamMultiplierSample[]>([])
+const recommendationLoading = ref(false)
+const recommendationData = ref<OpsGroupRateRecommendationsResponse | null>(null)
+const recommendationProfitMargin = ref(0.2)
+const recommendationSafetyFactor = ref(1.2)
+const recommendationUsageDays = ref(7)
 let abortController: AbortController | null = null
 
 const latencyPoints = computed(() => {
@@ -103,6 +119,24 @@ async function loadUpstreamMultipliers() {
   }
 }
 
+async function loadGroupRateRecommendations() {
+  recommendationLoading.value = true
+  try {
+    const model = multiplierModel.value.trim() || 'gpt-5.4'
+    recommendationData.value = await opsAPI.getGroupRateRecommendations({
+      model,
+      package_scope: 'codex',
+      profit_margin: recommendationProfitMargin.value,
+      safety_factor: recommendationSafetyFactor.value,
+      usage_days: recommendationUsageDays.value,
+    })
+  } catch (err: unknown) {
+    appStore.showError(extractApiErrorMessage(err, '加载分组倍率建议失败'))
+  } finally {
+    recommendationLoading.value = false
+  }
+}
+
 async function measureUpstreamAccount(accountID: number) {
   multiplierMeasuring.value = true
   multiplierMeasuringAccountId.value = accountID
@@ -140,11 +174,13 @@ watch(timeRange, () => {
 
 watch(multiplierModel, () => {
   void loadUpstreamMultipliers()
+  void loadGroupRateRecommendations()
 })
 
 onMounted(() => {
   void reload()
   void loadUpstreamMultipliers()
+  void loadGroupRateRecommendations()
 })
 
 onBeforeUnmount(() => {

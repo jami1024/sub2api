@@ -36,6 +36,7 @@ type OpsRepository interface {
 	InsertUpstreamMultiplierSample(ctx context.Context, input *OpsUpstreamMultiplierSample) (*OpsUpstreamMultiplierSample, error)
 	ListUpstreamMultiplierSamples(ctx context.Context, filter *OpsUpstreamMultiplierSamplesFilter) ([]*OpsUpstreamMultiplierSample, error)
 	GetLatestUpstreamMultiplierSamples(ctx context.Context, model string, accountIDs []int64) (map[int64]*OpsUpstreamMultiplierSample, error)
+	GetGroupRateRecommendationSourceData(ctx context.Context, filter *OpsGroupRateRecommendationFilter) (*OpsGroupRateRecommendationSourceData, error)
 
 	InsertSystemMetrics(ctx context.Context, input *OpsInsertSystemMetricsInput) error
 	GetLatestSystemMetrics(ctx context.Context, windowMinutes int) (*OpsSystemMetricsSnapshot, error)

@@ -221,6 +221,7 @@ func registerOpsRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 		ops.GET("/client-failures", h.Admin.Ops.GetClientFailureStats)
 		ops.GET("/upstream-multipliers/accounts", h.Admin.Ops.GetUpstreamMultiplierAccounts)
 		ops.GET("/upstream-multipliers/samples", h.Admin.Ops.GetUpstreamMultiplierSamples)
+		ops.GET("/group-rate-recommendations", h.Admin.Ops.GetGroupRateRecommendations)
 		ops.POST("/upstream-multipliers/measure", h.Admin.Ops.MeasureUpstreamMultipliers)
 	}
 }

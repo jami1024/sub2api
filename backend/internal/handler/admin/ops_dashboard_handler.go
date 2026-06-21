@@ -380,6 +380,59 @@ func (h *OpsHandler) GetUpstreamMultiplierSamples(c *gin.Context) {
 	response.Success(c, data)
 }
 
+// GetGroupRateRecommendations returns read-only group multiplier and upstream weight suggestions.
+// GET /api/v1/admin/ops/group-rate-recommendations
+func (h *OpsHandler) GetGroupRateRecommendations(c *gin.Context) {
+	if h.opsService == nil {
+		response.Error(c, http.StatusServiceUnavailable, "Ops service not available")
+		return
+	}
+	if err := h.opsService.RequireMonitoringEnabled(c.Request.Context()); err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	filter := &service.OpsGroupRateRecommendationFilter{
+		Model:        strings.TrimSpace(c.Query("model")),
+		PackageScope: strings.TrimSpace(c.Query("package_scope")),
+	}
+	if v := strings.TrimSpace(c.Query("profit_margin")); v != "" {
+		value, err := strconv.ParseFloat(v, 64)
+		if err != nil || value <= 0 || value >= 0.95 {
+			response.BadRequest(c, "Invalid profit_margin")
+			return
+		}
+		filter.ProfitMargin = value
+	}
+	if v := strings.TrimSpace(c.Query("safety_factor")); v != "" {
+		value, err := strconv.ParseFloat(v, 64)
+		if err != nil || value <= 0 {
+			response.BadRequest(c, "Invalid safety_factor")
+			return
+		}
+		filter.SafetyFactor = value
+	}
+	if v := strings.TrimSpace(c.Query("usage_days")); v != "" {
+		value, err := strconv.Atoi(v)
+		if err != nil || value <= 0 {
+			response.BadRequest(c, "Invalid usage_days")
+			return
+		}
+		filter.UsageDays = value
+	}
+	if v := strings.TrimSpace(c.Query("include_unschedulable")); v != "" {
+		filter.IncludeUnschedulable = v == "true" || v == "1"
+	}
+	if v := strings.TrimSpace(c.Query("include_self_hosted")); v != "" {
+		filter.IncludeSelfHosted = v == "true" || v == "1"
+	}
+	data, err := h.opsService.GetGroupRateRecommendations(c.Request.Context(), filter)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, data)
+}
+
 // MeasureUpstreamMultipliers manually probes selected upstream accounts and stores samples.
 // POST /api/v1/admin/ops/upstream-multipliers/measure
 func (h *OpsHandler) MeasureUpstreamMultipliers(c *gin.Context) {

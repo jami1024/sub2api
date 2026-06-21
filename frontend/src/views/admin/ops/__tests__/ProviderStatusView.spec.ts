@@ -6,6 +6,7 @@ const mockGetProviderStatus = vi.hoisted(() => vi.fn())
 const mockGetUpstreamMultiplierAccounts = vi.hoisted(() => vi.fn())
 const mockGetUpstreamMultiplierSamples = vi.hoisted(() => vi.fn())
 const mockMeasureUpstreamMultipliers = vi.hoisted(() => vi.fn())
+const mockGetGroupRateRecommendations = vi.hoisted(() => vi.fn())
 
 vi.mock('@/api/admin/ops', () => ({
   opsAPI: {
@@ -13,6 +14,7 @@ vi.mock('@/api/admin/ops', () => ({
     getUpstreamMultiplierAccounts: mockGetUpstreamMultiplierAccounts,
     getUpstreamMultiplierSamples: mockGetUpstreamMultiplierSamples,
     measureUpstreamMultipliers: mockMeasureUpstreamMultipliers,
+    getGroupRateRecommendations: mockGetGroupRateRecommendations,
   },
 }))
 
@@ -145,6 +147,26 @@ describe('ProviderStatusView', () => {
       ],
     })
     mockMeasureUpstreamMultipliers.mockReset().mockResolvedValue({ model: 'gpt-5.4', samples: [] })
+    mockGetGroupRateRecommendations.mockReset().mockResolvedValue({
+      params: { model: 'gpt-5.4', package_scope: 'codex', profit_margin: 0.2, safety_factor: 1.2, usage_days: 7 },
+      package_basis: { package_id: 2, name: '专属包-进阶级', price: 100, credit_amount: 400, package_scope: 'codex', revenue_per_credit: 0.25 },
+      groups: [
+        {
+          group_id: 8,
+          group_name: 'gpt pro 高价',
+          current_group_multiplier: 1.3,
+          package_scope: 'codex',
+          schedulable_account_count: 2,
+          actual_blended_multiplier: 0.148,
+          recommended_blended_multiplier: 0.1485,
+          worst_case_multiplier: 0.18,
+          minimum_group_multiplier: 0.891,
+          safe_group_multiplier: 1.08,
+          status: 'safe',
+          accounts: [],
+        },
+      ],
+    })
   })
 
   it('loads provider status and reloads when range changes', async () => {
@@ -173,7 +195,10 @@ describe('ProviderStatusView', () => {
 
     expect(mockGetUpstreamMultiplierAccounts).toHaveBeenCalledWith({ model: 'gpt-5.4' })
     expect(mockGetUpstreamMultiplierSamples).toHaveBeenCalledWith({ model: 'gpt-5.4', limit: 100 })
+    expect(mockGetGroupRateRecommendations).toHaveBeenCalledWith(expect.objectContaining({ model: 'gpt-5.4', profit_margin: 0.2, safety_factor: 1.2, usage_days: 7 }))
     expect(wrapper.text()).toContain('上游倍率监测')
+    expect(wrapper.text()).toContain('分组倍率与权重建议')
+    expect(wrapper.text()).toContain('gpt pro 高价')
     expect(wrapper.text()).toContain('xixi')
     expect(wrapper.text()).toContain('0.12x')
     expect(wrapper.text()).toContain('sk-li…')
