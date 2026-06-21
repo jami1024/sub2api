@@ -1,11 +1,22 @@
 # =============================================================================
 # Sub2API Docker Compose - Local Directory Version
 # =============================================================================
+# This configuration uses local directories for data storage instead of named
+# volumes, making it easy to migrate the entire deployment by simply copying
+# the deploy directory.
+#
 # Quick Start:
 #   1. Copy .env.example to .env and configure
 #   2. mkdir -p data postgres_data redis_data
-#   3. docker-compose -f docker-compose.local-self.yml up -d
-#   4. Host nginx reverse proxy → 127.0.0.1:SERVER_PORT
+#   3. docker-compose -f docker-compose.local.yml up -d
+#   4. Check logs: docker-compose -f docker-compose.local.yml logs -f sub2api
+#   5. Access: http://localhost:8080
+#
+# Migration to New Server:
+#   1. docker-compose -f docker-compose.local.yml down
+#   2. tar czf sub2api-deploy.tar.gz deploy/
+#   3. Transfer to new server and extract
+#   4. docker-compose -f docker-compose.local.yml up -d
 # =============================================================================
 
 services:
@@ -22,7 +33,7 @@ services:
         soft: 100000
         hard: 100000
     ports:
-      - "127.0.0.1:${SERVER_PORT:-8080}:8080"
+      - "${BIND_HOST:-0.0.0.0}:${SERVER_PORT:-18080}:8080"
     volumes:
       # Local directory mapping for easy migration
       - ./data:/app/data
@@ -141,6 +152,13 @@ services:
       # =======================================================================
       # Image Generation Stream & Concurrency
       # =======================================================================
+      # OpenAI HTTP upstream protocol/timeout
+      - GATEWAY_OPENAI_RESPONSE_HEADER_TIMEOUT=${GATEWAY_OPENAI_RESPONSE_HEADER_TIMEOUT:-0}
+      - GATEWAY_OPENAI_HTTP2_ENABLED=${GATEWAY_OPENAI_HTTP2_ENABLED:-true}
+      - GATEWAY_OPENAI_HTTP2_ALLOW_PROXY_FALLBACK_TO_HTTP1=${GATEWAY_OPENAI_HTTP2_ALLOW_PROXY_FALLBACK_TO_HTTP1:-true}
+      - GATEWAY_OPENAI_HTTP2_FALLBACK_ERROR_THRESHOLD=${GATEWAY_OPENAI_HTTP2_FALLBACK_ERROR_THRESHOLD:-2}
+      - GATEWAY_OPENAI_HTTP2_FALLBACK_WINDOW_SECONDS=${GATEWAY_OPENAI_HTTP2_FALLBACK_WINDOW_SECONDS:-60}
+      - GATEWAY_OPENAI_HTTP2_FALLBACK_TTL_SECONDS=${GATEWAY_OPENAI_HTTP2_FALLBACK_TTL_SECONDS:-600}
       - GATEWAY_IMAGE_STREAM_DATA_INTERVAL_TIMEOUT=${GATEWAY_IMAGE_STREAM_DATA_INTERVAL_TIMEOUT:-900}
       - GATEWAY_IMAGE_STREAM_KEEPALIVE_INTERVAL=${GATEWAY_IMAGE_STREAM_KEEPALIVE_INTERVAL:-10}
       - GATEWAY_IMAGE_CONCURRENCY_ENABLED=${GATEWAY_IMAGE_CONCURRENCY_ENABLED:-false}
