@@ -49,6 +49,31 @@
       </div>
     </div>
 
+    <div class="mt-4 grid grid-cols-2 gap-2.5 text-sm">
+      <div class="rounded-2xl bg-white/80 px-3 py-2.5 ring-1 ring-slate-100 dark:bg-dark-800/60 dark:ring-dark-700">
+        <div class="text-xs text-gray-400 dark:text-gray-500">到账倍率</div>
+        <div class="mt-1 font-bold text-gray-900 dark:text-white">{{ formatMultiplier(arrivalMultiplier) }}x</div>
+      </div>
+      <div class="rounded-2xl bg-white/80 px-3 py-2.5 ring-1 ring-slate-100 dark:bg-dark-800/60 dark:ring-dark-700">
+        <div class="text-xs text-gray-400 dark:text-gray-500">到账折扣</div>
+        <div class="mt-1 font-bold text-gray-900 dark:text-white">{{ arrivalDiscountLabel }}</div>
+      </div>
+      <template v-if="showUsageMetrics">
+        <div class="rounded-2xl bg-emerald-50/80 px-3 py-2.5 ring-1 ring-emerald-100 dark:bg-emerald-950/20 dark:ring-emerald-900/50">
+          <div class="text-xs text-emerald-700/70 dark:text-emerald-300/70">使用倍率</div>
+          <div class="mt-1 font-bold text-emerald-800 dark:text-emerald-200">{{ formatMultiplier(usageRateMultiplier) }}x</div>
+        </div>
+        <div class="rounded-2xl bg-emerald-50/80 px-3 py-2.5 ring-1 ring-emerald-100 dark:bg-emerald-950/20 dark:ring-emerald-900/50">
+          <div class="text-xs text-emerald-700/70 dark:text-emerald-300/70">综合折扣</div>
+          <div class="mt-1 font-bold text-emerald-800 dark:text-emerald-200">{{ effectiveDiscountLabel }}</div>
+        </div>
+      </template>
+    </div>
+
+    <p v-if="showUsageMetrics" class="mt-3 text-xs leading-5 text-emerald-700 dark:text-emerald-300">
+      约等效 {{ formatAmount(effectiveCreditAmount) }} 余额<template v-if="usageRate?.value_lift_label">，{{ usageRate.value_lift_label }}</template>
+    </p>
+
     <p v-if="disabled && disabledReason && !canForceSwitch" class="mt-3 text-xs leading-5 text-amber-700/90 dark:text-amber-300/90">
       {{ disabledReason }}
     </p>
@@ -85,6 +110,7 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { BalancePackage } from '@/types/payment'
+import type { LandingUsageRate } from '@/api/publicLanding'
 import { packageScopeBadgeClass, packageScopeLabelKey } from '@/utils/packageScopeBadge'
 
 const MAX_DISPLAY_TAGS = 3
@@ -94,6 +120,7 @@ const props = defineProps<{
   disabled?: boolean
   disabledReason?: string
   canForceSwitch?: boolean
+  usageRate?: LandingUsageRate | null
 }>()
 
 const emit = defineEmits<{
@@ -116,6 +143,61 @@ const supportText = computed(() =>
 const scopeBadgeClass = computed(() =>
   packageScopeBadgeClass(props.pkg.package_scope),
 )
+
+
+const arrivalMultiplier = computed(() => {
+  if (props.pkg.price <= 0) return 0
+  return round1(props.pkg.credit_amount / props.pkg.price)
+})
+
+const arrivalDiscount = computed(() => {
+  if (props.pkg.credit_amount <= 0) return 0
+  return round1((props.pkg.price / props.pkg.credit_amount) * 10)
+})
+
+const usageRateMultiplier = computed(() => {
+  const rate = props.usageRate?.rate_multiplier
+  return rate && rate > 0 ? rate : 1
+})
+
+const showUsageMetrics = computed(() => props.pkg.package_scope === 'codex' && !!props.usageRate && usageRateMultiplier.value > 0)
+
+const effectiveCreditAmount = computed(() => {
+  if (!showUsageMetrics.value) return props.pkg.credit_amount
+  return round2(props.pkg.credit_amount / usageRateMultiplier.value)
+})
+
+const effectiveDiscount = computed(() => {
+  if (effectiveCreditAmount.value <= 0) return 0
+  return round1((props.pkg.price / effectiveCreditAmount.value) * 10)
+})
+
+const arrivalDiscountLabel = computed(() => discountLabel(arrivalDiscount.value, false))
+const effectiveDiscountLabel = computed(() => discountLabel(effectiveDiscount.value, true))
+
+
+
+function round1(value: number): number {
+  return Math.round(value * 10) / 10
+}
+
+function round2(value: number): number {
+  return Math.round(value * 100) / 100
+}
+
+function formatAmount(value: number): string {
+  if (Number.isInteger(value)) return String(value)
+  return value.toFixed(2).replace(/\.00$/, '').replace(/(\.\d)0$/, '$1')
+}
+
+function formatMultiplier(value: number): string {
+  return formatAmount(value)
+}
+
+function discountLabel(value: number, effective: boolean): string {
+  const prefix = value <= 2.5 ? (effective ? '综合低至 ' : '低至 ') : (effective ? '综合约 ' : '约 ')
+  return `${prefix}${formatAmount(value)} 折`
+}
 
 function displayTagClass(tag: string) {
   const normalized = tag.trim().toLowerCase()

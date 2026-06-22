@@ -20,6 +20,7 @@ const showError = vi.hoisted(() => vi.fn())
 const showInfo = vi.hoisted(() => vi.fn())
 const showWarning = vi.hoisted(() => vi.fn())
 const getCheckoutInfo = vi.hoisted(() => vi.fn())
+const getLandingPackageShowcase = vi.hoisted(() => vi.fn())
 const bridgeInvoke = vi.hoisted(() => vi.fn())
 const mockUser = vi.hoisted(() => ({
   username: 'demo-user',
@@ -82,6 +83,11 @@ vi.mock('@/api/payment', () => ({
   paymentAPI: {
     getCheckoutInfo,
   },
+}))
+
+
+vi.mock('@/api/publicLanding', () => ({
+  getLandingPackageShowcase,
 }))
 
 vi.mock('@/utils/device', () => ({
@@ -260,6 +266,13 @@ describe('PaymentView WeChat JSAPI flow', () => {
     showInfo.mockReset()
     showWarning.mockReset()
     getCheckoutInfo.mockReset().mockResolvedValue(checkoutInfoFixture())
+    getLandingPackageShowcase.mockReset().mockResolvedValue({
+      data: {
+        packages: [],
+        usage_rates: [],
+        primary_usage_rate: null,
+      },
+    })
     bridgeInvoke.mockReset()
     window.localStorage.clear()
     ;(window as Window & { WeixinJSBridge?: { invoke: typeof bridgeInvoke } }).WeixinJSBridge = {
@@ -516,6 +529,15 @@ describe('PaymentView balance package storefront', () => {
     showInfo.mockReset()
     showWarning.mockReset()
     getCheckoutInfo.mockReset().mockResolvedValue(checkoutInfoWithMixedBalancePackagesFixture())
+    getLandingPackageShowcase.mockReset().mockResolvedValue({
+      data: {
+        packages: [],
+        usage_rates: [
+          { group_id: 2, group_name: 'gpt pro', rate_multiplier: 0.8, rate_label: 'gpt pro 使用倍率 0.8x', value_lift_percent: 25, value_lift_label: '同样余额可多用约 25%' },
+        ],
+        primary_usage_rate: { group_id: 2, group_name: 'gpt pro', rate_multiplier: 0.8, rate_label: 'gpt pro 使用倍率 0.8x', value_lift_percent: 25, value_lift_label: '同样余额可多用约 25%' },
+      },
+    })
     bridgeInvoke.mockReset()
     window.localStorage.clear()
   })
@@ -572,6 +594,41 @@ describe('PaymentView balance package storefront', () => {
     expect(en.payment.balancePackages.supportsGeneralOnly).toBe('Only available for General groups')
     expect(en.payment.balancePackages.modeGuideGeneralTitle).toBe('For General groups only')
     expect(en.payment.balancePackages.modeGuideGeneralDesc).toContain('Claude and Codex')
+  })
+
+
+  it('shows arrival multiplier, usage multiplier and combined discount for Codex packages', async () => {
+    getCheckoutInfo.mockResolvedValue({
+      data: {
+        ...checkoutInfoFixture().data,
+        balance_packages: [
+          {
+            id: 12,
+            name: 'Codex Pro 400',
+            description: 'high value package',
+            price: 100,
+            credit_amount: 400,
+            package_scope: 'codex',
+            display_tags: ['推荐', '最划算', 'Codex'],
+            product_name: 'Codex Pro 400',
+            for_sale: true,
+            sort_order: 1,
+          },
+        ],
+      },
+    })
+
+    const wrapper = mountPaymentView()
+    await flushPromises()
+
+    const card = wrapper.get('[data-testid="balance-package-card-12"]')
+    expect(card.text()).toContain('到账倍率')
+    expect(card.text()).toContain('4x')
+    expect(card.text()).toContain('使用倍率')
+    expect(card.text()).toContain('0.8x')
+    expect(card.text()).toContain('综合低至 2 折')
+    expect(card.text()).toContain('约等效 500 余额')
+    expect(card.text()).toContain('同样余额可多用约 25%')
   })
 
   it('renders balance package cards with scope badge, credited amount and support hint', async () => {

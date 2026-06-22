@@ -193,6 +193,7 @@
                   :disabled="!isPackageCompatible(pkg)"
                   :disabled-reason="balancePackageDisabledReason(pkg)"
                   :can-force-switch="canForceSwitchPackage(pkg)"
+                  :usage-rate="primaryLandingUsageRate"
                   @select="selectBalancePackage(pkg)"
                   @force-switch="openForceSwitchDialog(pkg)"
                 />
@@ -454,6 +455,7 @@ import { usePaymentStore } from '@/stores/payment'
 import { useSubscriptionStore } from '@/stores/subscriptions'
 import { useAppStore } from '@/stores'
 import { paymentAPI } from '@/api/payment'
+import { getLandingPackageShowcase, type LandingUsageRate } from '@/api/publicLanding'
 import { extractApiErrorMessage, extractI18nErrorMessage } from '@/utils/apiError'
 import { isMobileDevice } from '@/utils/device'
 import type { SubscriptionPlan, BalancePackage, CheckoutInfoResponse, CreateOrderResult, OrderType } from '@/types/payment'
@@ -689,6 +691,7 @@ const checkout = ref<CheckoutInfoResponse>({
   methods: {}, global_min: 0, global_max: 0,
   plans: [], balance_packages: [], balance_disabled: false, balance_recharge_multiplier: 1, recharge_fee_rate: 0, help_text: '', help_image_url: '', stripe_publishable_key: '',
 })
+const primaryLandingUsageRate = ref<LandingUsageRate | null>(null)
 
 const tabs = computed(() => {
   const result: { key: 'recharge' | 'package' | 'subscription'; label: string; disabled?: boolean }[] = []
@@ -1302,8 +1305,12 @@ async function resumeWechatPaymentFromQuery() {
 
 onMounted(async () => {
   try {
-    const res = await paymentAPI.getCheckoutInfo()
+    const [res, landingRes] = await Promise.all([
+      paymentAPI.getCheckoutInfo(),
+      getLandingPackageShowcase().catch(() => null),
+    ])
     checkout.value = res.data
+    primaryLandingUsageRate.value = landingRes?.data.primary_usage_rate || landingRes?.data.usage_rates?.[0] || null
     if (enabledMethods.value.length) {
       const order: readonly string[] = METHOD_ORDER
       const sorted = [...enabledMethods.value].sort((a, b) => {
