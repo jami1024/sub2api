@@ -44,6 +44,18 @@ func (h *PaymentHandler) GetPaymentConfig(c *gin.Context) {
 	response.Success(c, cfg)
 }
 
+// GetLandingPackageShowcase returns public, read-only package and usage-rate data
+// for the marketing landing page.
+// GET /api/v1/payment/public/landing-packages
+func (h *PaymentHandler) GetLandingPackageShowcase(c *gin.Context) {
+	showcase, err := h.configService.GetLandingPackageShowcase(c.Request.Context())
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, showcase)
+}
+
 // GetPlans returns subscription plans available for sale.
 // GET /api/v1/payment/plans
 func (h *PaymentHandler) GetPlans(c *gin.Context) {

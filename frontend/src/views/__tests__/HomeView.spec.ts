@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { flushPromises, mount } from '@vue/test-utils'
 import { ref } from 'vue'
 
 import HomeView from '@/views/HomeView.vue'
@@ -7,6 +7,9 @@ import HomeView from '@/views/HomeView.vue'
 const copyToClipboard = vi.fn().mockResolvedValue(true)
 const checkAuth = vi.fn()
 const fetchPublicSettings = vi.fn()
+const landingApiMock = vi.hoisted(() => ({
+  getLandingPackageShowcase: vi.fn()
+}))
 
 const authState = {
   isAuthenticated: false,
@@ -96,6 +99,11 @@ vi.mock('@/stores', () => ({
   })
 }))
 
+
+vi.mock('@/api/publicLanding', () => ({
+  getLandingPackageShowcase: landingApiMock.getLandingPackageShowcase
+}))
+
 vi.mock('@/composables/useClipboard', () => ({
   useClipboard: () => ({
     copied: ref(false),
@@ -160,6 +168,68 @@ describe('HomeView', () => {
     appState.siteName = 'AigoHub'
     appState.siteLogo = ''
     appState.docUrl = ''
+    landingApiMock.getLandingPackageShowcase.mockResolvedValue({
+      data: {
+        packages: [
+          {
+            id: 1,
+            name: '专属包-试用级',
+            description: '首次体验',
+            price: 10,
+            credit_amount: 15,
+            package_scope: 'codex',
+            product_name: '专属包-试用级',
+            display_tags: ['试用'],
+            sort_order: 0,
+            arrival_multiplier: 1.5,
+            arrival_discount: 6.7,
+            arrival_discount_label: '约 6.7 折',
+            effective_credit_amount: 18.75,
+            effective_discount: 5.3,
+            effective_discount_label: '综合约 5.3 折'
+          },
+          {
+            id: 2,
+            name: '专属包-入门级',
+            description: '轻度使用',
+            price: 50,
+            credit_amount: 110,
+            package_scope: 'codex',
+            product_name: '专属包-入门级',
+            display_tags: ['入门'],
+            sort_order: 1,
+            arrival_multiplier: 2.2,
+            arrival_discount: 4.5,
+            arrival_discount_label: '约 4.5 折',
+            effective_credit_amount: 137.5,
+            effective_discount: 3.6,
+            effective_discount_label: '综合约 3.6 折'
+          },
+          {
+            id: 3,
+            name: '专属包-进阶级',
+            description: '高频使用',
+            price: 100,
+            credit_amount: 400,
+            package_scope: 'codex',
+            product_name: '专属包-进阶级',
+            display_tags: ['推荐'],
+            sort_order: 2,
+            arrival_multiplier: 4,
+            arrival_discount: 2.5,
+            arrival_discount_label: '低至 2.5 折',
+            effective_credit_amount: 500,
+            effective_discount: 2,
+            effective_discount_label: '综合低至 2 折'
+          }
+        ],
+        usage_rates: [
+          { group_id: 2, group_name: 'gpt pro', rate_multiplier: 0.8, rate_label: 'gpt pro 使用倍率 0.8x', value_lift_percent: 25, value_lift_label: '同样余额可多用约 25%' },
+          { group_id: 8, group_name: 'gpt pro 高价', rate_multiplier: 1.3, rate_label: 'gpt pro 高价 使用倍率 1.3x', value_lift_percent: 0, value_lift_label: '' }
+        ],
+        primary_usage_rate: { group_id: 2, group_name: 'gpt pro', rate_multiplier: 0.8, rate_label: 'gpt pro 使用倍率 0.8x', value_lift_percent: 25, value_lift_label: '同样余额可多用约 25%' }
+      }
+    })
   })
 
   it('renders the AigoHub landing page when home_content is empty', () => {
@@ -221,24 +291,28 @@ describe('HomeView', () => {
     expect(wrapper.get('[data-testid="home-hero-panel-glow"]').exists()).toBe(true)
   })
 
-  it('renders the package section with Codex and Claude balance package guidance', () => {
+  it('renders live landing packages with arrival and usage multipliers', async () => {
     const wrapper = mountView()
+    await flushPromises()
 
-    expect(wrapper.text()).toContain('Codex / Claude 余额包')
-    expect(wrapper.text()).toContain('¥20 / $50')
-    expect(wrapper.text()).toContain('¥50 / $120')
-    expect(wrapper.text()).toContain('¥100 / $400')
-    expect(wrapper.text()).toContain('按 GPT-5.4 约可使用 1000 万 tokens')
-    expect(wrapper.text()).toContain('按输入:输出 = 4:1 估算')
-    expect(wrapper.text()).toContain('实际价格以实际订阅为准')
-    expect(wrapper.text()).toContain('Claude 余额包')
-    expect(wrapper.text()).toContain('新增 Claude 余额包')
-    expect(wrapper.text()).toContain('登录后前往充值订阅查看详情')
-    expect(wrapper.text()).not.toContain('敬请期待')
+    expect(landingApiMock.getLandingPackageShowcase).toHaveBeenCalled()
+    expect(wrapper.text()).toContain('Codex 专属余额包')
+    expect(wrapper.text()).toContain('专属包-试用级')
+    expect(wrapper.text()).toContain('¥10')
+    expect(wrapper.text()).toContain('到账余额15余额')
+    expect(wrapper.text()).toContain('到账倍率1.5x')
+    expect(wrapper.text()).toContain('综合约 5.3 折')
+    expect(wrapper.text()).toContain('专属包-进阶级')
+    expect(wrapper.text()).toContain('综合低至 2 折')
+    expect(wrapper.text()).toContain('约等效 500 余额')
+    expect(wrapper.text()).toContain('gpt pro 使用倍率 0.8x')
+    expect(wrapper.text()).toContain('同样余额可多用约 25%')
+    expect(wrapper.text()).not.toContain('¥20 / $50')
   })
 
-  it('uses high-contrast dark mode styling for the package section', () => {
+  it('uses high-contrast dark mode styling for the package section', async () => {
     const wrapper = mountView()
+    await flushPromises()
 
     const section = wrapper.get('[data-testid="home-package-section"]')
     expect(section.classes().join(' ')).toContain('dark:bg-slate-950')
@@ -248,20 +322,23 @@ describe('HomeView', () => {
     expect(firstCard.classes().join(' ')).toContain('dark:bg-slate-900/95')
   })
 
-  it('renders the package multiplier badge text for codex cards', () => {
+  it('renders the package multiplier badge text for codex cards', async () => {
     const wrapper = mountView()
+    await flushPromises()
 
     const sectionText = wrapper.get('[data-testid="home-package-section"]').text()
-    expect(sectionText).toContain('1x')
+    expect(sectionText).toContain('到账倍率4x')
+    expect(sectionText).toContain('使用倍率0.8x')
   })
 
-  it('renders three codex package cards and one claude package info card', () => {
+  it('renders live codex package cards', async () => {
     const wrapper = mountView()
+    await flushPromises()
     const cards = wrapper.findAll('[data-testid="home-package-card"]')
 
-    expect(cards).toHaveLength(4)
-    expect(wrapper.get('[data-testid="home-package-section"]').text()).toContain('同时提供 Codex 与 Claude 余额包')
-    expect(cards[3].attributes('data-package-kind')).toBe('claude')
+    expect(cards).toHaveLength(3)
+    expect(wrapper.get('[data-testid="home-package-section"]').text()).toContain('后台实时同步')
+    expect(cards[2].attributes('data-package-kind')).toBe('codex')
   })
 
   it('renders the iframe override when home_content is an external URL', () => {
