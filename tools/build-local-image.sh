@@ -10,11 +10,14 @@ SOURCE_COMPOSE="${REPO_ROOT}/deploy/docker-compose.local.yml"
 IMAGE_NAME="sub2api:local"
 OUTPUT_PATH="${REPO_ROOT}/deploy/docker-compose.local-self.yml"
 SKIP_BUILD=false
-GOPROXY_VALUE="${GOPROXY:-https://goproxy.cn,direct}"
-GOSUMDB_VALUE="${GOSUMDB:-sum.golang.google.cn}"
+GOPROXY_VALUE="${GOPROXY:-https://proxy.golang.org,direct}"
+GOSUMDB_VALUE="${GOSUMDB:-sum.golang.org}"
 COMMIT_VALUE="${COMMIT:-}"
 DATE_VALUE="${DATE:-}"
 VALIDATE_COMPOSE="${SUB2API_LOCAL_IMAGE_VALIDATE_COMPOSE:-true}"
+BUILD_MEMORY_VALUE="${BUILD_MEMORY:-}"
+BUILD_CPUSET_CPUS_VALUE="${BUILD_CPUSET_CPUS:-}"
+BUILD_CPUS_VALUE="${BUILD_CPUS:-}"
 
 usage() {
   cat <<EOF_USAGE
@@ -27,10 +30,13 @@ Options:
   -h, --help        显示帮助
 
 Environment:
-  GOPROXY                         Go module proxy，默认: https://goproxy.cn,direct
-  GOSUMDB                         Go checksum database，默认: sum.golang.google.cn
+  GOPROXY                         Go module proxy，默认: https://proxy.golang.org,direct
+  GOSUMDB                         Go checksum database，默认: sum.golang.org
   COMMIT                          镜像内版本提交号，默认自动读取 git short HEAD
   DATE                            镜像内构建时间，默认当前 UTC 时间
+  BUILD_MEMORY                    限制 docker build 内存，例如: 4g
+  BUILD_CPUSET_CPUS               限制 docker build 使用的 CPU 编号，例如: 0-3
+  BUILD_CPUS                      限制 docker build CPU 配额，例如: 4；需当前 Docker 支持 --cpus
   SUB2API_LOCAL_IMAGE_VALIDATE_COMPOSE=false  跳过 docker compose config 校验
 EOF_USAGE
 }
@@ -81,7 +87,23 @@ if [[ -z "${DATE_VALUE}" ]]; then
 fi
 
 if [[ "${SKIP_BUILD}" != "true" ]]; then
-  docker build -t "${IMAGE_NAME}" \
+  DOCKER_BUILD_CMD=(docker build)
+  if [[ -n "${BUILD_MEMORY_VALUE}" ]]; then
+    DOCKER_BUILD_CMD+=(--memory "${BUILD_MEMORY_VALUE}")
+  fi
+  if [[ -n "${BUILD_CPUSET_CPUS_VALUE}" ]]; then
+    DOCKER_BUILD_CMD+=(--cpuset-cpus "${BUILD_CPUSET_CPUS_VALUE}")
+  fi
+  if [[ -n "${BUILD_CPUS_VALUE}" ]]; then
+    if docker build --help 2>/dev/null | grep -q -- '--cpus'; then
+      DOCKER_BUILD_CMD+=(--cpus "${BUILD_CPUS_VALUE}")
+    else
+      echo "当前 docker build 不支持 BUILD_CPUS/--cpus；请改用 BUILD_CPUSET_CPUS，例如 BUILD_CPUSET_CPUS=0-3" >&2
+      exit 1
+    fi
+  fi
+
+  "${DOCKER_BUILD_CMD[@]}" -t "${IMAGE_NAME}" \
     --build-arg "GOPROXY=${GOPROXY_VALUE}" \
     --build-arg "GOSUMDB=${GOSUMDB_VALUE}" \
     --build-arg "COMMIT=${COMMIT_VALUE}" \
@@ -184,3 +206,8 @@ echo "GOPROXY: ${GOPROXY_VALUE}"
 echo "GOSUMDB: ${GOSUMDB_VALUE}"
 echo "Commit: ${COMMIT_VALUE}"
 echo "Date: ${DATE_VALUE}"
+if [[ -n "${BUILD_MEMORY_VALUE}${BUILD_CPUSET_CPUS_VALUE}${BUILD_CPUS_VALUE}" ]]; then
+  echo "Build memory limit: ${BUILD_MEMORY_VALUE:-unlimited}"
+  echo "Build CPU set: ${BUILD_CPUSET_CPUS_VALUE:-unlimited}"
+  echo "Build CPU quota: ${BUILD_CPUS_VALUE:-unlimited}"
+fi
