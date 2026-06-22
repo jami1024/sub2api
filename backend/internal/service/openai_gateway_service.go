@@ -243,6 +243,7 @@ type OpenAIForwardResult struct {
 	ResponseHeaders    http.Header
 	Duration           time.Duration
 	FirstTokenMs       *int
+	UpstreamLatencyMs  *int
 	ClientDisconnect   bool
 	ImageCount         int
 	ImageSize          string
@@ -261,6 +262,21 @@ type OpenAIWSRetryMetricsSnapshot struct {
 	RetryBackoffMsTotal           int64 `json:"retry_backoff_ms_total"`
 	RetryExhaustedTotal           int64 `json:"retry_exhausted_total"`
 	NonRetryableFastFallbackTotal int64 `json:"non_retryable_fast_fallback_total"`
+}
+
+func openAIUpstreamTTFTPtr(startTime, upstreamStart time.Time, firstTokenMs *int, fallbackHeaderLatencyMs int) *int {
+	if firstTokenMs != nil {
+		beforeUpstreamMs := int(upstreamStart.Sub(startTime).Milliseconds())
+		value := *firstTokenMs - beforeUpstreamMs
+		if value >= 0 {
+			return &value
+		}
+	}
+	if fallbackHeaderLatencyMs < 0 {
+		return nil
+	}
+	value := fallbackHeaderLatencyMs
+	return &value
 }
 
 type OpenAICompatibilityFallbackMetricsSnapshot struct {
@@ -2982,7 +2998,8 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 		// Send request
 		upstreamStart := time.Now()
 		resp, err := s.httpUpstream.Do(upstreamReq, proxyURL, account.ID, account.Concurrency)
-		SetOpsLatencyMs(c, OpsUpstreamLatencyMsKey, time.Since(upstreamStart).Milliseconds())
+		upstreamHeaderLatencyMs := int(time.Since(upstreamStart).Milliseconds())
+		SetOpsLatencyMs(c, OpsUpstreamLatencyMsKey, int64(upstreamHeaderLatencyMs))
 		if err != nil {
 			// Transport-level failure (proxy/DNS/TCP/TLS — no HTTP response). Convert to
 			// a failover so the handler switches to a healthy account, and temporarily
@@ -3091,17 +3108,18 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 		}
 
 		forwardResult := &OpenAIForwardResult{
-			RequestID:       resp.Header.Get("x-request-id"),
-			ResponseID:      responseID,
-			Usage:           *usage,
-			Model:           originalModel,
-			UpstreamModel:   upstreamModel,
-			ServiceTier:     serviceTier,
-			ReasoningEffort: reasoningEffort,
-			Stream:          reqStream,
-			OpenAIWSMode:    false,
-			Duration:        time.Since(startTime),
-			FirstTokenMs:    firstTokenMs,
+			RequestID:         resp.Header.Get("x-request-id"),
+			ResponseID:        responseID,
+			Usage:             *usage,
+			Model:             originalModel,
+			UpstreamModel:     upstreamModel,
+			ServiceTier:       serviceTier,
+			ReasoningEffort:   reasoningEffort,
+			Stream:            reqStream,
+			OpenAIWSMode:      false,
+			Duration:          time.Since(startTime),
+			FirstTokenMs:      firstTokenMs,
+			UpstreamLatencyMs: openAIUpstreamTTFTPtr(startTime, upstreamStart, firstTokenMs, upstreamHeaderLatencyMs),
 		}
 		if imageCount > 0 {
 			forwardResult.ImageCount = imageCount
@@ -3269,7 +3287,8 @@ func (s *OpenAIGatewayService) forwardOpenAIPassthrough(
 
 	upstreamStart := time.Now()
 	resp, err := s.httpUpstream.Do(upstreamReq, proxyURL, account.ID, account.Concurrency)
-	SetOpsLatencyMs(c, OpsUpstreamLatencyMsKey, time.Since(upstreamStart).Milliseconds())
+	upstreamHeaderLatencyMs := int(time.Since(upstreamStart).Milliseconds())
+	SetOpsLatencyMs(c, OpsUpstreamLatencyMsKey, int64(upstreamHeaderLatencyMs))
 	if err != nil {
 		// Transport-level failure (proxy/DNS/TCP/TLS — no HTTP response). Convert to
 		// a failover so the handler switches to a healthy account, and temporarily
@@ -3325,17 +3344,18 @@ func (s *OpenAIGatewayService) forwardOpenAIPassthrough(
 	}
 
 	forwardResult := &OpenAIForwardResult{
-		RequestID:       resp.Header.Get("x-request-id"),
-		ResponseID:      responseID,
-		Usage:           *usage,
-		Model:           reqModel,
-		UpstreamModel:   upstreamPassthroughModel,
-		ServiceTier:     serviceTier,
-		ReasoningEffort: reasoningEffort,
-		Stream:          reqStream,
-		OpenAIWSMode:    false,
-		Duration:        time.Since(startTime),
-		FirstTokenMs:    firstTokenMs,
+		RequestID:         resp.Header.Get("x-request-id"),
+		ResponseID:        responseID,
+		Usage:             *usage,
+		Model:             reqModel,
+		UpstreamModel:     upstreamPassthroughModel,
+		ServiceTier:       serviceTier,
+		ReasoningEffort:   reasoningEffort,
+		Stream:            reqStream,
+		OpenAIWSMode:      false,
+		Duration:          time.Since(startTime),
+		FirstTokenMs:      firstTokenMs,
+		UpstreamLatencyMs: openAIUpstreamTTFTPtr(startTime, upstreamStart, firstTokenMs, upstreamHeaderLatencyMs),
 	}
 	if imageCount > 0 {
 		forwardResult.ImageCount = imageCount
@@ -5894,6 +5914,7 @@ func (s *OpenAIGatewayService) RecordUsage(ctx context.Context, input *OpenAIRec
 	usageLog.OpenAIWSMode = result.OpenAIWSMode
 	usageLog.DurationMs = &durationMs
 	usageLog.FirstTokenMs = result.FirstTokenMs
+	usageLog.UpstreamLatencyMs = result.UpstreamLatencyMs
 	usageLog.CreatedAt = time.Now()
 	// 设置渠道信息
 	usageLog.ChannelID = optionalInt64Ptr(input.ChannelID)

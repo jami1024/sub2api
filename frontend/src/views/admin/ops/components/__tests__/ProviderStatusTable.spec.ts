@@ -28,6 +28,8 @@ const item = {
   ttft_avg_ms: 2_400,
   ttft_p95_ms: 8_800,
   ttft_sample_count: 9,
+  upstream_ttft_avg_ms: 900,
+  gateway_ttft_avg_ms: 1_500,
   timeout_524_count: 2,
   timeout_524_avg_ms: 91_000,
   last_seen: '2026-06-16T06:38:45Z',
@@ -53,6 +55,8 @@ const item = {
       duration_avg_ms: 42_000,
       ttft_avg_ms: 2_400,
       ttft_sample_count: 9,
+      upstream_ttft_avg_ms: 900,
+      gateway_ttft_avg_ms: 1_500,
       timeout_524_count: 2,
       timeout_524_avg_ms: 91_000,
     },
@@ -74,7 +78,7 @@ describe('ProviderStatusTable', () => {
     expect(wrapper.text()).not.toContain('8080ms')
   })
 
-  it('显示首响应、总耗时和 524 超时统计', () => {
+  it('显示分层首响应、总耗时和 524 超时统计', () => {
     const wrapper = mount(ProviderStatusTable, {
       props: {
         loading: false,
@@ -85,8 +89,10 @@ describe('ProviderStatusTable', () => {
     expect(wrapper.text()).toContain('总耗时')
     expect(wrapper.text()).toContain('平均 42s')
     expect(wrapper.text()).toContain('最大 1.68m')
-    expect(wrapper.text()).toContain('首响应')
-    expect(wrapper.text()).toContain('平均 2.4s')
+    expect(wrapper.text()).toContain('分层首响应')
+    expect(wrapper.text()).toContain('客户端视角 2.4s')
+    expect(wrapper.text()).toContain('我站→上游 900ms')
+    expect(wrapper.text()).toContain('网关处理 1.5s')
     expect(wrapper.text()).toContain('P95 8.8s')
     expect(wrapper.text()).toContain('样本 9')
     expect(wrapper.text()).toContain('524')
@@ -128,6 +134,9 @@ describe('ProviderStatusTable', () => {
     expect(wrapper.text()).toContain('27 个请求')
     expect(wrapper.text()).toContain('可用性 55.56%')
     expect(wrapper.text()).toContain('延迟: 8.08s')
+    expect(wrapper.text()).toContain('客户端视角首响应: 2.4s')
+    expect(wrapper.text()).toContain('我站→上游: 900ms')
+    expect(wrapper.text()).toContain('网关处理/下发: 1.5s')
     expect(wrapper.text()).toContain('OK: 15')
     expect(wrapper.text()).toContain('ERR: 12')
   })

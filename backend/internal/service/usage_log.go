@@ -155,8 +155,13 @@ type UsageLog struct {
 	OpenAIWSMode bool
 	DurationMs   *int
 	FirstTokenMs *int
-	UserAgent    *string
-	IPAddress    *string
+	// UpstreamLatencyMs records the upstream-side portion of TTFT when available:
+	// from sending the upstream HTTP request to receiving the first upstream
+	// stream token/event. Non-streaming or legacy rows may fall back to response
+	// header latency or remain nil.
+	UpstreamLatencyMs *int
+	UserAgent         *string
+	IPAddress         *string
 
 	// Cache TTL Override 标记（管理员强制替换了缓存 TTL 计费）
 	CacheTTLOverridden bool

@@ -21,7 +21,7 @@
             <th class="px-4 py-3 text-right">P95</th>
             <th class="px-4 py-3 text-right">P99</th>
             <th class="px-4 py-3 text-right">总耗时</th>
-            <th class="px-4 py-3 text-right">首响应</th>
+            <th class="px-4 py-3 text-right">分层首响应</th>
             <th class="px-4 py-3 text-right">524</th>
             <th class="px-4 py-3 text-left">{{ t('admin.providerStatus.fingerprint') }}</th>
             <th class="px-4 py-3 text-left">{{ t('admin.providerStatus.timeline') }}</th>
@@ -42,8 +42,10 @@
               <div class="text-gray-500 dark:text-gray-400">最大 {{ formatMs(item.duration_max_ms) }}</div>
             </td>
             <td class="px-4 py-3 text-right text-xs text-gray-700 dark:text-gray-300">
-              <div>平均 {{ formatMs(item.ttft_avg_ms) }}</div>
-              <div class="text-gray-500 dark:text-gray-400">P95 {{ formatMs(item.ttft_p95_ms) }}</div>
+              <div>客户端视角 {{ formatMs(item.ttft_avg_ms) }}</div>
+              <div class="text-gray-500 dark:text-gray-400">我站→上游 {{ formatMs(item.upstream_ttft_avg_ms) }}</div>
+              <div class="text-gray-500 dark:text-gray-400">网关处理 {{ formatMs(item.gateway_ttft_avg_ms) }}</div>
+              <div class="text-gray-400 dark:text-gray-500">P95 {{ formatMs(item.ttft_p95_ms) }}</div>
               <div class="text-gray-400 dark:text-gray-500">样本 {{ formatNumber(item.ttft_sample_count || 0) }}</div>
             </td>
             <td class="px-4 py-3 text-right text-xs text-gray-700 dark:text-gray-300">
@@ -109,7 +111,9 @@
                 <div>可用性 {{ formatPercent(hoveredTimeline.point.availability) }}</div>
                 <div>延迟: {{ formatMs(hoveredTimeline.point.p50_ms) }}</div>
                 <div>总耗时均值: {{ formatMs(hoveredTimeline.point.duration_avg_ms) }}</div>
-                <div>首响应均值: {{ formatMs(hoveredTimeline.point.ttft_avg_ms) }} / 样本 {{ formatNumber(hoveredTimeline.point.ttft_sample_count || 0) }}</div>
+                <div>客户端视角首响应: {{ formatMs(hoveredTimeline.point.ttft_avg_ms) }} / 样本 {{ formatNumber(hoveredTimeline.point.ttft_sample_count || 0) }}</div>
+                <div>我站→上游: {{ formatMs(hoveredTimeline.point.upstream_ttft_avg_ms) }}</div>
+                <div>网关处理/下发: {{ formatMs(hoveredTimeline.point.gateway_ttft_avg_ms) }}</div>
                 <div>524: {{ formatNumber(hoveredTimeline.point.timeout_524_count || 0) }} 次 / 平均 {{ formatMs(hoveredTimeline.point.timeout_524_avg_ms) }}</div>
                 <div class="flex gap-2">
                   <span class="text-emerald-400">OK: {{ formatNumber(hoveredTimeline.point.success_count) }}</span>
@@ -212,6 +216,8 @@ function compactTimeline(points: OpsProviderStatusTimelinePoint[]): OpsProviderS
       duration_avg_ms: weightedAverageMs(slice, 'duration_avg_ms', 'request_count'),
       ttft_avg_ms: weightedAverageMs(slice, 'ttft_avg_ms', 'ttft_sample_count'),
       ttft_sample_count: slice.reduce((sum, p) => sum + (p.ttft_sample_count || 0), 0),
+      upstream_ttft_avg_ms: weightedAverageMs(slice, 'upstream_ttft_avg_ms', 'ttft_sample_count'),
+      gateway_ttft_avg_ms: weightedAverageMs(slice, 'gateway_ttft_avg_ms', 'ttft_sample_count'),
       timeout_524_count: slice.reduce((sum, p) => sum + (p.timeout_524_count || 0), 0),
       timeout_524_avg_ms: weightedAverageMs(slice, 'timeout_524_avg_ms', 'timeout_524_count'),
     })
@@ -228,7 +234,7 @@ function timelineClass(point: OpsProviderStatusTimelinePoint): string {
 }
 
 function timelineTitle(point: OpsProviderStatusTimelinePoint): string {
-  return `${formatTimelineTime(point.bucket_start)} · ${point.request_count} 个请求 · 可用性 ${formatPercent(point.availability)} · 延迟: ${formatMs(point.p50_ms)} · 总耗时: ${formatMs(point.duration_avg_ms)} · 首响应: ${formatMs(point.ttft_avg_ms)} · 524: ${point.timeout_524_count || 0} 次 · OK: ${point.success_count} · ERR: ${point.failure_count}`
+  return `${formatTimelineTime(point.bucket_start)} · ${point.request_count} 个请求 · 可用性 ${formatPercent(point.availability)} · 延迟: ${formatMs(point.p50_ms)} · 总耗时: ${formatMs(point.duration_avg_ms)} · 客户端视角首响应: ${formatMs(point.ttft_avg_ms)} · 我站→上游: ${formatMs(point.upstream_ttft_avg_ms)} · 网关处理: ${formatMs(point.gateway_ttft_avg_ms)} · 524: ${point.timeout_524_count || 0} 次 · OK: ${point.success_count} · ERR: ${point.failure_count}`
 }
 
 function showTimelineTooltip(event: MouseEvent, provider: string, index: number, point: OpsProviderStatusTimelinePoint) {
@@ -275,7 +281,7 @@ function toggleFingerprint(provider: string) {
   expandedFingerprintProvider.value = expandedFingerprintProvider.value === provider ? null : provider
 }
 
-function weightedAverageMs(points: OpsProviderStatusTimelinePoint[], valueKey: 'duration_avg_ms' | 'ttft_avg_ms' | 'timeout_524_avg_ms', weightKey: 'request_count' | 'ttft_sample_count' | 'timeout_524_count'): number | null {
+function weightedAverageMs(points: OpsProviderStatusTimelinePoint[], valueKey: 'duration_avg_ms' | 'ttft_avg_ms' | 'upstream_ttft_avg_ms' | 'gateway_ttft_avg_ms' | 'timeout_524_avg_ms', weightKey: 'request_count' | 'ttft_sample_count' | 'timeout_524_count'): number | null {
   let weighted = 0
   let weightSum = 0
   for (const point of points) {

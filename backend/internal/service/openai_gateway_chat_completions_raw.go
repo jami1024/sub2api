@@ -164,7 +164,10 @@ func (s *OpenAIGatewayService) forwardAsRawChatCompletions(
 	if account.Proxy != nil {
 		proxyURL = account.Proxy.URL()
 	}
+	upstreamStart := time.Now()
 	resp, err := s.httpUpstream.Do(upstreamReq, proxyURL, account.ID, account.Concurrency)
+	upstreamHeaderLatencyMs := int(time.Since(upstreamStart).Milliseconds())
+	SetOpsLatencyMs(c, OpsUpstreamLatencyMsKey, int64(upstreamHeaderLatencyMs))
 	if err != nil {
 		safeErr := sanitizeUpstreamErrorMessage(err.Error())
 		setOpsUpstreamError(c, 0, safeErr, "")
@@ -219,10 +222,16 @@ func (s *OpenAIGatewayService) forwardAsRawChatCompletions(
 	}
 
 	// 8. Forward response
+	var result *OpenAIForwardResult
 	if clientStream {
-		return s.streamRawChatCompletions(c, resp, account, originalModel, billingModel, upstreamModel, reasoningEffort, serviceTier, startTime, len(body))
+		result, err = s.streamRawChatCompletions(c, resp, account, originalModel, billingModel, upstreamModel, reasoningEffort, serviceTier, startTime, len(body))
+	} else {
+		result, err = s.bufferRawChatCompletions(c, resp, originalModel, billingModel, upstreamModel, reasoningEffort, serviceTier, startTime)
 	}
-	return s.bufferRawChatCompletions(c, resp, originalModel, billingModel, upstreamModel, reasoningEffort, serviceTier, startTime)
+	if err == nil && result != nil {
+		result.UpstreamLatencyMs = openAIUpstreamTTFTPtr(startTime, upstreamStart, result.FirstTokenMs, upstreamHeaderLatencyMs)
+	}
+	return result, err
 }
 
 // streamRawChatCompletions 透传上游 CC SSE 流到客户端，并提取 usage（包括

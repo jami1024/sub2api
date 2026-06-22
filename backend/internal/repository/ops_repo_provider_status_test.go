@@ -39,9 +39,11 @@ func TestQueryProviderStatusTimelineUsesSetBasedAggregation(t *testing.T) {
 			"duration_avg_ms",
 			"ttft_avg_ms",
 			"ttft_sample_count",
+			"upstream_ttft_avg_ms",
+			"gateway_ttft_avg_ms",
 			"timeout_524_count",
 			"timeout_524_avg_ms",
-		}).AddRow("openai", start, int64(1), int64(1), int64(0), float64(100), float64(100), float64(100), float64(100), float64(80), int64(1), int64(0), nil))
+		}).AddRow("openai", start, int64(1), int64(1), int64(0), float64(100), float64(100), float64(100), float64(100), float64(80), int64(1), float64(30), float64(50), int64(0), nil))
 
 	points, err := repo.queryProviderStatusTimeline(context.Background(), start, end, 300, []string{"openai"})
 	if err != nil {
@@ -88,10 +90,12 @@ func TestQueryProviderStatusUsesAccountNameAsProvider(t *testing.T) {
 			"ttft_avg_ms",
 			"ttft_p95_ms",
 			"ttft_sample_count",
+			"upstream_ttft_avg_ms",
+			"gateway_ttft_avg_ms",
 			"timeout_524_count",
 			"timeout_524_avg_ms",
 			"last_seen",
-		}).AddRow("gzw plus", int64(80), int64(80), int64(0), int64(0), float64(120), float64(300), float64(500), float64(250), float64(500), float64(180), float64(300), int64(10), int64(0), nil, end))
+		}).AddRow("gzw plus", int64(80), int64(80), int64(0), int64(0), float64(120), float64(300), float64(500), float64(250), float64(500), float64(180), float64(300), int64(10), nil, nil, int64(0), nil, end))
 
 	items, err := repo.queryProviderStatusSummary(context.Background(), start, end, 50)
 	if err != nil {
@@ -138,6 +142,8 @@ func TestQueryProviderStatusExcludesUnlinkedErrors(t *testing.T) {
 			"ttft_avg_ms",
 			"ttft_p95_ms",
 			"ttft_sample_count",
+			"upstream_ttft_avg_ms",
+			"gateway_ttft_avg_ms",
 			"timeout_524_count",
 			"timeout_524_avg_ms",
 			"last_seen",
@@ -159,6 +165,7 @@ func TestQueryProviderStatusSummaryIncludesTimingDiagnostics(t *testing.T) {
 	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherFunc(func(expectedSQL, actualSQL string) error {
 		for _, want := range []string{
 			"ul.first_token_ms",
+			"ul.upstream_latency_ms",
 			"oel.duration_ms",
 			"oel.time_to_first_token_ms",
 			"oel.upstream_status_code",
@@ -194,10 +201,12 @@ func TestQueryProviderStatusSummaryIncludesTimingDiagnostics(t *testing.T) {
 			"ttft_avg_ms",
 			"ttft_p95_ms",
 			"ttft_sample_count",
+			"upstream_ttft_avg_ms",
+			"gateway_ttft_avg_ms",
 			"timeout_524_count",
 			"timeout_524_avg_ms",
 			"last_seen",
-		}).AddRow("gzw plus", int64(3), int64(2), int64(1), int64(0), float64(120), float64(300), float64(500), float64(250), float64(90000), float64(1800), float64(3000), int64(2), int64(1), float64(90000), end))
+		}).AddRow("gzw plus", int64(3), int64(2), int64(1), int64(0), float64(120), float64(300), float64(500), float64(250), float64(90000), float64(1800), float64(3000), int64(2), float64(600), float64(1200), int64(1), float64(90000), end))
 
 	items, err := repo.queryProviderStatusSummary(context.Background(), start, end, 50)
 	if err != nil {
@@ -221,6 +230,12 @@ func TestQueryProviderStatusSummaryIncludesTimingDiagnostics(t *testing.T) {
 	}
 	if item.TTFTSampleCount != 2 {
 		t.Fatalf("ttft_sample_count = %d, want 2", item.TTFTSampleCount)
+	}
+	if item.UpstreamTTFTAvgMs == nil || *item.UpstreamTTFTAvgMs != 600 {
+		t.Fatalf("upstream_ttft_avg_ms = %#v, want 600", item.UpstreamTTFTAvgMs)
+	}
+	if item.GatewayTTFTAvgMs == nil || *item.GatewayTTFTAvgMs != 1200 {
+		t.Fatalf("gateway_ttft_avg_ms = %#v, want 1200", item.GatewayTTFTAvgMs)
 	}
 	if item.Timeout524Count != 1 {
 		t.Fatalf("timeout_524_count = %d, want 1", item.Timeout524Count)
@@ -266,10 +281,12 @@ func TestGetProviderStatusAttachesLatestFingerprints(t *testing.T) {
 			"ttft_avg_ms",
 			"ttft_p95_ms",
 			"ttft_sample_count",
+			"upstream_ttft_avg_ms",
+			"gateway_ttft_avg_ms",
 			"timeout_524_count",
 			"timeout_524_avg_ms",
 			"last_seen",
-		}).AddRow("xixi", int64(2), int64(1), int64(1), int64(0), float64(120), float64(300), float64(500), float64(250), float64(500), float64(180), float64(300), int64(1), int64(1), float64(90000), end))
+		}).AddRow("xixi", int64(2), int64(1), int64(1), int64(0), float64(120), float64(300), float64(500), float64(250), float64(500), float64(180), float64(300), int64(1), nil, nil, int64(1), float64(90000), end))
 	mock.ExpectQuery("provider timeline").
 		WillReturnRows(sqlmock.NewRows([]string{
 			"provider",
@@ -283,9 +300,11 @@ func TestGetProviderStatusAttachesLatestFingerprints(t *testing.T) {
 			"duration_avg_ms",
 			"ttft_avg_ms",
 			"ttft_sample_count",
+			"upstream_ttft_avg_ms",
+			"gateway_ttft_avg_ms",
 			"timeout_524_count",
 			"timeout_524_avg_ms",
-		}).AddRow("xixi", start, int64(2), int64(1), int64(1), float64(120), float64(300), float64(500), float64(250), float64(180), int64(1), int64(1), float64(90000)))
+		}).AddRow("xixi", start, int64(2), int64(1), int64(1), float64(120), float64(300), float64(500), float64(250), float64(180), int64(1), nil, nil, int64(1), float64(90000)))
 	mock.ExpectQuery("provider fingerprints").
 		WillReturnRows(sqlmock.NewRows([]string{
 			"provider",
@@ -334,6 +353,8 @@ func TestScanProviderStatusSummaryCalculatesAvailability(t *testing.T) {
 		sql.NullFloat64{Float64: 1100, Valid: true},
 		sql.NullFloat64{Float64: 2500, Valid: true},
 		int64(6),
+		sql.NullFloat64{Float64: 400, Valid: true},
+		sql.NullFloat64{Float64: 700, Valid: true},
 		int64(1),
 		sql.NullFloat64{Float64: 88000, Valid: true},
 		sql.NullTime{Time: now, Valid: true},

@@ -239,7 +239,10 @@ func (s *OpenAIGatewayService) ForwardAsChatCompletions(
 	if account.Proxy != nil {
 		proxyURL = account.Proxy.URL()
 	}
+	upstreamStart := time.Now()
 	resp, err := s.httpUpstream.Do(upstreamReq, proxyURL, account.ID, account.Concurrency)
+	upstreamHeaderLatencyMs := int(time.Since(upstreamStart).Milliseconds())
+	SetOpsLatencyMs(c, OpsUpstreamLatencyMsKey, int64(upstreamHeaderLatencyMs))
 	if err != nil {
 		safeErr := sanitizeUpstreamErrorMessage(err.Error())
 		setOpsUpstreamError(c, 0, safeErr, "")
@@ -314,6 +317,7 @@ func (s *OpenAIGatewayService) ForwardAsChatCompletions(
 
 	// Propagate ServiceTier and ReasoningEffort to result for billing
 	if handleErr == nil && result != nil {
+		result.UpstreamLatencyMs = openAIUpstreamTTFTPtr(startTime, upstreamStart, result.FirstTokenMs, upstreamHeaderLatencyMs)
 		if responsesReq.ServiceTier != "" {
 			st := responsesReq.ServiceTier
 			result.ServiceTier = &st
