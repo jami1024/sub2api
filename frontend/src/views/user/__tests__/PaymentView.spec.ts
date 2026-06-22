@@ -624,7 +624,7 @@ describe('PaymentView balance package storefront', () => {
     const card = wrapper.get('[data-testid="balance-package-card-12"]')
     expect(card.text()).toContain('到账倍率')
     expect(card.text()).toContain('4x')
-    expect(card.text()).toContain('使用倍率')
+    expect(card.text()).toContain('GPT Pro 使用倍率')
     expect(card.text()).toContain('0.8x')
     expect(card.text()).toContain('综合低至 2 折')
     expect(card.text()).toContain('约等效 500 余额')

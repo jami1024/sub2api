@@ -60,7 +60,7 @@
       </div>
       <template v-if="showUsageMetrics">
         <div class="rounded-2xl bg-emerald-50/80 px-3 py-2.5 ring-1 ring-emerald-100 dark:bg-emerald-950/20 dark:ring-emerald-900/50">
-          <div class="text-xs text-emerald-700/70 dark:text-emerald-300/70">使用倍率</div>
+          <div class="text-xs text-emerald-700/70 dark:text-emerald-300/70">{{ usageRateTitle }}</div>
           <div class="mt-1 font-bold text-emerald-800 dark:text-emerald-200">{{ formatMultiplier(usageRateMultiplier) }}x</div>
         </div>
         <div class="rounded-2xl bg-emerald-50/80 px-3 py-2.5 ring-1 ring-emerald-100 dark:bg-emerald-950/20 dark:ring-emerald-900/50">
@@ -112,6 +112,7 @@ import { useI18n } from 'vue-i18n'
 import type { BalancePackage } from '@/types/payment'
 import type { LandingUsageRate } from '@/api/publicLanding'
 import { packageScopeBadgeClass, packageScopeLabelKey } from '@/utils/packageScopeBadge'
+import { formatPackageUsageRateTitle } from '@/utils/packageUsageRate'
 
 const MAX_DISPLAY_TAGS = 3
 
@@ -162,6 +163,8 @@ const usageRateMultiplier = computed(() => {
 
 const showUsageMetrics = computed(() => props.pkg.package_scope === 'codex' && !!props.usageRate && usageRateMultiplier.value > 0)
 
+const usageRateTitle = computed(() => formatPackageUsageRateTitle(props.usageRate))
+
 const effectiveCreditAmount = computed(() => {
   if (!showUsageMetrics.value) return props.pkg.credit_amount
   return round2(props.pkg.credit_amount / usageRateMultiplier.value)
@@ -174,8 +177,6 @@ const effectiveDiscount = computed(() => {
 
 const arrivalDiscountLabel = computed(() => discountLabel(arrivalDiscount.value, false))
 const effectiveDiscountLabel = computed(() => discountLabel(effectiveDiscount.value, true))
-
-
 
 function round1(value: number): number {
   return Math.round(value * 10) / 10

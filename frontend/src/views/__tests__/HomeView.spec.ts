@@ -328,7 +328,7 @@ describe('HomeView', () => {
 
     const sectionText = wrapper.get('[data-testid="home-package-section"]').text()
     expect(sectionText).toContain('到账倍率4x')
-    expect(sectionText).toContain('使用倍率0.8x')
+    expect(sectionText).toContain('GPT Pro 使用倍率0.8x')
   })
 
   it('renders live codex package cards', async () => {

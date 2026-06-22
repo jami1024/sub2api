@@ -20,7 +20,7 @@
           </p>
           <h2 class="mt-4 text-2xl font-bold text-slate-900 dark:text-white sm:text-3xl">Codex 专属余额包</h2>
           <p class="mt-3 max-w-[62ch] text-sm leading-7 text-slate-600 dark:text-slate-200">
-            余额包与 OpenAI 分组倍率由后台实时同步，展示到账倍率、使用倍率和综合折扣，实际购买以充值订阅页面为准。
+            余额包与 OpenAI 分组倍率由后台实时同步，展示到账倍率、GPT Pro 使用倍率和综合折扣，实际购买以充值订阅页面为准。
           </p>
           <p v-if="primaryRate" class="mt-2 text-xs font-medium text-slate-500 dark:text-sky-200/80">
             {{ primaryRate.rate_label }}<template v-if="primaryRate.value_lift_label">，{{ primaryRate.value_lift_label }}</template>
@@ -31,8 +31,8 @@
           class="rounded-[1.6rem] border border-slate-200/80 bg-white/85 px-4 py-3 text-sm text-slate-600 shadow-[0_16px_40px_rgba(15,23,42,0.05)] dark:border-slate-700 dark:bg-slate-900/90 dark:text-slate-200"
         >
           <p class="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400 dark:text-sky-200/70">计算口径</p>
-          <p class="mt-2 font-medium text-slate-900 dark:text-white">综合折扣 = 到账余额 ÷ 使用倍率</p>
-          <p class="mt-1 text-xs text-slate-500 dark:text-slate-300">到账倍率和模型使用倍率分开展示</p>
+          <p class="mt-2 font-medium text-slate-900 dark:text-white">综合折扣 = 到账余额 ÷ GPT Pro 使用倍率</p>
+          <p class="mt-1 text-xs text-slate-500 dark:text-slate-300">到账倍率和 GPT Pro 使用倍率分开展示</p>
         </div>
       </div>
 
@@ -84,7 +84,7 @@
               <span class="font-semibold text-slate-900 dark:text-white">{{ formatMultiplier(card.arrivalMultiplier) }}x</span>
             </div>
             <div class="flex items-center justify-between gap-3 rounded-[1.1rem] bg-white/80 px-3.5 py-2.5 dark:bg-slate-800/90">
-              <span>使用倍率</span>
+              <span>{{ usageRateTitle }}</span>
               <span class="font-semibold text-slate-900 dark:text-white">{{ formatMultiplier(primaryRate?.rate_multiplier ?? 1) }}x</span>
             </div>
           </div>
@@ -108,6 +108,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { getLandingPackageShowcase, type LandingBalancePackage, type LandingUsageRate } from '@/api/publicLanding'
+import { formatPackageUsageRateTitle } from '@/utils/packageUsageRate'
 
 type DisplayPackage = {
   id: number
@@ -127,6 +128,8 @@ const loading = ref(true)
 const loadFailed = ref(false)
 const packages = ref<LandingBalancePackage[]>([])
 const primaryRate = ref<LandingUsageRate | null>(null)
+
+const usageRateTitle = computed(() => formatPackageUsageRateTitle(primaryRate.value))
 
 const displayPackages = computed<DisplayPackage[]>(() =>
   packages.value
