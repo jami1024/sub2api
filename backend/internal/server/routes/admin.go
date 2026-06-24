@@ -223,6 +223,7 @@ func registerOpsRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 		ops.GET("/upstream-multipliers/samples", h.Admin.Ops.GetUpstreamMultiplierSamples)
 		ops.GET("/group-rate-recommendations", h.Admin.Ops.GetGroupRateRecommendations)
 		ops.POST("/upstream-multipliers/measure", h.Admin.Ops.MeasureUpstreamMultipliers)
+		ops.POST("/upstream-multipliers/apply", h.Admin.Ops.ApplyLatestUpstreamMultiplier)
 	}
 }
 

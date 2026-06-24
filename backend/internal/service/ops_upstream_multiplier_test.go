@@ -121,6 +121,63 @@ func TestMeasureUpstreamMultipliersCalculatesMultiplierFromUsageDelta(t *testing
 	require.Equal(t, "sk-live-", saved[0].KeyPrefixSnapshot)
 }
 
+func TestApplyLatestUpstreamMultiplierUpdatesAccountRateMultiplier(t *testing.T) {
+	latestMultiplier := 0.06
+	var requestedModel string
+	var requestedAccountIDs []int64
+	opsRepo := &opsRepoMock{
+		GetLatestUpstreamMultiplierSamplesFn: func(ctx context.Context, model string, accountIDs []int64) (map[int64]*OpsUpstreamMultiplierSample, error) {
+			requestedModel = model
+			requestedAccountIDs = append([]int64(nil), accountIDs...)
+			return map[int64]*OpsUpstreamMultiplierSample{
+				12: {
+					ID:         99,
+					AccountID:  12,
+					Model:      model,
+					Status:     OpsUpstreamMultiplierStatusSuccess,
+					Multiplier: &latestMultiplier,
+					MeasuredAt: time.Now().UTC(),
+				},
+			}, nil
+		},
+	}
+	accountRepo := &opsUpstreamMultiplierAccountRepo{
+		accounts: []Account{{ID: 12, Name: "priced upstream", Platform: PlatformOpenAI, Type: AccountTypeAPIKey, Status: StatusActive}},
+	}
+	svc := NewOpsService(opsRepo, nil, &config.Config{}, accountRepo, nil, nil, nil, nil, nil, nil, nil)
+
+	resp, err := svc.ApplyLatestUpstreamMultiplier(context.Background(), OpsApplyUpstreamMultiplierRequest{Model: "gpt-5.4", AccountID: 12})
+	require.NoError(t, err)
+
+	require.Equal(t, "gpt-5.4", requestedModel)
+	require.Equal(t, []int64{12}, requestedAccountIDs)
+	require.Equal(t, int64(12), resp.AccountID)
+	require.InDelta(t, 0.06, resp.RateMultiplier, 0.000001)
+	require.NotNil(t, resp.Sample)
+	require.Equal(t, []int64{12}, accountRepo.bulkUpdateIDs)
+	require.NotNil(t, accountRepo.bulkUpdate.RateMultiplier)
+	require.InDelta(t, 0.06, *accountRepo.bulkUpdate.RateMultiplier, 0.000001)
+}
+
+func TestApplyLatestUpstreamMultiplierRejectsMissingSuccessfulSample(t *testing.T) {
+	opsRepo := &opsRepoMock{
+		GetLatestUpstreamMultiplierSamplesFn: func(ctx context.Context, model string, accountIDs []int64) (map[int64]*OpsUpstreamMultiplierSample, error) {
+			return map[int64]*OpsUpstreamMultiplierSample{
+				12: {AccountID: 12, Model: model, Status: OpsUpstreamMultiplierStatusError},
+			}, nil
+		},
+	}
+	accountRepo := &opsUpstreamMultiplierAccountRepo{
+		accounts: []Account{{ID: 12, Name: "priced upstream", Platform: PlatformOpenAI, Type: AccountTypeAPIKey, Status: StatusActive}},
+	}
+	svc := NewOpsService(opsRepo, nil, &config.Config{}, accountRepo, nil, nil, nil, nil, nil, nil, nil)
+
+	resp, err := svc.ApplyLatestUpstreamMultiplier(context.Background(), OpsApplyUpstreamMultiplierRequest{Model: "gpt-5.4", AccountID: 12})
+	require.Error(t, err)
+	require.Nil(t, resp)
+	require.Empty(t, accountRepo.bulkUpdateIDs)
+}
+
 func TestSanitizeUpstreamMultiplierErrorMessageRedactsSecrets(t *testing.T) {
 	msg := sanitizeUpstreamMultiplierErrorMessage("upstream rejected Authorization: Bearer sk-leaky-secret-token-123456 and key-live-secret-abcdef")
 
@@ -130,7 +187,9 @@ func TestSanitizeUpstreamMultiplierErrorMessageRedactsSecrets(t *testing.T) {
 }
 
 type opsUpstreamMultiplierAccountRepo struct {
-	accounts []Account
+	accounts      []Account
+	bulkUpdateIDs []int64
+	bulkUpdate    AccountBulkUpdate
 }
 
 func (r *opsUpstreamMultiplierAccountRepo) Create(ctx context.Context, account *Account) error {
@@ -332,7 +391,17 @@ func (r *opsUpstreamMultiplierAccountRepo) UpdateExtra(ctx context.Context, id i
 }
 
 func (r *opsUpstreamMultiplierAccountRepo) BulkUpdate(ctx context.Context, ids []int64, updates AccountBulkUpdate) (int64, error) {
-	return 0, nil
+	r.bulkUpdateIDs = append([]int64(nil), ids...)
+	r.bulkUpdate = updates
+	for i := range r.accounts {
+		for _, id := range ids {
+			if r.accounts[i].ID == id && updates.RateMultiplier != nil {
+				v := *updates.RateMultiplier
+				r.accounts[i].RateMultiplier = &v
+			}
+		}
+	}
+	return int64(len(ids)), nil
 }
 
 func (r *opsUpstreamMultiplierAccountRepo) IncrementQuotaUsed(ctx context.Context, id int64, amount float64) error {

@@ -19,9 +19,11 @@
         :loading="multiplierLoading"
         :measuring="multiplierMeasuring"
         :measuring-account-id="multiplierMeasuringAccountId"
+        :applying-account-id="multiplierApplyingAccountId"
         @refresh="loadUpstreamMultipliers"
         @measure-account="measureUpstreamAccount"
         @measure-all="measureAllUpstreamAccounts"
+        @apply-account="applyUpstreamAccountMultiplier"
       />
       <GroupRateRecommendationsPanel
         v-model:profit-margin="recommendationProfitMargin"
@@ -67,6 +69,7 @@ const multiplierModel = ref('gpt-5.4')
 const multiplierLoading = ref(false)
 const multiplierMeasuring = ref(false)
 const multiplierMeasuringAccountId = ref<number | null>(null)
+const multiplierApplyingAccountId = ref<number | null>(null)
 const multiplierAccounts = ref<OpsUpstreamMultiplierAccount[]>([])
 const multiplierSamples = ref<OpsUpstreamMultiplierSample[]>([])
 const recommendationLoading = ref(false)
@@ -165,6 +168,19 @@ async function measureAllUpstreamAccounts() {
     appStore.showError(extractApiErrorMessage(err, '上游倍率检测失败'))
   } finally {
     multiplierMeasuring.value = false
+  }
+}
+
+async function applyUpstreamAccountMultiplier(accountID: number) {
+  multiplierApplyingAccountId.value = accountID
+  try {
+    const model = multiplierModel.value.trim() || 'gpt-5.4'
+    await opsAPI.applyUpstreamMultiplier({ model, account_id: accountID })
+    await loadUpstreamMultipliers()
+  } catch (err: unknown) {
+    appStore.showError(extractApiErrorMessage(err, '同步上游账号倍率失败'))
+  } finally {
+    multiplierApplyingAccountId.value = null
   }
 }
 

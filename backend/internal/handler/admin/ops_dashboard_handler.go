@@ -457,6 +457,30 @@ func (h *OpsHandler) MeasureUpstreamMultipliers(c *gin.Context) {
 	response.Success(c, data)
 }
 
+// ApplyLatestUpstreamMultiplier applies the latest successful upstream multiplier sample to an account.
+// POST /api/v1/admin/ops/upstream-multipliers/apply
+func (h *OpsHandler) ApplyLatestUpstreamMultiplier(c *gin.Context) {
+	if h.opsService == nil {
+		response.Error(c, http.StatusServiceUnavailable, "Ops service not available")
+		return
+	}
+	if err := h.opsService.RequireMonitoringEnabled(c.Request.Context()); err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	var req service.OpsApplyUpstreamMultiplierRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "Invalid request body")
+		return
+	}
+	data, err := h.opsService.ApplyLatestUpstreamMultiplier(c.Request.Context(), req)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, data)
+}
+
 func parseOpsOpenAITokenStatsFilter(c *gin.Context) (*service.OpsOpenAITokenStatsFilter, error) {
 	if c == nil {
 		return nil, fmt.Errorf("invalid request")

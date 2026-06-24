@@ -47,6 +47,7 @@
               <th class="px-3 py-3 text-left">账号</th>
               <th class="px-3 py-3 text-left">上游</th>
               <th class="px-3 py-3 text-left">Key</th>
+              <th class="px-3 py-3 text-right">当前账号倍率</th>
               <th class="px-3 py-3 text-right">最新倍率</th>
               <th class="px-3 py-3 text-right">扣费增量</th>
               <th class="px-3 py-3 text-left">状态</th>
@@ -55,12 +56,15 @@
           </thead>
           <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
             <tr v-if="accounts.length === 0">
-              <td colspan="7" class="px-3 py-8 text-center text-sm text-gray-500 dark:text-gray-400">暂无可展示账号</td>
+              <td colspan="8" class="px-3 py-8 text-center text-sm text-gray-500 dark:text-gray-400">暂无可展示账号</td>
             </tr>
             <tr v-for="account in accounts" :key="account.account_id" class="hover:bg-gray-50/80 dark:hover:bg-dark-700/40">
               <td class="px-3 py-3 font-semibold text-gray-900 dark:text-white">{{ account.account_name }}</td>
               <td class="max-w-[240px] truncate px-3 py-3 text-xs text-gray-600 dark:text-gray-300" :title="account.base_url">{{ hostOf(account.base_url) }}</td>
               <td class="px-3 py-3 font-mono text-xs text-gray-500 dark:text-gray-400" :title="account.key_prefix || ''">{{ formatKeyPrefix(account.key_prefix) }}</td>
+              <td class="px-3 py-3 text-right font-semibold text-gray-700 dark:text-gray-200">
+                {{ formatMultiplier(account.account_rate_multiplier) }}
+              </td>
               <td class="px-3 py-3 text-right font-semibold text-gray-900 dark:text-white">
                 {{ formatMultiplier(account.latest_sample?.multiplier) }}
               </td>
@@ -80,15 +84,26 @@
                 </div>
               </td>
               <td class="px-3 py-3 text-right">
-                <button
-                  type="button"
-                  class="rounded-lg bg-gray-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-200"
-                  :data-testid="`measure-upstream-${account.account_id}`"
-                  :disabled="!account.supported || measuringAccountId === account.account_id"
-                  @click="$emit('measure-account', account.account_id)"
-                >
-                  {{ measuringAccountId === account.account_id ? '检测中' : '检测' }}
-                </button>
+                <div class="flex justify-end gap-2">
+                  <button
+                    type="button"
+                    class="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-dark-700"
+                    :data-testid="`apply-upstream-${account.account_id}`"
+                    :disabled="!canApply(account) || applyingAccountId === account.account_id"
+                    @click="$emit('apply-account', account.account_id)"
+                  >
+                    {{ applyingAccountId === account.account_id ? '同步中' : '同步倍率' }}
+                  </button>
+                  <button
+                    type="button"
+                    class="rounded-lg bg-gray-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-200"
+                    :data-testid="`measure-upstream-${account.account_id}`"
+                    :disabled="!account.supported || measuringAccountId === account.account_id"
+                    @click="$emit('measure-account', account.account_id)"
+                  >
+                    {{ measuringAccountId === account.account_id ? '检测中' : '检测' }}
+                  </button>
+                </div>
               </td>
             </tr>
           </tbody>
@@ -153,6 +168,7 @@ const props = defineProps<{
   loading?: boolean
   measuring?: boolean
   measuringAccountId?: number | null
+  applyingAccountId?: number | null
 }>()
 
 defineEmits<{
@@ -160,6 +176,7 @@ defineEmits<{
   refresh: []
   'measure-account': [accountID: number]
   'measure-all': []
+  'apply-account': [accountID: number]
 }>()
 
 const supportedAccounts = computed(() => props.accounts.filter(account => account.supported))
@@ -199,6 +216,11 @@ function formatDate(value?: string | null): string {
 
 function trimNumber(value: number): string {
   return value.toFixed(4).replace(/0+$/, '').replace(/\.$/, '')
+}
+
+function canApply(account: OpsUpstreamMultiplierAccount): boolean {
+  const multiplier = account.latest_sample?.multiplier
+  return account.latest_sample?.status === 'success' && typeof multiplier === 'number' && Number.isFinite(multiplier) && multiplier >= 0
 }
 
 function hostOf(raw: string): string {

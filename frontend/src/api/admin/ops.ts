@@ -368,6 +368,7 @@ export interface OpsUpstreamMultiplierAccount {
   platform: string
   base_url: string
   key_prefix: string
+  account_rate_multiplier: number
   supported: boolean
   skip_reason?: string
   latest_sample?: OpsUpstreamMultiplierSample | null
@@ -401,6 +402,18 @@ export interface OpsMeasureUpstreamMultiplierRequest {
 export interface OpsMeasureUpstreamMultiplierResponse {
   model: string
   samples: OpsUpstreamMultiplierSample[]
+}
+
+export interface OpsApplyUpstreamMultiplierRequest {
+  model?: string
+  account_id: number
+}
+
+export interface OpsApplyUpstreamMultiplierResponse {
+  model: string
+  account_id: number
+  rate_multiplier: number
+  sample?: OpsUpstreamMultiplierSample | null
 }
 
 export type OpsGroupRateRecommendationStatus = 'safe' | 'basic_safe' | 'low' | 'insufficient_data'
@@ -687,6 +700,11 @@ async function getUpstreamMultiplierSamples(params: OpsUpstreamMultiplierSamples
 
 async function measureUpstreamMultipliers(payload: OpsMeasureUpstreamMultiplierRequest): Promise<OpsMeasureUpstreamMultiplierResponse> {
   const { data } = await apiClient.post<OpsMeasureUpstreamMultiplierResponse>('/admin/ops/upstream-multipliers/measure', payload)
+  return data
+}
+
+async function applyUpstreamMultiplier(payload: OpsApplyUpstreamMultiplierRequest): Promise<OpsApplyUpstreamMultiplierResponse> {
+  const { data } = await apiClient.post<OpsApplyUpstreamMultiplierResponse>('/admin/ops/upstream-multipliers/apply', payload)
   return data
 }
 
@@ -1576,6 +1594,7 @@ export const opsAPI = {
   getUpstreamMultiplierAccounts,
   getUpstreamMultiplierSamples,
   measureUpstreamMultipliers,
+  applyUpstreamMultiplier,
   getGroupRateRecommendations,
   getConcurrencyStats,
   getUserConcurrencyStats,

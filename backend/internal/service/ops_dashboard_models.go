@@ -181,14 +181,15 @@ const (
 )
 
 type OpsUpstreamMultiplierAccount struct {
-	AccountID    int64                        `json:"account_id"`
-	AccountName  string                       `json:"account_name"`
-	Platform     string                       `json:"platform"`
-	BaseURL      string                       `json:"base_url"`
-	KeyPrefix    string                       `json:"key_prefix"`
-	Supported    bool                         `json:"supported"`
-	SkipReason   string                       `json:"skip_reason,omitempty"`
-	LatestSample *OpsUpstreamMultiplierSample `json:"latest_sample,omitempty"`
+	AccountID             int64                        `json:"account_id"`
+	AccountName           string                       `json:"account_name"`
+	Platform              string                       `json:"platform"`
+	BaseURL               string                       `json:"base_url"`
+	KeyPrefix             string                       `json:"key_prefix"`
+	AccountRateMultiplier float64                      `json:"account_rate_multiplier"`
+	Supported             bool                         `json:"supported"`
+	SkipReason            string                       `json:"skip_reason,omitempty"`
+	LatestSample          *OpsUpstreamMultiplierSample `json:"latest_sample,omitempty"`
 }
 
 type OpsUpstreamMultiplierSample struct {
@@ -235,6 +236,18 @@ type OpsMeasureUpstreamMultiplierRequest struct {
 type OpsMeasureUpstreamMultiplierResponse struct {
 	Model   string                         `json:"model"`
 	Samples []*OpsUpstreamMultiplierSample `json:"samples"`
+}
+
+type OpsApplyUpstreamMultiplierRequest struct {
+	Model     string `json:"model"`
+	AccountID int64  `json:"account_id"`
+}
+
+type OpsApplyUpstreamMultiplierResponse struct {
+	Model          string                       `json:"model"`
+	AccountID      int64                        `json:"account_id"`
+	RateMultiplier float64                      `json:"rate_multiplier"`
+	Sample         *OpsUpstreamMultiplierSample `json:"sample"`
 }
 
 const (

@@ -6,6 +6,7 @@ const mockGetProviderStatus = vi.hoisted(() => vi.fn())
 const mockGetUpstreamMultiplierAccounts = vi.hoisted(() => vi.fn())
 const mockGetUpstreamMultiplierSamples = vi.hoisted(() => vi.fn())
 const mockMeasureUpstreamMultipliers = vi.hoisted(() => vi.fn())
+const mockApplyUpstreamMultiplier = vi.hoisted(() => vi.fn())
 const mockGetGroupRateRecommendations = vi.hoisted(() => vi.fn())
 
 vi.mock('@/api/admin/ops', () => ({
@@ -14,6 +15,7 @@ vi.mock('@/api/admin/ops', () => ({
     getUpstreamMultiplierAccounts: mockGetUpstreamMultiplierAccounts,
     getUpstreamMultiplierSamples: mockGetUpstreamMultiplierSamples,
     measureUpstreamMultipliers: mockMeasureUpstreamMultipliers,
+    applyUpstreamMultiplier: mockApplyUpstreamMultiplier,
     getGroupRateRecommendations: mockGetGroupRateRecommendations,
   },
 }))
@@ -107,6 +109,7 @@ describe('ProviderStatusView', () => {
           platform: 'openai',
           base_url: 'https://xixiapi.cc',
           key_prefix: 'sk-live-',
+          account_rate_multiplier: 1,
           supported: true,
           latest_sample: {
             id: 2,
@@ -147,6 +150,7 @@ describe('ProviderStatusView', () => {
       ],
     })
     mockMeasureUpstreamMultipliers.mockReset().mockResolvedValue({ model: 'gpt-5.4', samples: [] })
+    mockApplyUpstreamMultiplier.mockReset().mockResolvedValue({ model: 'gpt-5.4', account_id: 12, rate_multiplier: 0.12 })
     mockGetGroupRateRecommendations.mockReset().mockResolvedValue({
       params: { model: 'gpt-5.4', package_scope: 'codex', profit_margin: 0.2, safety_factor: 1.2, usage_days: 7 },
       package_basis: { package_id: 2, name: '专属包-进阶级', price: 100, credit_amount: 400, package_scope: 'codex', revenue_per_credit: 0.25 },
@@ -208,6 +212,21 @@ describe('ProviderStatusView', () => {
     await flushPromises()
 
     expect(mockMeasureUpstreamMultipliers).toHaveBeenCalledWith({ model: 'gpt-5.4', account_ids: [12] })
+    expect(mockGetUpstreamMultiplierAccounts).toHaveBeenCalledTimes(2)
+    expect(mockGetUpstreamMultiplierSamples).toHaveBeenCalledTimes(2)
+  })
+
+  it('applies the latest successful multiplier to the upstream account', async () => {
+    const wrapper = mountView()
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('当前账号倍率')
+    expect(wrapper.text()).toContain('1x')
+
+    await wrapper.get('[data-testid="apply-upstream-12"]').trigger('click')
+    await flushPromises()
+
+    expect(mockApplyUpstreamMultiplier).toHaveBeenCalledWith({ model: 'gpt-5.4', account_id: 12 })
     expect(mockGetUpstreamMultiplierAccounts).toHaveBeenCalledTimes(2)
     expect(mockGetUpstreamMultiplierSamples).toHaveBeenCalledTimes(2)
   })

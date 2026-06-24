@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	infraerrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/pagination"
 )
 
@@ -46,14 +47,15 @@ func (s *OpsService) ListUpstreamMultiplierAccounts(ctx context.Context, model s
 		account := &accounts[i]
 		supported, reason := isAccountSupportedForUpstreamMultiplier(account, model)
 		items = append(items, &OpsUpstreamMultiplierAccount{
-			AccountID:    account.ID,
-			AccountName:  account.Name,
-			Platform:     account.Platform,
-			BaseURL:      account.GetOpenAIBaseURL(),
-			KeyPrefix:    keyPrefix(account.GetOpenAIApiKey()),
-			Supported:    supported,
-			SkipReason:   reason,
-			LatestSample: latest[account.ID],
+			AccountID:             account.ID,
+			AccountName:           account.Name,
+			Platform:              account.Platform,
+			BaseURL:               account.GetOpenAIBaseURL(),
+			KeyPrefix:             keyPrefix(account.GetOpenAIApiKey()),
+			AccountRateMultiplier: account.BillingRateMultiplier(),
+			Supported:             supported,
+			SkipReason:            reason,
+			LatestSample:          latest[account.ID],
 		})
 	}
 	return &OpsUpstreamMultiplierAccountsResponse{Model: model, Accounts: items}, nil
@@ -102,6 +104,46 @@ func (s *OpsService) MeasureUpstreamMultipliers(ctx context.Context, req OpsMeas
 		samples = append(samples, saved)
 	}
 	return &OpsMeasureUpstreamMultiplierResponse{Model: model, Samples: samples}, nil
+}
+
+func (s *OpsService) ApplyLatestUpstreamMultiplier(ctx context.Context, req OpsApplyUpstreamMultiplierRequest) (*OpsApplyUpstreamMultiplierResponse, error) {
+	model := normalizeOpsUpstreamMultiplierModel(req.Model)
+	if req.AccountID <= 0 {
+		return nil, infraerrors.BadRequest("OPS_UPSTREAM_MULTIPLIER_ACCOUNT_INVALID", "account_id must be > 0")
+	}
+	if s == nil || s.opsRepo == nil || s.accountRepo == nil {
+		return nil, infraerrors.BadRequest("OPS_UPSTREAM_MULTIPLIER_UNAVAILABLE", "upstream multiplier service is not available")
+	}
+	if _, err := s.accountRepo.GetByID(ctx, req.AccountID); err != nil {
+		return nil, err
+	}
+
+	latest, err := s.opsRepo.GetLatestUpstreamMultiplierSamples(ctx, model, []int64{req.AccountID})
+	if err != nil {
+		return nil, err
+	}
+	sample := latest[req.AccountID]
+	if !isApplicableUpstreamMultiplierSample(sample) {
+		return nil, infraerrors.BadRequest("OPS_UPSTREAM_MULTIPLIER_SAMPLE_INVALID", "latest successful multiplier sample is required")
+	}
+
+	rateMultiplier := *sample.Multiplier
+	if _, err := s.accountRepo.BulkUpdate(ctx, []int64{req.AccountID}, AccountBulkUpdate{RateMultiplier: &rateMultiplier}); err != nil {
+		return nil, err
+	}
+	return &OpsApplyUpstreamMultiplierResponse{
+		Model:          model,
+		AccountID:      req.AccountID,
+		RateMultiplier: rateMultiplier,
+		Sample:         sample,
+	}, nil
+}
+
+func isApplicableUpstreamMultiplierSample(sample *OpsUpstreamMultiplierSample) bool {
+	if sample == nil || sample.Status != OpsUpstreamMultiplierStatusSuccess || sample.Multiplier == nil {
+		return false
+	}
+	return *sample.Multiplier >= 0 && !math.IsNaN(*sample.Multiplier) && !math.IsInf(*sample.Multiplier, 0)
 }
 
 func (s *OpsService) loadUpstreamMultiplierCandidateAccounts(ctx context.Context, accountIDs []int64) ([]Account, error) {
