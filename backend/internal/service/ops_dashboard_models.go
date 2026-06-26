@@ -101,6 +101,7 @@ type OpsProviderStatusSummaryItem struct {
 	BusinessLimitedCount int64                             `json:"business_limited_count"`
 	Availability         float64                           `json:"availability"`
 	ErrorRate            float64                           `json:"error_rate"`
+	CacheReadRate        *float64                          `json:"cache_read_rate,omitempty"`
 	P50Ms                *int                              `json:"p50_ms"`
 	P95Ms                *int                              `json:"p95_ms"`
 	P99Ms                *int                              `json:"p99_ms"`

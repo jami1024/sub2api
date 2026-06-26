@@ -139,6 +139,43 @@ func TestGatewayHandleErrorResponse_AppliesRuleFor422(t *testing.T) {
 	assert.Equal(t, "上游请求失败", errField["message"])
 }
 
+func TestApplyErrorPassthroughRule_PassthroughBodyDoesNotExposeUpstreamMessage(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	rec := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(rec)
+
+	rule := &model.ErrorPassthroughRule{
+		ID:              99,
+		Name:            "legacy-passthrough-rule",
+		Enabled:         true,
+		Priority:        1,
+		ErrorCodes:      []int{524},
+		MatchMode:       model.MatchModeAny,
+		PassthroughCode: true,
+		PassthroughBody: true,
+	}
+	ruleSvc := &ErrorPassthroughService{}
+	ruleSvc.setLocalCache([]*model.ErrorPassthroughRule{rule})
+	BindErrorPassthroughService(c, ruleSvc)
+
+	status, errType, errMsg, matched := applyErrorPassthroughRule(
+		c,
+		PlatformOpenAI,
+		524,
+		[]byte(`<!DOCTYPE html><title>mouubox.com | 524: A timeout occurred</title><p>Cloudflare timeout</p>`),
+		http.StatusBadGateway,
+		"upstream_error",
+		"Upstream request failed",
+	)
+
+	require.True(t, matched)
+	assert.Equal(t, 524, status)
+	assert.Equal(t, "upstream_error", errType)
+	assert.Equal(t, "Upstream request failed", errMsg)
+	assert.NotContains(t, errMsg, "mouubox.com")
+	assert.NotContains(t, errMsg, "Cloudflare")
+}
+
 func TestOpenAIHandleErrorResponse_AppliesRuleFor422(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	rec := httptest.NewRecorder()

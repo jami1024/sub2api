@@ -137,7 +137,10 @@ WITH success_rows AS (
     ul.created_at,
     ul.duration_ms,
     ul.first_token_ms,
-    ul.upstream_latency_ms
+    ul.upstream_latency_ms,
+    ul.input_tokens,
+    ul.cache_read_tokens,
+    ul.cache_creation_tokens
   FROM usage_logs ul
   LEFT JOIN groups g ON g.id = ul.group_id
   LEFT JOIN accounts a ON a.id = ul.account_id
@@ -182,6 +185,7 @@ stats AS (
     s.ttft_sample_count,
     s.upstream_ttft_avg_ms,
     s.gateway_ttft_avg_ms,
+    s.cache_read_rate,
     e.timeout_524_count,
     e.timeout_524_avg_ms
   FROM providers p
@@ -198,7 +202,9 @@ stats AS (
            percentile_cont(0.95) WITHIN GROUP (ORDER BY first_token_ms) FILTER (WHERE first_token_ms IS NOT NULL) AS ttft_p95_ms,
            COUNT(first_token_ms) AS ttft_sample_count,
            AVG(upstream_latency_ms) FILTER (WHERE first_token_ms IS NOT NULL AND upstream_latency_ms IS NOT NULL) AS upstream_ttft_avg_ms,
-           AVG(GREATEST(first_token_ms - upstream_latency_ms, 0)) FILTER (WHERE first_token_ms IS NOT NULL AND upstream_latency_ms IS NOT NULL) AS gateway_ttft_avg_ms
+           AVG(GREATEST(first_token_ms - upstream_latency_ms, 0)) FILTER (WHERE first_token_ms IS NOT NULL AND upstream_latency_ms IS NOT NULL) AS gateway_ttft_avg_ms,
+           100.0 * SUM(cache_read_tokens)::numeric
+             / NULLIF(SUM(input_tokens + cache_read_tokens + cache_creation_tokens)::numeric, 0) AS cache_read_rate
     FROM success_rows
     GROUP BY provider
   ) s ON s.provider = p.provider
@@ -219,6 +225,7 @@ SELECT provider,
        success_count,
        failure_count,
        business_limited_count,
+       cache_read_rate,
        p50_ms,
        p95_ms,
        p99_ms,
@@ -388,7 +395,7 @@ ORDER BY provider ASC, bucket_start ASC`
 
 func scanProviderStatusSummary(rows interface{ Scan(...any) error }) (*service.OpsProviderStatusSummaryItem, error) {
 	var p50, p95, p99 sql.NullFloat64
-	var durationAvg, durationMax, ttftAvg, ttftP95, upstreamTTFTAvg, gatewayTTFTAvg, timeout524Avg sql.NullFloat64
+	var cacheReadRate, durationAvg, durationMax, ttftAvg, ttftP95, upstreamTTFTAvg, gatewayTTFTAvg, timeout524Avg sql.NullFloat64
 	var lastSeen sql.NullTime
 	item := &service.OpsProviderStatusSummaryItem{}
 	if err := rows.Scan(
@@ -397,6 +404,7 @@ func scanProviderStatusSummary(rows interface{ Scan(...any) error }) (*service.O
 		&item.SuccessCount,
 		&item.FailureCount,
 		&item.BusinessLimitedCount,
+		&cacheReadRate,
 		&p50,
 		&p95,
 		&p99,
@@ -414,6 +422,7 @@ func scanProviderStatusSummary(rows interface{ Scan(...any) error }) (*service.O
 		return nil, err
 	}
 	item.P50Ms = floatToIntPtr(p50)
+	item.CacheReadRate = floatToPtr(cacheReadRate)
 	item.P95Ms = floatToIntPtr(p95)
 	item.P99Ms = floatToIntPtr(p99)
 	item.DurationAvgMs = floatToIntPtr(durationAvg)

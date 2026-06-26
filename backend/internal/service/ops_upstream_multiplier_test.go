@@ -382,6 +382,10 @@ func (r *opsUpstreamMultiplierAccountRepo) UpdateSessionWindow(ctx context.Conte
 	return nil
 }
 
+func (r *opsUpstreamMultiplierAccountRepo) ListOAuthRefreshCandidates(ctx context.Context) ([]Account, error) {
+	return nil, nil
+}
+
 func (r *opsUpstreamMultiplierAccountRepo) UpdateSessionWindowEnd(ctx context.Context, id int64, end time.Time) error {
 	return nil
 }

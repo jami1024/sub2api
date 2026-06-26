@@ -24,10 +24,11 @@ import (
 func f64p(v float64) *float64 { return &v }
 
 type httpUpstreamRecorder struct {
-	lastReq  *http.Request
-	lastBody []byte
-	requests []*http.Request
-	bodies   [][]byte
+	lastReq      *http.Request
+	lastBody     []byte
+	lastProxyURL string
+	requests     []*http.Request
+	bodies       [][]byte
 
 	resp      *http.Response
 	responses []*http.Response
@@ -36,6 +37,7 @@ type httpUpstreamRecorder struct {
 
 func (u *httpUpstreamRecorder) Do(req *http.Request, proxyURL string, accountID int64, accountConcurrency int) (*http.Response, error) {
 	u.lastReq = req
+	u.lastProxyURL = proxyURL
 	if req != nil && req.Body != nil {
 		b, _ := io.ReadAll(req.Body)
 		u.lastBody = b
@@ -747,7 +749,7 @@ func TestOpenAIGatewayService_OAuthPassthrough_ResponseHeadersAllowXCodex(t *tes
 	require.Equal(t, "34", rec.Header().Get("x-codex-secondary-used-percent"))
 }
 
-func TestOpenAIGatewayService_OAuthPassthrough_UpstreamErrorIncludesPassthroughFlag(t *testing.T) {
+func TestOpenAIGatewayService_OAuthPassthrough_UpstreamErrorIsRedactedForClient(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	rec := httptest.NewRecorder()
@@ -758,14 +760,14 @@ func TestOpenAIGatewayService_OAuthPassthrough_UpstreamErrorIncludesPassthroughF
 	originalBody := []byte(`{"model":"gpt-5.2","stream":false,"input":[{"type":"text","text":"hi"}]}`)
 
 	resp := &http.Response{
-		StatusCode: http.StatusBadRequest,
-		Header:     http.Header{"Content-Type": []string{"application/json"}, "x-request-id": []string{"rid"}},
-		Body:       io.NopCloser(strings.NewReader(`{"error":{"message":"bad"}}`)),
+		StatusCode: 524,
+		Header:     http.Header{"Content-Type": []string{"text/html; charset=UTF-8"}, "x-request-id": []string{"rid"}},
+		Body:       io.NopCloser(strings.NewReader(`<!DOCTYPE html><title>mouubox.com | 524: A timeout occurred</title><p>Cloudflare timeout</p>`)),
 	}
 	upstream := &httpUpstreamRecorder{resp: resp}
 
 	svc := &OpenAIGatewayService{
-		cfg:          &config.Config{Gateway: config.GatewayConfig{ForceCodexCLI: false}},
+		cfg:          &config.Config{Gateway: config.GatewayConfig{ForceCodexCLI: false, LogUpstreamErrorBody: true, LogUpstreamErrorBodyMaxBytes: 2048}},
 		httpUpstream: upstream,
 	}
 
@@ -784,10 +786,14 @@ func TestOpenAIGatewayService_OAuthPassthrough_UpstreamErrorIncludesPassthroughF
 
 	_, err := svc.Forward(context.Background(), c, account, originalBody)
 	require.Error(t, err)
-	require.True(t, c.Writer.Written(), "非 429/529 的 passthrough 错误应继续原样写回客户端")
-	require.Equal(t, http.StatusBadRequest, rec.Code)
+	require.True(t, c.Writer.Written(), "passthrough 上游错误应写回脱敏后的客户端错误")
+	require.Equal(t, http.StatusBadGateway, rec.Code)
+	require.Contains(t, rec.Body.String(), "Upstream request failed")
+	require.NotContains(t, rec.Body.String(), "mouubox.com")
+	require.NotContains(t, rec.Body.String(), "Cloudflare")
+	require.NotContains(t, rec.Body.String(), "<!DOCTYPE html>")
 
-	// should append an upstream error event with passthrough=true
+	// 管理员运维详情仍应保留上游错误上下文，便于排查。
 	v, ok := c.Get(OpsUpstreamErrorsKey)
 	require.True(t, ok)
 	arr, ok := v.([]*OpsUpstreamErrorEvent)
@@ -795,6 +801,7 @@ func TestOpenAIGatewayService_OAuthPassthrough_UpstreamErrorIncludesPassthroughF
 	require.NotEmpty(t, arr)
 	require.True(t, arr[len(arr)-1].Passthrough)
 	require.Equal(t, "http_error", arr[len(arr)-1].Kind)
+	require.Contains(t, arr[len(arr)-1].Detail, "mouubox.com")
 }
 
 func TestOpenAIGatewayService_OpenAIPassthrough_429And529TriggerFailover(t *testing.T) {
@@ -1022,7 +1029,8 @@ func TestOpenAIGatewayService_CodexCLIOnly_AllowOfficialClientFamilies(t *testin
 		{name: "codex_cli_rs", ua: "codex_cli_rs/0.99.0", originator: ""},
 		{name: "codex_vscode", ua: "codex_vscode/1.0.0", originator: ""},
 		{name: "codex_app", ua: "codex_app/2.1.0", originator: ""},
-		{name: "originator_codex_chatgpt_desktop", ua: "curl/8.0", originator: "codex_chatgpt_desktop"},
+		// req②：codex_cli_only 下 UA 须能解析出引擎版本；originator 命中路径用可解析的非官方前缀 UA。
+		{name: "originator_codex_chatgpt_desktop", ua: "myterm/0.141.0", originator: "codex_chatgpt_desktop"},
 	}
 
 	for _, tt := range tests {
@@ -1034,6 +1042,10 @@ func TestOpenAIGatewayService_CodexCLIOnly_AllowOfficialClientFamilies(t *testin
 			if tt.originator != "" {
 				c.Request.Header.Set("originator", tt.originator)
 			}
+			// 引擎指纹头：真实官方客户端必带。本测试用 nil settingService 构造 gateway，
+			// detectCodexClientRestriction 会兜底默认种子指纹信号（只勾 x-codex-），与生产默认策略一致，
+			// 故官方家族也须携带 x-codex-* 才能过门（对齐 TestDetect_EngineFingerprintSignals）。
+			c.Request.Header.Set("x-codex-window-id", "1")
 
 			inputBody := []byte(`{"model":"gpt-5.2","stream":false,"store":true,"input":[{"type":"text","text":"hi"}]}`)
 

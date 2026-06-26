@@ -16,6 +16,7 @@
             <th class="px-4 py-3 text-left">{{ t('admin.providerStatus.provider') }}</th>
             <th class="px-4 py-3 text-right">{{ t('admin.providerStatus.requests') }}</th>
             <th class="px-4 py-3 text-right">{{ t('admin.providerStatus.availability') }}</th>
+            <th class="px-4 py-3 text-right">{{ t('admin.providerStatus.cacheRate') }}</th>
             <th class="px-4 py-3 text-right">{{ t('admin.providerStatus.errors') }}</th>
             <th class="px-4 py-3 text-right">P50</th>
             <th class="px-4 py-3 text-right">P95</th>
@@ -33,6 +34,7 @@
             <td class="px-4 py-3 font-semibold text-gray-900 dark:text-white">{{ item.provider || 'unknown' }}</td>
             <td class="px-4 py-3 text-right text-gray-700 dark:text-gray-300">{{ formatNumber(item.request_count) }}</td>
             <td class="px-4 py-3 text-right font-semibold" :class="availabilityClass(item.availability)">{{ item.availability.toFixed(1) }}%</td>
+            <td class="px-4 py-3 text-right font-semibold text-sky-600 dark:text-sky-400">{{ formatOptionalPercent(item.cache_read_rate) }}</td>
             <td class="px-4 py-3 text-right text-gray-700 dark:text-gray-300">{{ formatNumber(item.failure_count) }}</td>
             <td class="px-4 py-3 text-right text-gray-700 dark:text-gray-300">{{ formatMs(item.p50_ms) }}</td>
             <td class="px-4 py-3 text-right text-gray-700 dark:text-gray-300">{{ formatMs(item.p95_ms) }}</td>
@@ -183,6 +185,11 @@ function formatTimelineTime(value: string): string {
 
 function formatPercent(value: number): string {
   return `${trimFixed(value)}%`
+}
+
+function formatOptionalPercent(value?: number | null): string {
+  if (value == null || !Number.isFinite(value)) return '—'
+  return formatPercent(value)
 }
 
 function trimFixed(value: number): string {

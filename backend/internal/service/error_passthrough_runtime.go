@@ -1,6 +1,11 @@
 package service
 
-import "github.com/gin-gonic/gin"
+import (
+	"strings"
+
+	"github.com/Wei-Shaw/sub2api/internal/model"
+	"github.com/gin-gonic/gin"
+)
 
 const errorPassthroughServiceContextKey = "error_passthrough_service"
 
@@ -25,6 +30,27 @@ func getBoundErrorPassthroughService(c *gin.Context) *ErrorPassthroughService {
 		return nil
 	}
 	return svc
+}
+
+// SafeUpstreamClientMessage returns the generic message exposed to end users
+// when an upstream request fails. Full upstream details should stay in ops logs.
+func SafeUpstreamClientMessage() string {
+	return "Upstream request failed"
+}
+
+// ErrorPassthroughClientMessage returns the client-visible message for a matched
+// passthrough rule. It intentionally does not derive a message from upstream
+// response bodies; upstream details are for administrator logs only.
+func ErrorPassthroughClientMessage(rule *model.ErrorPassthroughRule, fallback string) string {
+	if rule != nil && !rule.PassthroughBody && rule.CustomMessage != nil {
+		if msg := strings.TrimSpace(*rule.CustomMessage); msg != "" {
+			return msg
+		}
+	}
+	if msg := strings.TrimSpace(fallback); msg != "" {
+		return msg
+	}
+	return SafeUpstreamClientMessage()
 }
 
 // applyErrorPassthroughRule 按规则改写错误响应；未命中时返回默认响应参数。
@@ -56,10 +82,7 @@ func applyErrorPassthroughRule(
 		status = *rule.ResponseCode
 	}
 
-	errMsg = ExtractUpstreamErrorMessage(responseBody)
-	if !rule.PassthroughBody && rule.CustomMessage != nil {
-		errMsg = *rule.CustomMessage
-	}
+	errMsg = ErrorPassthroughClientMessage(rule, defaultErrMsg)
 
 	// 命中 skip_monitoring 时在 context 中标记，供 ops_error_logger 跳过记录。
 	if rule.SkipMonitoring {

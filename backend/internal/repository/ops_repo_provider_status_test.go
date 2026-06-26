@@ -82,6 +82,7 @@ func TestQueryProviderStatusUsesAccountNameAsProvider(t *testing.T) {
 			"success_count",
 			"failure_count",
 			"business_limited_count",
+			"cache_read_rate",
 			"p50_ms",
 			"p95_ms",
 			"p99_ms",
@@ -95,7 +96,7 @@ func TestQueryProviderStatusUsesAccountNameAsProvider(t *testing.T) {
 			"timeout_524_count",
 			"timeout_524_avg_ms",
 			"last_seen",
-		}).AddRow("gzw plus", int64(80), int64(80), int64(0), int64(0), float64(120), float64(300), float64(500), float64(250), float64(500), float64(180), float64(300), int64(10), nil, nil, int64(0), nil, end))
+		}).AddRow("gzw plus", int64(80), int64(80), int64(0), int64(0), nil, float64(120), float64(300), float64(500), float64(250), float64(500), float64(180), float64(300), int64(10), nil, nil, int64(0), nil, end))
 
 	items, err := repo.queryProviderStatusSummary(context.Background(), start, end, 50)
 	if err != nil {
@@ -134,6 +135,7 @@ func TestQueryProviderStatusExcludesUnlinkedErrors(t *testing.T) {
 			"success_count",
 			"failure_count",
 			"business_limited_count",
+			"cache_read_rate",
 			"p50_ms",
 			"p95_ms",
 			"p99_ms",
@@ -193,6 +195,7 @@ func TestQueryProviderStatusSummaryIncludesTimingDiagnostics(t *testing.T) {
 			"success_count",
 			"failure_count",
 			"business_limited_count",
+			"cache_read_rate",
 			"p50_ms",
 			"p95_ms",
 			"p99_ms",
@@ -206,7 +209,7 @@ func TestQueryProviderStatusSummaryIncludesTimingDiagnostics(t *testing.T) {
 			"timeout_524_count",
 			"timeout_524_avg_ms",
 			"last_seen",
-		}).AddRow("gzw plus", int64(3), int64(2), int64(1), int64(0), float64(120), float64(300), float64(500), float64(250), float64(90000), float64(1800), float64(3000), int64(2), float64(600), float64(1200), int64(1), float64(90000), end))
+		}).AddRow("gzw plus", int64(3), int64(2), int64(1), int64(0), nil, float64(120), float64(300), float64(500), float64(250), float64(90000), float64(1800), float64(3000), int64(2), float64(600), float64(1200), int64(1), float64(90000), end))
 
 	items, err := repo.queryProviderStatusSummary(context.Background(), start, end, 50)
 	if err != nil {
@@ -248,6 +251,66 @@ func TestQueryProviderStatusSummaryIncludesTimingDiagnostics(t *testing.T) {
 	}
 }
 
+func TestQueryProviderStatusSummaryIncludesCacheReadRate(t *testing.T) {
+	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherFunc(func(expectedSQL, actualSQL string) error {
+		for _, want := range []string{
+			"ul.input_tokens",
+			"ul.cache_read_tokens",
+			"ul.cache_creation_tokens",
+			"cache_read_rate",
+		} {
+			if !strings.Contains(actualSQL, want) {
+				t.Fatalf("provider status cache query missing %q, sql=%s", want, actualSQL)
+			}
+		}
+		return nil
+	})))
+	if err != nil {
+		t.Fatalf("sqlmock.New returned error: %v", err)
+	}
+	defer func() { _ = db.Close() }()
+
+	repo := &opsRepository{db: db}
+	start := time.Date(2026, 6, 16, 0, 0, 0, 0, time.UTC)
+	end := start.Add(time.Hour)
+	mock.ExpectQuery("provider summary should include cache read rate").
+		WillReturnRows(sqlmock.NewRows([]string{
+			"provider",
+			"request_count",
+			"success_count",
+			"failure_count",
+			"business_limited_count",
+			"cache_read_rate",
+			"p50_ms",
+			"p95_ms",
+			"p99_ms",
+			"duration_avg_ms",
+			"duration_max_ms",
+			"ttft_avg_ms",
+			"ttft_p95_ms",
+			"ttft_sample_count",
+			"upstream_ttft_avg_ms",
+			"gateway_ttft_avg_ms",
+			"timeout_524_count",
+			"timeout_524_avg_ms",
+			"last_seen",
+		}).AddRow("gzw plus", int64(3), int64(3), int64(0), int64(0), float64(86.4823), float64(120), float64(300), float64(500), float64(250), float64(90000), float64(1800), float64(3000), int64(2), float64(600), float64(1200), int64(0), nil, end))
+
+	items, err := repo.queryProviderStatusSummary(context.Background(), start, end, 50)
+	if err != nil {
+		t.Fatalf("queryProviderStatusSummary returned error: %v", err)
+	}
+	if len(items) != 1 {
+		t.Fatalf("items len = %d, want 1", len(items))
+	}
+	if items[0].CacheReadRate == nil || *items[0].CacheReadRate != 86.4823 {
+		t.Fatalf("cache_read_rate = %#v, want 86.4823", items[0].CacheReadRate)
+	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Fatalf("unmet sql expectations: %v", err)
+	}
+}
+
 func TestGetProviderStatusAttachesLatestFingerprints(t *testing.T) {
 	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherFunc(func(expectedSQL, actualSQL string) error {
 		if strings.Contains(actualSQL, "SELECT provider, headers_json") && !strings.Contains(actualSQL, "jsonb_array_elements") {
@@ -273,6 +336,7 @@ func TestGetProviderStatusAttachesLatestFingerprints(t *testing.T) {
 			"success_count",
 			"failure_count",
 			"business_limited_count",
+			"cache_read_rate",
 			"p50_ms",
 			"p95_ms",
 			"p99_ms",
@@ -286,7 +350,7 @@ func TestGetProviderStatusAttachesLatestFingerprints(t *testing.T) {
 			"timeout_524_count",
 			"timeout_524_avg_ms",
 			"last_seen",
-		}).AddRow("xixi", int64(2), int64(1), int64(1), int64(0), float64(120), float64(300), float64(500), float64(250), float64(500), float64(180), float64(300), int64(1), nil, nil, int64(1), float64(90000), end))
+		}).AddRow("xixi", int64(2), int64(1), int64(1), int64(0), nil, float64(120), float64(300), float64(500), float64(250), float64(500), float64(180), float64(300), int64(1), nil, nil, int64(1), float64(90000), end))
 	mock.ExpectQuery("provider timeline").
 		WillReturnRows(sqlmock.NewRows([]string{
 			"provider",
@@ -345,6 +409,7 @@ func TestScanProviderStatusSummaryCalculatesAvailability(t *testing.T) {
 		int64(8),
 		int64(2),
 		int64(1),
+		sql.NullFloat64{},
 		sql.NullFloat64{Float64: 120, Valid: true},
 		sql.NullFloat64{Float64: 300, Valid: true},
 		sql.NullFloat64{Float64: 500, Valid: true},

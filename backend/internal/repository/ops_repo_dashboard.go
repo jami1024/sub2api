@@ -1053,6 +1053,14 @@ func floatToIntPtr(v sql.NullFloat64) *int {
 	return &n
 }
 
+func floatToPtr(v sql.NullFloat64) *float64 {
+	if !v.Valid {
+		return nil
+	}
+	n := v.Float64
+	return &n
+}
+
 func safeDivideFloat64(numerator float64, denominator float64) float64 {
 	if denominator == 0 {
 		return 0

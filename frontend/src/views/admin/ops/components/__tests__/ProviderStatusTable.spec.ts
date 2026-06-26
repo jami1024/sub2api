@@ -20,6 +20,7 @@ const item = {
   business_limited_count: 0,
   availability: 55.56,
   error_rate: 44.44,
+  cache_read_rate: 87.2345,
   p50_ms: 8_080,
   p95_ms: 188_185,
   p99_ms: 325_089,
@@ -100,6 +101,18 @@ describe('ProviderStatusTable', () => {
     expect(wrapper.text()).toContain('平均 1.52m')
   })
 
+  it('显示供应商账号缓存率', () => {
+    const wrapper = mount(ProviderStatusTable, {
+      props: {
+        loading: false,
+        items: [item],
+      },
+    })
+
+    expect(wrapper.text()).toContain('admin.providerStatus.cacheRate')
+    expect(wrapper.text()).toContain('87.23%')
+  })
+
   it('在供应商状态表格展示上游指纹摘要', async () => {
     const wrapper = mount(ProviderStatusTable, {
       props: {
@@ -130,7 +143,11 @@ describe('ProviderStatusTable', () => {
 
     await wrapper.get('[data-testid="provider-status-timeline-dot"]').trigger('mouseenter')
 
-    expect(wrapper.text()).toContain('13:12')
+    const expectedTime = new Date(item.timeline[0].bucket_start).toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit',
+    })
+    expect(wrapper.text()).toContain(expectedTime)
     expect(wrapper.text()).toContain('27 个请求')
     expect(wrapper.text()).toContain('可用性 55.56%')
     expect(wrapper.text()).toContain('延迟: 8.08s')

@@ -278,6 +278,7 @@ export interface OpsProviderStatusItem {
   business_limited_count: number
   availability: number
   error_rate: number
+  cache_read_rate?: number | null
   p50_ms?: number | null
   p95_ms?: number | null
   p99_ms?: number | null
