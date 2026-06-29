@@ -45,8 +45,10 @@ const messages: Record<string, string> = {
   'home.landing.domainBadge': 'AIGO.RUN',
   'home.landing.title': '稳定使用，省心接入。',
   'home.landing.description': 'AigoHub 为购买用户提供更稳定的 AI 服务入口，少一点折腾，多一点省心。',
-  'home.landing.primaryCta': '复制 QQ 群号码',
+  'home.landing.primaryCta': '进群询问',
   'home.landing.successCta': '已复制 QQ 群号码',
+  'home.landing.createAccountCta': '创建账号',
+  'home.landing.ctaHint': '新用户请先创建账号；咨询、售后或使用问题可点“进群询问”复制群号。',
   'home.landing.wechatLabel': 'QQ 群号码',
   'home.landing.copySuccess': 'QQ 群号码已复制',
   'home.landing.easterEgg': '被你发现了，欢迎来聊聊。',
@@ -237,7 +239,12 @@ describe('HomeView', () => {
     const wrapper = mountView()
 
     expect(wrapper.text()).toContain('为什么选 AigoHub')
-    expect(wrapper.get('[data-testid="qq-group-cta"]').text()).toContain('复制 QQ 群号码')
+    expect(wrapper.get('[data-testid="home-create-account-cta"]').text()).toContain('创建账号')
+    expect(wrapper.get('[data-testid="home-create-account-cta"]').attributes('href')).toBe('/register')
+    expect(wrapper.get('[data-testid="qq-group-cta"]').text()).toContain('进群询问')
+    expect(wrapper.get('[data-testid="home-cta-hint"]').text()).toContain(
+      '新用户请先创建账号；咨询、售后或使用问题可点“进群询问”复制群号。'
+    )
   })
 
   it('does not render the secondary contact card on the default landing page', () => {
@@ -249,8 +256,10 @@ describe('HomeView', () => {
   })
 
   it('uses QQ group number copywriting in the zh home landing locale', () => {
-    expect(zhLocale.home.landing.primaryCta).toBe('复制 QQ 群号码')
+    expect(zhLocale.home.landing.primaryCta).toBe('进群询问')
     expect(zhLocale.home.landing.successCta).toBe('已复制 QQ 群号码')
+    expect(zhLocale.home.landing.createAccountCta).toBe('创建账号')
+    expect(zhLocale.home.landing.ctaHint).toBe('新用户请先创建账号；咨询、售后或使用问题可点“进群询问”复制群号。')
     expect(zhLocale.home.landing.wechatLabel).toBe('QQ 群号码')
     expect(zhLocale.home.landing.copySuccess).toBe('QQ 群号码已复制')
     expect(zhLocale.home.landing.contactTitle).toBe('咨询、售后、有问题可联系')
@@ -265,6 +274,7 @@ describe('HomeView', () => {
     expect(zhLocale.home.landing.primaryCta).not.toContain('1041689310')
     expect(zhLocale.home.landing.successCta).not.toContain('1041689310')
     expect(zhLocale.home.landing.copySuccess).not.toContain('1041689310')
+    expect(zhLocale.home.landing.ctaHint).not.toContain('1041689310')
   })
 
   it('copies the QQ group number when the primary CTA is clicked', async () => {
@@ -285,7 +295,7 @@ describe('HomeView', () => {
     expect(wrapper.get('[data-testid="qq-group-cta"]').text()).toContain('已复制 QQ 群号码')
 
     await vi.advanceTimersByTimeAsync(2200)
-    expect(wrapper.get('[data-testid="qq-group-cta"]').text()).toContain('复制 QQ 群号码')
+    expect(wrapper.get('[data-testid="qq-group-cta"]').text()).toContain('进群询问')
 
     vi.useRealTimers()
   })
@@ -318,54 +328,14 @@ describe('HomeView', () => {
     expect(wrapper.get('[data-testid="home-hero-panel-glow"]').exists()).toBe(true)
   })
 
-  it('renders live landing packages with arrival and usage multipliers', async () => {
+  it('does not render the home package section on the default landing page', async () => {
     const wrapper = mountView()
     await flushPromises()
 
-    expect(landingApiMock.getLandingPackageShowcase).toHaveBeenCalled()
-    expect(wrapper.text()).toContain('Codex 专属余额包')
-    expect(wrapper.text()).toContain('专属包-试用级')
-    expect(wrapper.text()).toContain('¥10')
-    expect(wrapper.text()).toContain('到账余额15余额')
-    expect(wrapper.text()).toContain('到账倍率1.5x')
-    expect(wrapper.text()).toContain('综合约 5.3 折')
-    expect(wrapper.text()).toContain('专属包-进阶级')
-    expect(wrapper.text()).toContain('综合低至 2 折')
-    expect(wrapper.text()).toContain('约等效 500 余额')
-    expect(wrapper.text()).toContain('gpt pro 使用倍率 0.8x')
-    expect(wrapper.text()).toContain('同样余额可多用约 25%')
-    expect(wrapper.text()).not.toContain('¥20 / $50')
-  })
-
-  it('uses high-contrast dark mode styling for the package section', async () => {
-    const wrapper = mountView()
-    await flushPromises()
-
-    const section = wrapper.get('[data-testid="home-package-section"]')
-    expect(section.classes().join(' ')).toContain('dark:bg-slate-950')
-    expect(section.classes().join(' ')).not.toContain('dark:bg-[#08101d]/88')
-
-    const firstCard = wrapper.get('[data-testid="home-package-card"]')
-    expect(firstCard.classes().join(' ')).toContain('dark:bg-slate-900/95')
-  })
-
-  it('renders the package multiplier badge text for codex cards', async () => {
-    const wrapper = mountView()
-    await flushPromises()
-
-    const sectionText = wrapper.get('[data-testid="home-package-section"]').text()
-    expect(sectionText).toContain('到账倍率4x')
-    expect(sectionText).toContain('GPT Pro 使用倍率0.8x')
-  })
-
-  it('renders live codex package cards', async () => {
-    const wrapper = mountView()
-    await flushPromises()
-    const cards = wrapper.findAll('[data-testid="home-package-card"]')
-
-    expect(cards).toHaveLength(3)
-    expect(wrapper.get('[data-testid="home-package-section"]').text()).toContain('后台实时同步')
-    expect(cards[2].attributes('data-package-kind')).toBe('codex')
+    expect(landingApiMock.getLandingPackageShowcase).not.toHaveBeenCalled()
+    expect(wrapper.find('[data-testid="home-package-section"]').exists()).toBe(false)
+    expect(wrapper.text()).not.toContain('Codex 专属余额包')
+    expect(wrapper.text()).not.toContain('专属包-试用级')
   })
 
   it('renders the iframe override when home_content is an external URL', () => {

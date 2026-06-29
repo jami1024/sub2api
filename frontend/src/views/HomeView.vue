@@ -114,41 +114,57 @@
                 {{ pill.label }}
               </span>
             </div>
-            <button
-              data-testid="qq-group-cta"
-              type="button"
-              @click="handleQqGroupClick"
-              @mouseenter="isCtaHovered = true"
-              @mouseleave="isCtaHovered = false"
-              @focus="isCtaHovered = true"
-              @blur="isCtaHovered = false"
-              class="group relative inline-flex min-h-12 items-center justify-center overflow-hidden rounded-full px-7 py-3 text-sm font-semibold text-white transition duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/60"
-              :class="
-                isQqGroupCopied
-                  ? 'bg-emerald-500 shadow-[0_18px_40px_rgba(16,185,129,0.28)]'
-                  : 'bg-slate-950 shadow-[0_16px_40px_rgba(15,23,42,0.18)] hover:-translate-y-0.5 hover:bg-slate-800 dark:bg-primary-500 dark:shadow-[0_18px_40px_rgba(59,130,246,0.28)] dark:hover:bg-primary-400'
-              "
-            >
-              <span class="pointer-events-none absolute inset-0 rounded-full border border-white/15"></span>
-              <span
-                class="pointer-events-none absolute inset-0 rounded-full border border-white/30 transition duration-500"
-                :class="isQqGroupCopied ? 'scale-[1.08] opacity-100' : 'scale-100 opacity-0'"
-              ></span>
-              <span
-                class="home-cta-sheen pointer-events-none absolute inset-y-0 left-[-35%] w-24 -skew-x-12 bg-white/20 blur-xl transition duration-700"
-                :class="isCtaHighlighted ? 'translate-x-[260%] opacity-100' : 'translate-x-0 opacity-0'"
-              ></span>
-              <span class="relative z-10 flex items-center gap-2">
-                <span>{{ ctaLabel }}</span>
+            <div class="flex flex-wrap items-center gap-3">
+              <router-link
+                to="/register"
+                data-testid="home-create-account-cta"
+                class="inline-flex min-h-12 items-center justify-center rounded-full bg-slate-950 px-7 py-3 text-sm font-semibold text-white shadow-[0_16px_40px_rgba(15,23,42,0.18)] transition duration-300 hover:-translate-y-0.5 hover:bg-slate-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/60 dark:bg-primary-500 dark:shadow-[0_18px_40px_rgba(59,130,246,0.28)] dark:hover:bg-primary-400"
+              >
+                {{ t('home.landing.createAccountCta') }}
+              </router-link>
+
+              <button
+                data-testid="qq-group-cta"
+                type="button"
+                @click="handleQqGroupClick"
+                @mouseenter="isCtaHovered = true"
+                @mouseleave="isCtaHovered = false"
+                @focus="isCtaHovered = true"
+                @blur="isCtaHovered = false"
+                class="group relative inline-flex min-h-12 items-center justify-center overflow-hidden rounded-full px-7 py-3 text-sm font-semibold transition duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/60"
+                :class="
+                  isQqGroupCopied
+                    ? 'bg-emerald-500 text-white shadow-[0_18px_40px_rgba(16,185,129,0.28)]'
+                    : 'border border-slate-300 bg-white/90 text-slate-800 shadow-sm hover:-translate-y-0.5 hover:bg-slate-50 dark:border-white/20 dark:bg-white/10 dark:text-white dark:hover:bg-white/15'
+                "
+              >
+                <span class="pointer-events-none absolute inset-0 rounded-full border border-white/15"></span>
                 <span
-                  v-if="isQqGroupCopied"
-                  class="inline-flex h-5 w-5 items-center justify-center rounded-full bg-white/20 text-xs font-bold"
-                  aria-hidden="true"
-                >
-                  ✓
+                  class="pointer-events-none absolute inset-0 rounded-full border border-white/30 transition duration-500"
+                  :class="isQqGroupCopied ? 'scale-[1.08] opacity-100' : 'scale-100 opacity-0'"
+                ></span>
+                <span
+                  class="home-cta-sheen pointer-events-none absolute inset-y-0 left-[-35%] w-24 -skew-x-12 bg-white/20 blur-xl transition duration-700"
+                  :class="isCtaHighlighted ? 'translate-x-[260%] opacity-100' : 'translate-x-0 opacity-0'"
+                ></span>
+                <span class="relative z-10 flex items-center gap-2">
+                  <span>{{ ctaLabel }}</span>
+                  <span
+                    v-if="isQqGroupCopied"
+                    class="inline-flex h-5 w-5 items-center justify-center rounded-full bg-white/20 text-xs font-bold"
+                    aria-hidden="true"
+                  >
+                    ✓
+                  </span>
                 </span>
-              </span>
-            </button>
+              </button>
+            </div>
+            <p
+              data-testid="home-cta-hint"
+              class="mt-4 max-w-lg text-sm leading-6 text-slate-500 dark:text-slate-300"
+            >
+              {{ t('home.landing.ctaHint') }}
+            </p>
 
             <p
               v-if="easterEggVisible"
@@ -162,8 +178,6 @@
 
         <AigoHubHeroPanel :reduced-motion="prefersReducedMotion" />
       </section>
-
-      <HomePackageSection />
 
       <section>
         <h2 class="text-2xl font-bold text-slate-900 dark:text-white">{{ t('home.landing.whyTitle') }}</h2>
@@ -226,7 +240,6 @@ import { useAuthStore, useAppStore } from '@/stores'
 import { useClipboard } from '@/composables/useClipboard'
 import LocaleSwitcher from '@/components/common/LocaleSwitcher.vue'
 import AigoHubHeroPanel from '@/components/home/AigoHubHeroPanel.vue'
-import HomePackageSection from '@/components/home/HomePackageSection.vue'
 import PublicAnnouncementPopup from '@/components/home/PublicAnnouncementPopup.vue'
 import Icon from '@/components/icons/Icon.vue'
 
