@@ -3,6 +3,7 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { ref } from 'vue'
 
 import HomeView from '@/views/HomeView.vue'
+import zhLocale from '@/i18n/locales/zh'
 
 const copyToClipboard = vi.fn().mockResolvedValue(true)
 const checkAuth = vi.fn()
@@ -44,10 +45,10 @@ const messages: Record<string, string> = {
   'home.landing.domainBadge': 'AIGO.RUN',
   'home.landing.title': '稳定使用，省心接入。',
   'home.landing.description': 'AigoHub 为购买用户提供更稳定的 AI 服务入口，少一点折腾，多一点省心。',
-  'home.landing.primaryCta': '立即加微信',
-  'home.landing.successCta': '已复制，去微信添加',
-  'home.landing.wechatLabel': '微信号',
-  'home.landing.copySuccess': '微信号已复制，请前往微信添加',
+  'home.landing.primaryCta': '复制 QQ 群号码',
+  'home.landing.successCta': '已复制 QQ 群号码',
+  'home.landing.wechatLabel': 'QQ 群号码',
+  'home.landing.copySuccess': 'QQ 群号码已复制',
   'home.landing.easterEgg': '被你发现了，欢迎来聊聊。',
   'home.landing.delightPills.quickConsult': '快速咨询',
   'home.landing.whyTitle': '为什么选 AigoHub',
@@ -61,8 +62,8 @@ const messages: Record<string, string> = {
   'home.landing.audienceItems.buyers': '想找稳定 AI 服务入口的人',
   'home.landing.audienceItems.simpleAccess': '不想频繁折腾接入流程的人',
   'home.landing.audienceItems.longTerm': '更在意长期体验和省心程度的人',
-  'home.landing.contactTitle': '联系微信，快速咨询',
-  'home.landing.contactDescription': '添加微信后可进一步了解服务内容',
+  'home.landing.contactTitle': '咨询、售后、有问题可联系',
+  'home.landing.contactDescription': '点击按钮复制 QQ 群号码',
   'home.landing.footerTagline': 'AigoHub，给你更放心的 AI 服务入口。'
 }
 
@@ -236,29 +237,55 @@ describe('HomeView', () => {
     const wrapper = mountView()
 
     expect(wrapper.text()).toContain('为什么选 AigoHub')
-    expect(wrapper.text()).toContain('联系微信，快速咨询')
-    expect(wrapper.get('[data-testid="wechat-cta"]').text()).toContain('立即加微信')
+    expect(wrapper.get('[data-testid="qq-group-cta"]').text()).toContain('复制 QQ 群号码')
   })
 
-  it('copies the WeChat id when the primary CTA is clicked', async () => {
+  it('does not render the secondary contact card on the default landing page', () => {
     const wrapper = mountView()
 
-    await wrapper.get('[data-testid="wechat-cta"]').trigger('click')
+    expect(wrapper.find('[data-testid="home-contact-card"]').exists()).toBe(false)
+    expect(wrapper.text()).not.toContain('咨询、售后、有问题可联系')
+    expect(wrapper.text()).not.toContain('1041689310')
+  })
 
-    expect(copyToClipboard).toHaveBeenCalledWith('G000000000g1e', '微信号已复制，请前往微信添加')
+  it('uses QQ group number copywriting in the zh home landing locale', () => {
+    expect(zhLocale.home.landing.primaryCta).toBe('复制 QQ 群号码')
+    expect(zhLocale.home.landing.successCta).toBe('已复制 QQ 群号码')
+    expect(zhLocale.home.landing.wechatLabel).toBe('QQ 群号码')
+    expect(zhLocale.home.landing.copySuccess).toBe('QQ 群号码已复制')
+    expect(zhLocale.home.landing.contactTitle).toBe('咨询、售后、有问题可联系')
+    expect(zhLocale.home.landing.contactDescription).toBe('点击按钮复制 QQ 群号码')
+    expect(zhLocale.home.landing.contactDescription).not.toContain('1041689310')
+  })
+
+  it('does not expose the QQ group number in visible landing text', () => {
+    const wrapper = mountView()
+
+    expect(wrapper.text()).not.toContain('1041689310')
+    expect(zhLocale.home.landing.primaryCta).not.toContain('1041689310')
+    expect(zhLocale.home.landing.successCta).not.toContain('1041689310')
+    expect(zhLocale.home.landing.copySuccess).not.toContain('1041689310')
+  })
+
+  it('copies the QQ group number when the primary CTA is clicked', async () => {
+    const wrapper = mountView()
+
+    await wrapper.get('[data-testid="qq-group-cta"]').trigger('click')
+
+    expect(copyToClipboard).toHaveBeenCalledWith('1041689310', 'QQ 群号码已复制')
   })
 
   it('切换为复制成功状态并在定时后恢复默认文案', async () => {
     vi.useFakeTimers()
     const wrapper = mountView()
 
-    await wrapper.get('[data-testid="wechat-cta"]').trigger('click')
+    await wrapper.get('[data-testid="qq-group-cta"]').trigger('click')
     await Promise.resolve()
 
-    expect(wrapper.get('[data-testid="wechat-cta"]').text()).toContain('已复制，去微信添加')
+    expect(wrapper.get('[data-testid="qq-group-cta"]').text()).toContain('已复制 QQ 群号码')
 
     await vi.advanceTimersByTimeAsync(2200)
-    expect(wrapper.get('[data-testid="wechat-cta"]').text()).toContain('立即加微信')
+    expect(wrapper.get('[data-testid="qq-group-cta"]').text()).toContain('复制 QQ 群号码')
 
     vi.useRealTimers()
   })

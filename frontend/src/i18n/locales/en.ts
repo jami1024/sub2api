@@ -14,10 +14,10 @@ export default {
       domainBadge: 'AIGO.RUN',
       title: 'Stable to use. Simple to access.',
       description: 'AigoHub gives buyers a steadier AI service entry point with less friction and more peace of mind.',
-      primaryCta: 'Add on WeChat',
-      successCta: 'Copied, now open WeChat',
-      wechatLabel: 'WeChat',
-      copySuccess: 'WeChat ID copied. Open WeChat to add it.',
+      primaryCta: 'Copy QQ group number',
+      successCta: 'QQ group number copied',
+      wechatLabel: 'QQ group number',
+      copySuccess: 'QQ group number copied.',
       easterEgg: 'You found it. Come say hi.',
       delightPills: {
         quickConsult: 'Ask quickly'
@@ -43,8 +43,8 @@ export default {
         simpleAccess: 'People who do not want to keep reworking access details',
         longTerm: 'People who care more about long-term peace of mind'
       },
-      contactTitle: 'Add WeChat to ask first',
-      contactDescription: 'Reach out on WeChat to learn the service details before buying.',
+      contactTitle: 'For questions, support, and after-sales help',
+      contactDescription: 'Click the button to copy the QQ group number.',
       footerTagline: 'AigoHub gives you a steadier place to start with AI services.'
     },
     // User-focused value proposition

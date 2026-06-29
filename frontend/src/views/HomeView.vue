@@ -115,16 +115,16 @@
               </span>
             </div>
             <button
-              data-testid="wechat-cta"
+              data-testid="qq-group-cta"
               type="button"
-              @click="handleWechatClick"
+              @click="handleQqGroupClick"
               @mouseenter="isCtaHovered = true"
               @mouseleave="isCtaHovered = false"
               @focus="isCtaHovered = true"
               @blur="isCtaHovered = false"
               class="group relative inline-flex min-h-12 items-center justify-center overflow-hidden rounded-full px-7 py-3 text-sm font-semibold text-white transition duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/60"
               :class="
-                isWechatCopied
+                isQqGroupCopied
                   ? 'bg-emerald-500 shadow-[0_18px_40px_rgba(16,185,129,0.28)]'
                   : 'bg-slate-950 shadow-[0_16px_40px_rgba(15,23,42,0.18)] hover:-translate-y-0.5 hover:bg-slate-800 dark:bg-primary-500 dark:shadow-[0_18px_40px_rgba(59,130,246,0.28)] dark:hover:bg-primary-400'
               "
@@ -132,7 +132,7 @@
               <span class="pointer-events-none absolute inset-0 rounded-full border border-white/15"></span>
               <span
                 class="pointer-events-none absolute inset-0 rounded-full border border-white/30 transition duration-500"
-                :class="isWechatCopied ? 'scale-[1.08] opacity-100' : 'scale-100 opacity-0'"
+                :class="isQqGroupCopied ? 'scale-[1.08] opacity-100' : 'scale-100 opacity-0'"
               ></span>
               <span
                 class="home-cta-sheen pointer-events-none absolute inset-y-0 left-[-35%] w-24 -skew-x-12 bg-white/20 blur-xl transition duration-700"
@@ -141,7 +141,7 @@
               <span class="relative z-10 flex items-center gap-2">
                 <span>{{ ctaLabel }}</span>
                 <span
-                  v-if="isWechatCopied"
+                  v-if="isQqGroupCopied"
                   class="inline-flex h-5 w-5 items-center justify-center rounded-full bg-white/20 text-xs font-bold"
                   aria-hidden="true"
                 >
@@ -192,19 +192,6 @@
         </ul>
       </section>
 
-      <section class="rounded-3xl border border-primary-400/30 bg-primary-500/10 p-6 text-center">
-        <h2 class="text-2xl font-bold text-slate-900 dark:text-white">{{ t('home.landing.contactTitle') }}</h2>
-        <p class="mx-auto mt-3 max-w-2xl text-sm leading-6 text-slate-700 dark:text-slate-200">
-          {{ t('home.landing.contactDescription') }}
-        </p>
-        <button
-          type="button"
-          @click="handleWechatClick"
-          class="mt-6 inline-flex items-center justify-center rounded-full bg-primary-500 px-6 py-3 text-sm font-semibold text-white transition hover:bg-primary-400"
-        >
-          {{ t('home.landing.primaryCta') }}
-        </button>
-      </section>
     </main>
 
     <footer class="border-t border-slate-200/80 dark:border-white/10">
@@ -243,7 +230,7 @@ import HomePackageSection from '@/components/home/HomePackageSection.vue'
 import PublicAnnouncementPopup from '@/components/home/PublicAnnouncementPopup.vue'
 import Icon from '@/components/icons/Icon.vue'
 
-const WECHAT_ID = 'G000000000g1e'
+const QQ_GROUP_NUMBER = '1041689310'
 const CTA_SUCCESS_RESET_MS = 2200
 const EASTER_EGG_TRIGGER_COUNT = 5
 const EASTER_EGG_RESET_MS = 3200
@@ -269,7 +256,7 @@ const isHomeContentUrl = computed(() => {
 
 const isDark = ref(document.documentElement.classList.contains('dark'))
 const isCtaHovered = ref(false)
-const isWechatCopied = ref(false)
+const isQqGroupCopied = ref(false)
 const easterEggClicks = ref(0)
 const easterEggVisible = ref(false)
 const prefersReducedMotion = ref(false)
@@ -278,9 +265,9 @@ const isAdmin = computed(() => authStore.isAdmin)
 const dashboardPath = computed(() => (isAdmin.value ? '/admin/dashboard' : '/dashboard'))
 const userInitial = computed(() => authStore.user?.email?.charAt(0).toUpperCase() || '')
 const currentYear = computed(() => new Date().getFullYear())
-const ctaLabel = computed(() => (isWechatCopied.value ? t('home.landing.successCta') : t('home.landing.primaryCta')))
+const ctaLabel = computed(() => (isQqGroupCopied.value ? t('home.landing.successCta') : t('home.landing.primaryCta')))
 const easterEggMessage = computed(() => t('home.landing.easterEgg'))
-const isCtaHighlighted = computed(() => isCtaHovered.value || isWechatCopied.value)
+const isCtaHighlighted = computed(() => isCtaHovered.value || isQqGroupCopied.value)
 const delightPills = computed(() => [
   { key: 'stable', label: t('home.landing.whyItems.stableUse.title') },
   { key: 'easy', label: t('home.landing.whyItems.easyAccess.title') },
@@ -326,7 +313,7 @@ function clearEasterEggTimer() {
 function scheduleCtaReset() {
   clearCtaResetTimer()
   ctaResetTimer = window.setTimeout(() => {
-    isWechatCopied.value = false
+    isQqGroupCopied.value = false
     ctaResetTimer = null
   }, CTA_SUCCESS_RESET_MS)
 }
@@ -340,9 +327,9 @@ function scheduleEasterEggHide() {
   }, EASTER_EGG_RESET_MS)
 }
 
-async function handleWechatClick() {
-  await copyToClipboard(WECHAT_ID, t('home.landing.copySuccess'))
-  isWechatCopied.value = true
+async function handleQqGroupClick() {
+  await copyToClipboard(QQ_GROUP_NUMBER, t('home.landing.copySuccess'))
+  isQqGroupCopied.value = true
   scheduleCtaReset()
 }
 

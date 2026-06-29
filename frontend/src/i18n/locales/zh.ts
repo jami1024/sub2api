@@ -14,10 +14,10 @@ export default {
       domainBadge: 'AIGO.RUN',
       title: '稳定使用，省心接入。',
       description: 'AigoHub 为购买用户提供更稳定的 AI 服务入口，少一点折腾，多一点省心。',
-      primaryCta: '立即加微信',
-      successCta: '已复制，去微信添加',
-      wechatLabel: '微信号',
-      copySuccess: '微信号已复制，请前往微信添加',
+      primaryCta: '复制 QQ 群号码',
+      successCta: '已复制 QQ 群号码',
+      wechatLabel: 'QQ 群号码',
+      copySuccess: 'QQ 群号码已复制',
       easterEgg: '被你发现了，欢迎来聊聊。',
       delightPills: {
         quickConsult: '快速咨询'
@@ -43,8 +43,8 @@ export default {
         simpleAccess: '不想频繁折腾接入流程的人',
         longTerm: '更在意长期体验和省心程度的人'
       },
-      contactTitle: '联系微信，快速咨询',
-      contactDescription: '添加微信后可进一步了解服务内容',
+      contactTitle: '咨询、售后、有问题可联系',
+      contactDescription: '点击按钮复制 QQ 群号码',
       footerTagline: 'AigoHub，给你更放心的 AI 服务入口。'
     },
     // 新增：面向用户的价值主张
