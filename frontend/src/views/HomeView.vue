@@ -242,6 +242,7 @@ import LocaleSwitcher from '@/components/common/LocaleSwitcher.vue'
 import AigoHubHeroPanel from '@/components/home/AigoHubHeroPanel.vue'
 import PublicAnnouncementPopup from '@/components/home/PublicAnnouncementPopup.vue'
 import Icon from '@/components/icons/Icon.vue'
+import { sanitizeUrl } from '@/utils/url'
 
 const QQ_GROUP_NUMBER = '1041689310'
 const CTA_SUCCESS_RESET_MS = 2200
@@ -258,8 +259,8 @@ const siteName = computed(() => {
   if (!appStore.publicSettingsLoaded) return ''
   return appStore.siteName || 'Sub2API'
 })
-const siteLogo = computed(() => appStore.cachedPublicSettings?.site_logo || appStore.siteLogo || '')
-const docUrl = computed(() => appStore.cachedPublicSettings?.doc_url || appStore.docUrl || '')
+const siteLogo = computed(() => sanitizeUrl(appStore.cachedPublicSettings?.site_logo || appStore.siteLogo || '', { allowRelative: true, allowDataUrl: true }))
+const docUrl = computed(() => sanitizeUrl(appStore.cachedPublicSettings?.doc_url || appStore.docUrl || ''))
 const homeContent = computed(() => appStore.cachedPublicSettings?.home_content || '')
 
 const isHomeContentUrl = computed(() => {
