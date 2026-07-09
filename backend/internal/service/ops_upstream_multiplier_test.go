@@ -216,6 +216,10 @@ func (r *opsUpstreamMultiplierAccountRepo) GetByIDs(ctx context.Context, ids []i
 	return result, nil
 }
 
+func (r *opsUpstreamMultiplierAccountRepo) ListShadowsByParent(ctx context.Context, parentID int64) ([]*Account, error) {
+	return nil, nil
+}
+
 func (r *opsUpstreamMultiplierAccountRepo) ExistsByID(ctx context.Context, id int64) (bool, error) {
 	_, err := r.GetByID(ctx, id)
 	return err == nil, nil
@@ -260,6 +264,11 @@ func (r *opsUpstreamMultiplierAccountRepo) ListWithFilters(ctx context.Context, 
 		result = append(result, acc)
 	}
 	return result, &pagination.PaginationResult{Total: int64(len(result)), Page: 1, PageSize: len(result)}, nil
+}
+
+func (r *opsUpstreamMultiplierAccountRepo) ListAllWithFilters(ctx context.Context, platform, accountType, status, search string, groupID int64, privacyMode string) ([]Account, error) {
+	result, _, err := r.ListWithFilters(ctx, pagination.PaginationParams{Page: 1, PageSize: len(r.accounts)}, platform, accountType, status, search, groupID, privacyMode)
+	return result, err
 }
 
 func (r *opsUpstreamMultiplierAccountRepo) ListByGroup(ctx context.Context, groupID int64) ([]Account, error) {

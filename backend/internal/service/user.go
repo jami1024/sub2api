@@ -20,6 +20,7 @@ type User struct {
 	Role           string
 	Balance        float64
 	PackageScope   *string
+	FrozenBalance  float64
 	Concurrency    int
 	Status         string
 	AllowedGroups  []int64

@@ -58,21 +58,17 @@ if (typeof globalThis.cancelIdleCallback === 'undefined') {
 }
 
 // Mock matchMedia for viewport-aware components in jsdom
-if (typeof window.matchMedia === 'undefined') {
-  Object.defineProperty(window, 'matchMedia', {
-    writable: true,
-    configurable: true,
-    value: vi.fn().mockImplementation((query: string) => ({
-      matches: query.includes('min-width: 768px'),
-      media: query,
-      onchange: null,
-      addListener: vi.fn(),
-      removeListener: vi.fn(),
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
-      dispatchEvent: vi.fn()
-    }))
-  })
+if (typeof window !== 'undefined' && typeof window.matchMedia !== 'function') {
+  window.matchMedia = ((query: string) => ({
+    matches: query.includes('min-width: 768px'),
+    media: query,
+    onchange: null,
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    dispatchEvent: vi.fn()
+  })) as unknown as typeof window.matchMedia
 }
 
 // Mock IntersectionObserver

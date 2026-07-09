@@ -156,6 +156,9 @@ func (s *apiKeyPackageScopeSubRepoStub) Create(ctx context.Context, sub *UserSub
 func (s *apiKeyPackageScopeSubRepoStub) GetByID(ctx context.Context, id int64) (*UserSubscription, error) {
 	panic("unexpected GetByID call")
 }
+func (s *apiKeyPackageScopeSubRepoStub) GetByIDIncludeDeleted(ctx context.Context, id int64) (*UserSubscription, error) {
+	panic("unexpected GetByIDIncludeDeleted call")
+}
 func (s *apiKeyPackageScopeSubRepoStub) GetByUserIDAndGroupID(ctx context.Context, userID, groupID int64) (*UserSubscription, error) {
 	panic("unexpected GetByUserIDAndGroupID call")
 }
@@ -170,6 +173,9 @@ func (s *apiKeyPackageScopeSubRepoStub) Update(ctx context.Context, sub *UserSub
 }
 func (s *apiKeyPackageScopeSubRepoStub) Delete(ctx context.Context, id int64) error {
 	panic("unexpected Delete call")
+}
+func (s *apiKeyPackageScopeSubRepoStub) Restore(ctx context.Context, subscriptionID int64, restoredStatus string) (*UserSubscription, error) {
+	panic("unexpected Restore call")
 }
 func (s *apiKeyPackageScopeSubRepoStub) ListByUserID(ctx context.Context, userID int64) ([]UserSubscription, error) {
 	panic("unexpected ListByUserID call")
@@ -191,6 +197,9 @@ func (s *apiKeyPackageScopeSubRepoStub) List(ctx context.Context, params paginat
 }
 func (s *apiKeyPackageScopeSubRepoStub) ExistsByUserIDAndGroupID(ctx context.Context, userID, groupID int64) (bool, error) {
 	panic("unexpected ExistsByUserIDAndGroupID call")
+}
+func (s *apiKeyPackageScopeSubRepoStub) ExistsActiveByUserIDAndGroupID(ctx context.Context, userID, groupID int64) (bool, error) {
+	return s.activeByGroup[groupID], nil
 }
 func (s *apiKeyPackageScopeSubRepoStub) ExtendExpiry(ctx context.Context, subscriptionID int64, newExpiresAt time.Time) error {
 	panic("unexpected ExtendExpiry call")

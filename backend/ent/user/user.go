@@ -31,6 +31,8 @@ const (
 	FieldBalance = "balance"
 	// FieldPackageScope holds the string denoting the package_scope field in the database.
 	FieldPackageScope = "package_scope"
+	// FieldFrozenBalance holds the string denoting the frozen_balance field in the database.
+	FieldFrozenBalance = "frozen_balance"
 	// FieldConcurrency holds the string denoting the concurrency field in the database.
 	FieldConcurrency = "concurrency"
 	// FieldStatus holds the string denoting the status field in the database.
@@ -202,6 +204,7 @@ var Columns = []string{
 	FieldRole,
 	FieldBalance,
 	FieldPackageScope,
+	FieldFrozenBalance,
 	FieldConcurrency,
 	FieldStatus,
 	FieldUsername,
@@ -262,6 +265,8 @@ var (
 	DefaultBalance float64
 	// PackageScopeValidator is a validator for the "package_scope" field. It is called by the builders before save.
 	PackageScopeValidator func(string) error
+	// DefaultFrozenBalance holds the default value on creation for the "frozen_balance" field.
+	DefaultFrozenBalance float64
 	// DefaultConcurrency holds the default value on creation for the "concurrency" field.
 	DefaultConcurrency int
 	// DefaultStatus holds the default value on creation for the "status" field.
@@ -338,6 +343,11 @@ func ByBalance(opts ...sql.OrderTermOption) OrderOption {
 // ByPackageScope orders the results by the package_scope field.
 func ByPackageScope(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldPackageScope, opts...).ToFunc()
+}
+
+// ByFrozenBalance orders the results by the frozen_balance field.
+func ByFrozenBalance(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldFrozenBalance, opts...).ToFunc()
 }
 
 // ByConcurrency orders the results by the concurrency field.
