@@ -509,10 +509,12 @@ export default {
       rebateRate: 'My Rebate Rate',
       rebateRateHint: 'What you earn each time an invitee recharges',
       invitedUsers: 'Invited Users',
+      pendingQuota: 'Pending Rebate',
       availableQuota: 'Available Rebate Quota',
       frozenQuota: 'Frozen',
       frozenQuotaHint: 'Recently earned rebates pending release',
-      totalQuota: 'Historical Rebate Quota'
+      totalQuota: 'Historical Rebate Quota',
+      debtQuota: 'Rebate Debt'
     },
     transfer: {
       title: 'Transfer Rebate Quota',
@@ -520,7 +522,65 @@ export default {
       button: 'Transfer to Balance',
       transferring: 'Transferring...',
       empty: 'No available rebate quota',
-      success: '{amount} has been transferred to your balance'
+      success: '{amount} has been transferred to your balance',
+      thresholdHint: 'Withdrawals are available after reaching ¥{amount}',
+      debtHint: 'You currently have rebate debt, so withdrawals are unavailable.',
+      manualHint: 'Withdrawal requests are reviewed manually by administrators.',
+      dialogTitle: 'Request Rebate Withdrawal',
+      dialogDescription: 'Enter the withdrawal amount and note. The request will wait for admin review.',
+      requestAmount: 'Withdrawal Amount',
+      requestNote: 'Note',
+      requesting: 'Submitting...',
+      confirm: 'Submit Request',
+      requestSuccess: 'Withdrawal request submitted',
+      requestFailed: 'Failed to submit withdrawal request'
+    },
+    rules: {
+      title: 'Rebate Rules',
+      line1: 'New users are linked to you when they register with your code or invite link.',
+      line2: 'When invited users recharge, you receive rebate quota based on the configured rate.',
+      line3: 'New rebates may enter a pending period before becoming available.',
+      line4: 'You can submit a withdrawal request once available quota reaches the minimum amount.',
+      line5: 'Refunds, risk controls, or abnormal orders may create rebate debt that is deducted first.',
+      line6: 'Final rebate behavior follows the administrator configuration.',
+      exampleTitle: 'Tier Example',
+      exampleChain: 'If A invites B, B invites C, and C invites D:',
+      exampleLevel1: 'When B recharges, A receives a level-1 rebate.',
+      exampleLevel2: 'When C recharges, B receives level-1 and A may receive level-2 rebate.',
+      exampleLevel3: 'When D recharges, C receives level-1 while B/A may receive deeper tier rebates.',
+      exampleNote: 'Tier rates can differ. Disabled tiers do not generate rebates.'
+    },
+    rebates: {
+      title: 'Rebate Records',
+      empty: 'No rebate records',
+      level1: 'Level 1',
+      level2: 'Level 2',
+      level3: 'Level 3',
+      levelUnknown: 'Level {level}',
+      columns: {
+        level: 'Level',
+        sourceUser: 'Source User',
+        sourceOrder: 'Source Order'
+      },
+      status: {
+        pending: 'Pending',
+        available: 'Available',
+        withdraw_requested: 'Withdrawal Requested',
+        withdraw_paid: 'Withdrawal Paid',
+        transferred: 'Transferred',
+        approved: 'Approved',
+        rejected: 'Rejected',
+        paid: 'Paid',
+        canceled: 'Canceled',
+        cancelled: 'Cancelled',
+        reversed: 'Reversed',
+        debt: 'Debt',
+        debt_offset: 'Debt Offset'
+      }
+    },
+    withdrawals: {
+      title: 'Withdrawal Records',
+      empty: 'No withdrawal records'
     },
     invitees: {
       title: 'Invited Users',
@@ -538,6 +598,96 @@ export default {
       line2: 'When invitees recharge, you receive {rate} of the recharge as rebate quota.',
       line3: 'Transfer rebate quota to balance at any time.',
       line4: 'Newly earned rebates may have a waiting period before they can be transferred.'
+    }
+  },
+
+  userGuide: {
+    badge: 'Quick Start',
+    title: 'User Guide',
+    description: 'Complete funding, API key creation, group selection, and client setup step by step.',
+    hero: 'Follow the steps from funding, creating an API key, choosing a group, and configuring your client to start using the gateway.',
+    actions: {
+      createKey: 'Create API Key',
+      recharge: 'Recharge / Subscribe'
+    },
+    quickStart: {
+      kicker: 'Quick Start',
+      title: 'Connect in 5 Steps',
+      description: 'Complete the basic setup below and you can usually start calling the API within minutes.'
+    },
+    steps: {
+      fundAccount: {
+        title: 'Fund account or buy a plan',
+        body: 'Make sure your account has balance or subscription quota to avoid insufficient-balance failures.'
+      },
+      createKey: {
+        title: 'Create an API key',
+        body: 'Go to API Keys, create a key, and keep the generated value safe.'
+      },
+      chooseGroup: {
+        title: 'Choose an available group',
+        body: 'Select a group that supports the model and capability you need. Groups may have different rates and permissions.'
+      },
+      configureClient: {
+        title: 'Configure your client',
+        body: 'Put the Base URL and API key into Codex, Claude Code, or any OpenAI-compatible client.'
+      },
+      checkUsage: {
+        title: 'Check usage',
+        body: 'After calls, review tokens, cache hits, costs, and request status in Usage.'
+      }
+    },
+    client: {
+      title: 'Client Setup',
+      description: 'Most clients use the OpenAI-compatible endpoint. Replace the Base URL and API key.',
+      codex: {
+        title: 'Codex',
+        body: 'Add your API key and gateway URL to Codex for coding and agent workflows.'
+      },
+      claude: {
+        title: 'Claude Code',
+        body: 'Configure environment variables or client settings as documented to route through the gateway.'
+      },
+      openai: {
+        title: 'OpenAI-compatible clients',
+        body: 'Set base_url to this site and use your API key as the Authorization bearer token.'
+      }
+    },
+    imageGeneration: {
+      title: 'Image Generation',
+      description: 'Submit image generation requests through the OpenAI-compatible image endpoint and receive base64 image data.',
+      jqExample: 'Save image with jq',
+      noJqExample: 'Python example without jq',
+      note: 'Model, size, and quality affect billing. The final cost follows group and model configuration.'
+    },
+    faq: {
+      title: 'FAQ',
+      keyNotWorking: {
+        title: 'What if my API key does not work?',
+        body: 'Check that the key is copied completely, the account has balance, and the group allows the target model.'
+      },
+      noGroup: {
+        title: 'What if no group is available?',
+        body: 'Contact an administrator to assign a subscription or open an available group.'
+      },
+      billing: {
+        title: 'How is cost calculated?',
+        body: 'Cost depends on model price, multipliers, cache hits, and request type. Usage records show the details.'
+      }
+    },
+    fullClaudeDoc: {
+      title: 'Full Claude Code Setup',
+      description: 'Expand for complete installation, configuration, and troubleshooting notes.',
+      toggle: 'Expand / collapse',
+      navTitle: 'Document Contents'
+    },
+    quickNav: {
+      title: 'Quick Navigation',
+      quickStart: 'Quick Start',
+      clientSetup: 'Client Setup',
+      imageGeneration: 'Image Generation',
+      faq: 'FAQ',
+      fullDoc: 'Full Doc'
     }
   },
 

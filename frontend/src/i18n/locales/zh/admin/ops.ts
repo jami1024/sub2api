@@ -805,6 +805,67 @@ export default {
         downloadChartHint: '下载图表图片'
       }
     },
+    providerStatus: {
+      title: '供应商状态',
+      description: '按供应商汇总请求量、可用性、缓存命中率与延迟健康情况。',
+      ranges: {
+        '15m': '近15分钟',
+        '1h': '近1小时',
+        '6h': '近6小时',
+        '24h': '近24小时',
+        '7d': '近7天'
+      },
+      refresh: '刷新',
+      totalRequests: '总请求数',
+      overallAvailability: '整体可用性',
+      errorRate: '错误率',
+      providerCount: '供应商数量',
+      tableTitle: '供应商明细',
+      empty: '暂无供应商状态数据',
+      provider: '供应商',
+      requests: '请求数',
+      availability: '可用性',
+      cacheRate: '缓存命中率',
+      errors: '错误数',
+      fingerprint: '指纹',
+      timeline: '时间线',
+      lastSeen: '最近出现',
+      fingerprintSeenAt: '指纹最近出现：',
+      noFingerprint: '暂无指纹',
+      latencyTrend: '延迟趋势',
+      peak: '峰值',
+      loadError: '加载供应商状态失败'
+    },
+    clientFailures: {
+      title: '客户端失败',
+      description: '按用户和 API Key 汇总客户端侧失败，帮助定位调用方问题。',
+      ranges: {
+        '15m': '近15分钟',
+        '1h': '近1小时',
+        '6h': '近6小时',
+        '24h': '近24小时',
+        '7d': '近7天'
+      },
+      refresh: '刷新',
+      totalFailures: '失败总数',
+      affectedUsers: '影响用户',
+      affectedKeys: '影响密钥',
+      tableTitle: '客户端失败明细',
+      tableHint: '按失败次数倒序展示调用方、端点和主要错误。',
+      clickHint: '点击行可查看详情',
+      empty: '暂无客户端失败数据',
+      emptyHint: '当前时间范围内没有记录到客户端失败。',
+      user: '用户',
+      unknownUser: '未知用户',
+      failures: '失败数',
+      keys: '密钥数',
+      topError: '主要错误',
+      topErrorCount: '{count} 次',
+      endpoint: '端点',
+      platform: '平台',
+      lastSeen: '最近出现',
+      loadError: '加载客户端失败数据失败'
+    },
 
     // Settings
 }

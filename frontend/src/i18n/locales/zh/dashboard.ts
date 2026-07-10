@@ -514,10 +514,12 @@ export default {
       rebateRate: '我的返利比例',
       rebateRateHint: '被邀请用户每次充值后你可获得的返利比例',
       invitedUsers: '邀请人数',
+      pendingQuota: '待解冻返利',
       availableQuota: '可转返利额度',
       frozenQuota: '冻结中',
       frozenQuotaHint: '新产生的返利正在冻结期中',
-      totalQuota: '历史返利额度'
+      totalQuota: '历史返利额度',
+      debtQuota: '返利负债'
     },
     transfer: {
       title: '返利额度转余额',
@@ -525,7 +527,65 @@ export default {
       button: '转入余额',
       transferring: '转入中...',
       empty: '当前没有可转入额度',
-      success: '已转入余额：{amount}'
+      success: '已转入余额：{amount}',
+      thresholdHint: '满 {amount} 元后可申请提现',
+      debtHint: '当前存在返利负债，暂不能申请提现。',
+      manualHint: '提现申请提交后由管理员人工审核处理。',
+      dialogTitle: '申请返利提现',
+      dialogDescription: '请输入提现金额和备注，提交后等待管理员审核。',
+      requestAmount: '提现金额',
+      requestNote: '备注',
+      requesting: '提交中...',
+      confirm: '提交申请',
+      requestSuccess: '提现申请已提交',
+      requestFailed: '提交提现申请失败'
+    },
+    rules: {
+      title: '返利规则',
+      line1: '新用户通过你的邀请码或邀请链接注册后，会自动绑定邀请关系。',
+      line2: '被邀请用户充值后，你会按配置比例获得返利额度。',
+      line3: '新产生的返利可能先进入冻结期，到期后变为可用额度。',
+      line4: '可用返利达到最低提现金额后，可以提交提现申请。',
+      line5: '如发生退款、风控或异常订单，系统可能产生返利负债并优先抵扣。',
+      line6: '最终返利规则以管理员后台配置为准。',
+      exampleTitle: '层级示例',
+      exampleChain: '如果 A 邀请 B，B 邀请 C，C 邀请 D：',
+      exampleLevel1: 'B 充值时，A 获得一级返利。',
+      exampleLevel2: 'C 充值时，B 获得一级返利，A 可获得二级返利。',
+      exampleLevel3: 'D 充值时，C 获得一级返利，B/A 可按配置获得更深层返利。',
+      exampleNote: '不同层级比例可能不同，未启用的层级不会产生返利。'
+    },
+    rebates: {
+      title: '返利记录',
+      empty: '暂无返利记录',
+      level1: '一级返利',
+      level2: '二级返利',
+      level3: '三级返利',
+      levelUnknown: '{level} 级返利',
+      columns: {
+        level: '层级',
+        sourceUser: '来源用户',
+        sourceOrder: '来源订单'
+      },
+      status: {
+        pending: '待解冻',
+        available: '可用',
+        withdraw_requested: '提现申请中',
+        withdraw_paid: '提现已支付',
+        transferred: '已转入',
+        approved: '已通过',
+        rejected: '已拒绝',
+        paid: '已支付',
+        canceled: '已取消',
+        cancelled: '已取消',
+        reversed: '已冲正',
+        debt: '负债',
+        debt_offset: '负债抵扣'
+      }
+    },
+    withdrawals: {
+      title: '提现记录',
+      empty: '暂无提现记录'
     },
     invitees: {
       title: '已邀请用户',
@@ -543,6 +603,96 @@ export default {
       line2: '被邀请用户充值后，你可获得 {rate} 的返利额度。',
       line3: '返利额度可随时转入账户余额。',
       line4: '新产生的返利需要经过冻结期后才能提现。'
+    }
+  },
+
+  userGuide: {
+    badge: '快速上手',
+    title: '使用指南',
+    description: '按步骤完成充值、创建 API Key、选择分组和客户端配置。',
+    hero: '从充值、创建 API Key、选择分组到配置客户端，按步骤完成即可开始使用。',
+    actions: {
+      createKey: '创建 API Key',
+      recharge: '充值/订阅'
+    },
+    quickStart: {
+      kicker: '快速开始',
+      title: '5 步完成首次接入',
+      description: '按下面顺序完成基础设置，通常几分钟内即可开始调用。'
+    },
+    steps: {
+      fundAccount: {
+        title: '充值账户或购买套餐',
+        body: '先确认账户有可用余额或订阅额度，避免调用时因余额不足失败。'
+      },
+      createKey: {
+        title: '创建 API Key',
+        body: '进入 API 密钥页面创建密钥，并妥善保存生成的 Key。'
+      },
+      chooseGroup: {
+        title: '选择可用分组',
+        body: '根据你要使用的模型和能力选择合适分组，不同分组可能有不同倍率和权限。'
+      },
+      configureClient: {
+        title: '配置客户端',
+        body: '把 Base URL 和 API Key 填入 Codex、Claude Code 或 OpenAI 兼容客户端。'
+      },
+      checkUsage: {
+        title: '查看用量',
+        body: '调用后可在使用记录里查看 token、缓存命中、费用和请求状态。'
+      }
+    },
+    client: {
+      title: '客户端配置',
+      description: '常见客户端都使用 OpenAI 兼容地址，只需替换 Base URL 和 API Key。',
+      codex: {
+        title: 'Codex',
+        body: '在 Codex 配置中填入你的 API Key 和网关地址，适合代码与代理任务。'
+      },
+      claude: {
+        title: 'Claude Code',
+        body: '按文档配置环境变量或客户端设置，即可走网关转发。'
+      },
+      openai: {
+        title: 'OpenAI 兼容客户端',
+        body: '将客户端的 base_url 改为本站地址，authorization 使用你的 API Key。'
+      }
+    },
+    imageGeneration: {
+      title: '图片生成',
+      description: '支持通过 OpenAI 兼容图片接口提交生图请求，返回 base64 图片数据。',
+      jqExample: '使用 jq 保存图片',
+      noJqExample: '不依赖 jq 的 Python 示例',
+      note: '不同模型、尺寸和质量会影响计费，具体以分组与模型配置为准。'
+    },
+    faq: {
+      title: '常见问题',
+      keyNotWorking: {
+        title: 'API Key 无法使用怎么办？',
+        body: '先检查 Key 是否复制完整、账户是否有余额、分组是否允许对应模型。'
+      },
+      noGroup: {
+        title: '没有可用分组怎么办？',
+        body: '请联系管理员分配订阅或开放可用分组。'
+      },
+      billing: {
+        title: '费用如何计算？',
+        body: '费用由模型价格、倍率、缓存命中和请求类型共同决定，可在使用记录查看明细。'
+      }
+    },
+    fullClaudeDoc: {
+      title: 'Claude Code 完整配置说明',
+      description: '展开查看更完整的安装、配置和排障说明。',
+      toggle: '展开/收起',
+      navTitle: '文档目录'
+    },
+    quickNav: {
+      title: '快速导航',
+      quickStart: '快速开始',
+      clientSetup: '客户端配置',
+      imageGeneration: '图片生成',
+      faq: '常见问题',
+      fullDoc: '完整文档'
     }
   },
 

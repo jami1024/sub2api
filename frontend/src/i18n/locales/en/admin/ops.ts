@@ -804,6 +804,67 @@ export default {
         downloadChartHint: 'Download chart as image'
       }
     },
+    providerStatus: {
+      title: 'Provider Status',
+      description: 'Provider-level request volume, availability, cache hit rate, and latency health.',
+      ranges: {
+        '15m': 'Last 15 minutes',
+        '1h': 'Last 1 hour',
+        '6h': 'Last 6 hours',
+        '24h': 'Last 24 hours',
+        '7d': 'Last 7 days'
+      },
+      refresh: 'Refresh',
+      totalRequests: 'Total Requests',
+      overallAvailability: 'Overall Availability',
+      errorRate: 'Error Rate',
+      providerCount: 'Providers',
+      tableTitle: 'Provider Details',
+      empty: 'No provider status data',
+      provider: 'Provider',
+      requests: 'Requests',
+      availability: 'Availability',
+      cacheRate: 'Cache Hit Rate',
+      errors: 'Errors',
+      fingerprint: 'Fingerprint',
+      timeline: 'Timeline',
+      lastSeen: 'Last Seen',
+      fingerprintSeenAt: 'Fingerprint seen at:',
+      noFingerprint: 'No fingerprint',
+      latencyTrend: 'Latency Trend',
+      peak: 'Peak',
+      loadError: 'Failed to load provider status'
+    },
+    clientFailures: {
+      title: 'Client Failures',
+      description: 'Client-side failures grouped by user and API key for troubleshooting caller issues.',
+      ranges: {
+        '15m': 'Last 15 minutes',
+        '1h': 'Last 1 hour',
+        '6h': 'Last 6 hours',
+        '24h': 'Last 24 hours',
+        '7d': 'Last 7 days'
+      },
+      refresh: 'Refresh',
+      totalFailures: 'Total Failures',
+      affectedUsers: 'Affected Users',
+      affectedKeys: 'Affected Keys',
+      tableTitle: 'Client Failure Details',
+      tableHint: 'Sorted by failure count with caller, endpoint, and top error.',
+      clickHint: 'Click a row for details',
+      empty: 'No client failures',
+      emptyHint: 'No client-side failures were recorded in this time range.',
+      user: 'User',
+      unknownUser: 'Unknown User',
+      failures: 'Failures',
+      keys: 'Keys',
+      topError: 'Top Error',
+      topErrorCount: '{count} times',
+      endpoint: 'Endpoint',
+      platform: 'Platform',
+      lastSeen: 'Last Seen',
+      loadError: 'Failed to load client failures'
+    },
 
     // Settings
 }
