@@ -2781,6 +2781,13 @@ func TestParseSSEUsage_SelectiveParsing(t *testing.T) {
 	require.Equal(t, 5, usage.OutputTokens)
 	require.Equal(t, 2, usage.CacheReadInputTokens)
 
+	// GPT-5.6 cache write 字段应映射到内部缓存创建 token
+	svc.parseSSEUsage(`{"type":"response.completed","response":{"usage":{"input_tokens":9,"output_tokens":5,"input_tokens_details":{"cached_tokens":2,"cache_write_tokens":3}}}}`, usage)
+	require.Equal(t, 9, usage.InputTokens)
+	require.Equal(t, 5, usage.OutputTokens)
+	require.Equal(t, 2, usage.CacheReadInputTokens)
+	require.Equal(t, 3, usage.CacheCreationInputTokens)
+
 	// done 事件同样可能携带最终 usage
 	svc.parseSSEUsage(`{"type":"response.done","response":{"usage":{"input_tokens":13,"output_tokens":15,"input_tokens_details":{"cached_tokens":4}}}}`, usage)
 	require.Equal(t, 13, usage.InputTokens)
@@ -2811,6 +2818,29 @@ func TestExtractOpenAIUsageFromJSONBytes_AcceptsResponseAndChatUsageShapes(t *te
 	require.Equal(t, 13, usage.InputTokens)
 	require.Equal(t, 7, usage.OutputTokens)
 	require.Equal(t, 4, usage.CacheReadInputTokens)
+
+	usage, ok = extractOpenAIUsageFromJSONBytes([]byte(`{"id":"resp_cache_write","usage":{"input_tokens":30,"output_tokens":5,"input_tokens_details":{"cached_tokens":7,"cache_write_tokens":11}}}`))
+	require.True(t, ok)
+	require.Equal(t, 30, usage.InputTokens)
+	require.Equal(t, 5, usage.OutputTokens)
+	require.Equal(t, 7, usage.CacheReadInputTokens)
+	require.Equal(t, 11, usage.CacheCreationInputTokens)
+
+	usage, ok = extractOpenAIUsageFromJSONBytes([]byte(`{"id":"chatcmpl_cache_write","usage":{"prompt_tokens":40,"completion_tokens":6,"prompt_tokens_details":{"cached_tokens":8,"cache_write_tokens":13}}}`))
+	require.True(t, ok)
+	require.Equal(t, 40, usage.InputTokens)
+	require.Equal(t, 6, usage.OutputTokens)
+	require.Equal(t, 8, usage.CacheReadInputTokens)
+	require.Equal(t, 13, usage.CacheCreationInputTokens)
+}
+
+func TestExtractCCStreamUsage_CacheWriteTokens(t *testing.T) {
+	usage := extractCCStreamUsage(`{"id":"chatcmpl_cache_write","usage":{"prompt_tokens":40,"completion_tokens":6,"prompt_tokens_details":{"cached_tokens":8,"cache_write_tokens":13}}}`)
+	require.NotNil(t, usage)
+	require.Equal(t, 40, usage.InputTokens)
+	require.Equal(t, 6, usage.OutputTokens)
+	require.Equal(t, 8, usage.CacheReadInputTokens)
+	require.Equal(t, 13, usage.CacheCreationInputTokens)
 }
 
 func TestExtractCodexFinalResponse_SampleReplay(t *testing.T) {

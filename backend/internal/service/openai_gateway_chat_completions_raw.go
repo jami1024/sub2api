@@ -394,6 +394,9 @@ func extractCCStreamUsage(payload string) *OpenAIUsage {
 	if cached := gjson.Get(payload, "usage.prompt_tokens_details.cached_tokens"); cached.Exists() {
 		u.CacheReadInputTokens = int(cached.Int())
 	}
+	if cacheWrite := gjson.Get(payload, "usage.prompt_tokens_details.cache_write_tokens"); cacheWrite.Exists() {
+		u.CacheCreationInputTokens = int(cacheWrite.Int())
+	}
 	return &u
 }
 
@@ -427,6 +430,7 @@ func (s *OpenAIGatewayService) bufferRawChatCompletions(
 		}
 		if ccResp.Usage.PromptTokensDetails != nil {
 			usage.CacheReadInputTokens = ccResp.Usage.PromptTokensDetails.CachedTokens
+			usage.CacheCreationInputTokens = ccResp.Usage.PromptTokensDetails.CacheWriteTokens
 		}
 	}
 

@@ -863,6 +863,51 @@ func TestResponsesToChatCompletions_CachedTokens(t *testing.T) {
 	assert.Equal(t, 80, chat.Usage.PromptTokensDetails.CachedTokens)
 }
 
+func TestResponsesToChatCompletions_CacheWriteTokens(t *testing.T) {
+	resp := &ResponsesResponse{
+		ID:     "resp_cache_write",
+		Status: "completed",
+		Output: []ResponsesOutput{
+			{
+				Type:    "message",
+				Content: []ResponsesContentPart{{Type: "output_text", Text: "cache write"}},
+			},
+		},
+		Usage: &ResponsesUsage{
+			InputTokens:  100,
+			OutputTokens: 10,
+			TotalTokens:  110,
+			InputTokensDetails: &ResponsesInputTokensDetails{
+				CachedTokens:     20,
+				CacheWriteTokens: 30,
+			},
+		},
+	}
+
+	chat := ResponsesToChatCompletions(resp, "gpt-5.6-sol")
+	require.NotNil(t, chat.Usage)
+	require.NotNil(t, chat.Usage.PromptTokensDetails)
+	assert.Equal(t, 20, chat.Usage.PromptTokensDetails.CachedTokens)
+	assert.Equal(t, 30, chat.Usage.PromptTokensDetails.CacheWriteTokens)
+}
+
+func TestChatUsageToResponsesUsage_CacheWriteTokens(t *testing.T) {
+	usage := ChatUsageToResponsesUsage(&ChatUsage{
+		PromptTokens:     100,
+		CompletionTokens: 10,
+		TotalTokens:      110,
+		PromptTokensDetails: &ChatTokenDetails{
+			CachedTokens:     20,
+			CacheWriteTokens: 30,
+		},
+	})
+
+	require.NotNil(t, usage)
+	require.NotNil(t, usage.InputTokensDetails)
+	assert.Equal(t, 20, usage.InputTokensDetails.CachedTokens)
+	assert.Equal(t, 30, usage.InputTokensDetails.CacheWriteTokens)
+}
+
 func TestResponsesToChatCompletions_ReasoningTokens(t *testing.T) {
 	resp := &ResponsesResponse{
 		ID:     "resp_reasoning",
