@@ -122,9 +122,8 @@ func (s *OpenAIGatewayService) RecordUsage(ctx context.Context, input *OpenAIRec
 		ApplyOpenAIImageBillingResolution(result)
 	}
 
-	// 计算实际的新输入 token（减去缓存读取与缓存写入 token）。
-	// OpenAI 的 input_tokens 包含 cached_tokens 和 cache_write_tokens；
-	// 两者应分别按缓存读取/写入价格计费，不能再按普通输入价重复计费。
+	// OpenAI input_tokens 是总输入，包含缓存读取和缓存写入明细。
+	// 将三类 token 拆成互斥桶，避免缓存写入同时按普通输入和 cache_write 重复计费。
 	actualInputTokens := result.Usage.InputTokens - result.Usage.CacheReadInputTokens - result.Usage.CacheCreationInputTokens
 	if actualInputTokens < 0 {
 		actualInputTokens = 0

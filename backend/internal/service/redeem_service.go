@@ -135,6 +135,7 @@ type RedeemCodeBatchUpdateResult struct {
 type RedeemService struct {
 	redeemRepo           RedeemCodeRepository
 	userRepo             UserRepository
+	redeemUserRepo       RedeemUserAdjustmentRepository
 	subscriptionService  *SubscriptionService
 	cache                RedeemCache
 	billingCacheService  *BillingCacheService
@@ -154,9 +155,11 @@ func NewRedeemService(
 	authCacheInvalidator APIKeyAuthCacheInvalidator,
 	affiliateService *AffiliateService,
 ) *RedeemService {
+	redeemUserRepo, _ := userRepo.(RedeemUserAdjustmentRepository)
 	return &RedeemService{
 		redeemRepo:           redeemRepo,
 		userRepo:             userRepo,
+		redeemUserRepo:       redeemUserRepo,
 		subscriptionService:  subscriptionService,
 		cache:                cache,
 		billingCacheService:  billingCacheService,
@@ -454,26 +457,34 @@ func (s *RedeemService) Redeem(ctx context.Context, userID int64, code string) (
 	switch redeemCode.Type {
 	case RedeemTypeBalance:
 		amount := redeemCode.Value
-		// 负数为退款扣减，余额最低为 0
-		if amount < 0 && user.Balance+amount < 0 {
-			amount = -user.Balance
-		}
-		if ensurePackageScopeForPositiveBalanceCredit(user, amount) {
-			if err := s.userRepo.Update(txCtx, user); err != nil {
-				return nil, fmt.Errorf("update user package scope: %w", err)
+		if amount < 0 {
+			if s.redeemUserRepo == nil {
+				return nil, errors.New("user repository does not support atomic redeem balance adjustments")
 			}
-		}
-		if err := s.userRepo.UpdateBalance(txCtx, userID, amount); err != nil {
-			return nil, fmt.Errorf("update user balance: %w", err)
+			if err := s.redeemUserRepo.ApplyRedeemBalanceAdjustment(txCtx, userID, amount); err != nil {
+				return nil, fmt.Errorf("update user balance: %w", err)
+			}
+		} else {
+			if ensurePackageScopeForPositiveBalanceCredit(user, amount) {
+				if err := s.userRepo.Update(txCtx, user); err != nil {
+					return nil, fmt.Errorf("update user package scope: %w", err)
+				}
+			}
+			if err := s.userRepo.UpdateBalance(txCtx, userID, amount); err != nil {
+				return nil, fmt.Errorf("update user balance: %w", err)
+			}
 		}
 
 	case RedeemTypeConcurrency:
 		delta := int(redeemCode.Value)
-		// 负数为退款扣减，并发数最低为 0
-		if delta < 0 && user.Concurrency+delta < 0 {
-			delta = -user.Concurrency
-		}
-		if err := s.userRepo.UpdateConcurrency(txCtx, userID, delta); err != nil {
+		if delta < 0 {
+			if s.redeemUserRepo == nil {
+				return nil, errors.New("user repository does not support atomic redeem concurrency adjustments")
+			}
+			if err := s.redeemUserRepo.ApplyRedeemConcurrencyAdjustment(txCtx, userID, delta); err != nil {
+				return nil, fmt.Errorf("update user concurrency: %w", err)
+			}
+		} else if err := s.userRepo.UpdateConcurrency(txCtx, userID, delta); err != nil {
 			return nil, fmt.Errorf("update user concurrency: %w", err)
 		}
 
