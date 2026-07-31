@@ -553,7 +553,7 @@ func (s *PaymentService) doBalancePackage(ctx context.Context, o *dbent.PaymentO
 			}
 			user.Balance = 0
 			user.PackageScope = &orderScope
-			if err := s.userRepo.Update(ctx, user); err != nil {
+			if err := s.userRepo.Update(ctx, user, UserUpdateFields{PackageScope: true}); err != nil {
 				return fmt.Errorf("update user package scope after force switch: %w", err)
 			}
 			s.writeAuditLog(ctx, o.ID, "BALANCE_PACKAGE_FORCE_SWITCH", "system", map[string]any{
@@ -564,7 +564,7 @@ func (s *PaymentService) doBalancePackage(ctx context.Context, o *dbent.PaymentO
 			})
 		} else if psStringValue(user.PackageScope) == "" {
 			user.PackageScope = &orderScope
-			if err := s.userRepo.Update(ctx, user); err != nil {
+			if err := s.userRepo.Update(ctx, user, UserUpdateFields{PackageScope: true}); err != nil {
 				return fmt.Errorf("update user package scope: %w", err)
 			}
 		}

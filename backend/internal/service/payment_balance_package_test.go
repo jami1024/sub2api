@@ -26,6 +26,9 @@ type packageScopeUserRepoStub struct {
 func (s *packageScopeUserRepoStub) Create(ctx context.Context, user *User) error {
 	panic("unexpected Create call")
 }
+func (s *packageScopeUserRepoStub) CreateWithEmailAliasGuard(ctx context.Context, user *User) error {
+	panic("unexpected CreateWithEmailAliasGuard call")
+}
 func (s *packageScopeUserRepoStub) GetByID(ctx context.Context, id int64) (*User, error) {
 	if s.user == nil {
 		return nil, ErrUserNotFound
@@ -41,7 +44,7 @@ func (s *packageScopeUserRepoStub) GetByEmail(ctx context.Context, email string)
 func (s *packageScopeUserRepoStub) GetFirstAdmin(ctx context.Context) (*User, error) {
 	panic("unexpected GetFirstAdmin call")
 }
-func (s *packageScopeUserRepoStub) Update(ctx context.Context, user *User) error {
+func (s *packageScopeUserRepoStub) Update(ctx context.Context, user *User, fields UserUpdateFields) error {
 	clone := *user
 	s.updated = append(s.updated, &clone)
 	s.user = &clone
@@ -85,6 +88,28 @@ func (s *packageScopeUserRepoStub) UpdateBalance(ctx context.Context, id int64, 
 func (s *packageScopeUserRepoStub) DeductBalance(ctx context.Context, id int64, amount float64) error {
 	panic("unexpected DeductBalance call")
 }
+func (s *packageScopeUserRepoStub) AdjustBalance(ctx context.Context, id int64, delta float64) (BalanceChange, error) {
+	if s.user == nil {
+		return BalanceChange{}, ErrUserNotFound
+	}
+	change := BalanceChange{Old: s.user.Balance, New: s.user.Balance + delta}
+	if change.New < 0 {
+		return BalanceChange{}, ErrBalanceNegative
+	}
+	s.user.Balance = change.New
+	return change, nil
+}
+func (s *packageScopeUserRepoStub) SetBalance(ctx context.Context, id int64, value float64) (BalanceChange, error) {
+	if s.user == nil {
+		return BalanceChange{}, ErrUserNotFound
+	}
+	if value < 0 {
+		return BalanceChange{}, ErrBalanceNegative
+	}
+	change := BalanceChange{Old: s.user.Balance, New: value}
+	s.user.Balance = value
+	return change, nil
+}
 func (s *packageScopeUserRepoStub) UpdateConcurrency(ctx context.Context, id int64, amount int) error {
 	panic("unexpected UpdateConcurrency call")
 }
@@ -94,8 +119,14 @@ func (s *packageScopeUserRepoStub) BatchSetConcurrency(ctx context.Context, user
 func (s *packageScopeUserRepoStub) BatchAddConcurrency(ctx context.Context, userIDs []int64, delta int) (int, error) {
 	return 0, nil
 }
+func (s *packageScopeUserRepoStub) BatchUpdateLimits(ctx context.Context, userIDs []int64, concurrency, rpmLimit *int) (int, error) {
+	return 0, nil
+}
 func (s *packageScopeUserRepoStub) ExistsByEmail(ctx context.Context, email string) (bool, error) {
 	panic("unexpected ExistsByEmail call")
+}
+func (s *packageScopeUserRepoStub) ExistsByEmailAlias(ctx context.Context, email string) (bool, error) {
+	panic("unexpected ExistsByEmailAlias call")
 }
 func (s *packageScopeUserRepoStub) RemoveGroupFromAllowedGroups(ctx context.Context, groupID int64) (int64, error) {
 	panic("unexpected RemoveGroupFromAllowedGroups call")

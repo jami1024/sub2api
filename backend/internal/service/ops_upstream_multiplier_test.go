@@ -355,6 +355,10 @@ func (r *opsUpstreamMultiplierAccountRepo) ListSchedulableUngroupedByPlatforms(c
 	return r.accounts, nil
 }
 
+func (r *opsUpstreamMultiplierAccountRepo) ListModelAvailabilityCandidates(ctx context.Context, groupID *int64, platforms []string, includeGrouped bool) ([]Account, error) {
+	return r.accounts, nil
+}
+
 func (r *opsUpstreamMultiplierAccountRepo) SetRateLimited(ctx context.Context, id int64, resetAt time.Time) error {
 	return nil
 }

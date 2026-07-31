@@ -218,24 +218,33 @@ func (s *adminServiceImpl) UpdateUser(ctx context.Context, id int64, input *Upda
 	oldRPMLimit := user.RPMLimit
 	oldAllowedGroups := append([]int64(nil), user.AllowedGroups...)
 
+	// fields 与下面的 input.X 判空条件一一对应：管理员没提交的列不写回，
+	// 避免这份快照回滚并发的扣费、状态变更或批量限额调整。
+	var fields UserUpdateFields
+
 	if input.Email != "" {
 		user.Email = input.Email
+		fields.Email = true
 	}
 	if input.Password != "" {
 		if err := user.SetPassword(input.Password); err != nil {
 			return nil, err
 		}
+		fields.PasswordHash = true
 	}
 
 	if input.Username != nil {
 		user.Username = *input.Username
+		fields.Username = true
 	}
 	if input.Notes != nil {
 		user.Notes = *input.Notes
+		fields.Notes = true
 	}
 
 	if input.Status != "" {
 		user.Status = input.Status
+		fields.Status = true
 	}
 
 	// 角色变更(admin/user);空字符串表示不修改。
@@ -252,21 +261,25 @@ func (s *adminServiceImpl) UpdateUser(ctx context.Context, id int64, input *Upda
 			}
 		}
 		user.Role = role
+		fields.Role = true
 	}
 
 	if input.Concurrency != nil {
 		user.Concurrency = *input.Concurrency
+		fields.Concurrency = true
 	}
 
 	if input.RPMLimit != nil {
 		user.RPMLimit = *input.RPMLimit
+		fields.RPMLimit = true
 	}
 
 	if input.AllowedGroups != nil {
 		user.AllowedGroups = *input.AllowedGroups
+		fields.AllowedGroups = true
 	}
 
-	if err := s.userRepo.Update(ctx, user); err != nil {
+	if err := s.userRepo.Update(ctx, user, fields); err != nil {
 		return nil, err
 	}
 
@@ -459,6 +472,39 @@ func (s *adminServiceImpl) BatchUpdateConcurrency(ctx context.Context, userIDs [
 	return affected, nil
 }
 
+func (s *adminServiceImpl) BatchUpdateLimits(ctx context.Context, userIDs []int64, concurrency, rpmLimit *int) (int, error) {
+	if concurrency == nil && rpmLimit == nil {
+		return 0, fmt.Errorf("at least one of concurrency or rpm_limit is required")
+	}
+
+	cleaned := make([]int64, 0, len(userIDs))
+	seen := make(map[int64]struct{}, len(userIDs))
+	for _, userID := range userIDs {
+		if userID <= 0 {
+			continue
+		}
+		if _, ok := seen[userID]; ok {
+			continue
+		}
+		seen[userID] = struct{}{}
+		cleaned = append(cleaned, userID)
+	}
+	if len(cleaned) == 0 {
+		return 0, nil
+	}
+
+	affected, err := s.userRepo.BatchUpdateLimits(ctx, cleaned, concurrency, rpmLimit)
+	if err != nil {
+		return 0, err
+	}
+	if s.authCacheInvalidator != nil {
+		for _, userID := range cleaned {
+			s.authCacheInvalidator.InvalidateAuthCacheByUserID(ctx, userID)
+		}
+	}
+	return affected, nil
+}
+
 func (s *adminServiceImpl) UpdateUserBalance(ctx context.Context, userID int64, balance float64, operation string, notes string, packageScope ...string) (*User, error) {
 	user, err := s.userRepo.GetByID(ctx, userID)
 	if err != nil {
@@ -479,36 +525,50 @@ func (s *adminServiceImpl) UpdateUserBalance(ctx context.Context, userID int64, 
 	}
 	scopeChanged := selectedScope != "" && selectedScope != oldScope
 
+	// 余额调整必须走原子接口：先读后整行写回会把并发的计费扣款覆盖掉。
+	var (
+		change    BalanceChange
+		adjustErr error
+	)
 	switch operation {
 	case "set":
-		user.Balance = balance
+		change, adjustErr = s.userRepo.SetBalance(ctx, userID, balance)
 	case "add":
 		if scopeChanged {
-			user.Balance = balance
+			// 切换套餐范围时旧范围余额失效，本次充值成为新余额。
+			change, adjustErr = s.userRepo.SetBalance(ctx, userID, balance)
 		} else {
-			user.Balance += balance
+			change, adjustErr = s.userRepo.AdjustBalance(ctx, userID, balance)
 		}
 	case "subtract":
-		user.Balance -= balance
+		change, adjustErr = s.userRepo.AdjustBalance(ctx, userID, -balance)
+	default:
+		return nil, fmt.Errorf("unsupported balance operation: %q", operation)
+	}
+	if errors.Is(adjustErr, ErrBalanceNegative) {
+		return nil, fmt.Errorf("balance cannot be negative, current balance: %.2f, requested operation would result in: %.2f", change.Old, change.New)
+	}
+	if adjustErr != nil {
+		return nil, adjustErr
 	}
 
-	if user.Balance < 0 {
-		return nil, fmt.Errorf("balance cannot be negative, current balance: %.2f, requested operation would result in: %.2f", oldBalance, user.Balance)
-	}
-
+	user.Balance = change.New
 	if selectedScope != "" && (operation == "add" || operation == "set") {
 		user.PackageScope = &selectedScope
 	} else {
-		ensurePackageScopeForPositiveBalanceCredit(user, user.Balance-oldBalance)
+		ensurePackageScopeForPositiveBalanceCredit(user, change.New-change.Old)
 	}
 
-	if err := s.userRepo.Update(ctx, user); err != nil {
-		return nil, err
+	if psStringValue(user.PackageScope) != oldScope {
+		if err := s.userRepo.Update(ctx, user, UserUpdateFields{PackageScope: true}); err != nil {
+			return nil, err
+		}
 	}
-	balanceDiff := user.Balance - oldBalance
+	balanceDiff := change.New - change.Old
 	if s.authCacheInvalidator != nil && balanceDiff != 0 {
 		s.authCacheInvalidator.InvalidateAuthCacheByUserID(ctx, userID)
 	}
+	s.tryAccrueAffiliateRebateForAdminRecharge(ctx, userID, operation, balance)
 
 	if s.billingCacheService != nil {
 		go func() {
@@ -550,6 +610,24 @@ func (s *adminServiceImpl) createBalanceAdjustmentRecord(ctx context.Context, us
 
 	if err := s.redeemCodeRepo.Create(ctx, adjustmentRecord); err != nil {
 		logger.LegacyPrintf("service.admin", "failed to create balance adjustment redeem code: %v", err)
+	}
+}
+
+func (s *adminServiceImpl) tryAccrueAffiliateRebateForAdminRecharge(ctx context.Context, userID int64, operation string, amount float64) {
+	if operation != "add" || amount <= 0 || s.settingService == nil || s.affiliateService == nil {
+		return
+	}
+	if !s.settingService.IsAffiliateAdminRechargeEnabled(ctx) {
+		return
+	}
+
+	rebate, err := s.affiliateService.AccrueInviteRebate(ctx, userID, amount)
+	if err != nil {
+		logger.LegacyPrintf("service.admin", "affiliate rebate failed for admin recharge: user_id=%d amount=%.8f err=%v", userID, amount, err)
+		return
+	}
+	if rebate > 0 {
+		logger.LegacyPrintf("service.admin", "affiliate rebate accrued for admin recharge: user_id=%d amount=%.8f rebate=%.8f", userID, amount, rebate)
 	}
 }
 

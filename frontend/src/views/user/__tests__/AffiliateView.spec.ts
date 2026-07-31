@@ -102,7 +102,12 @@ vi.mock('vue-i18n', async (importOriginal) => {
   }
 })
 
-function buildDetail(overrides: Partial<{ pending_quota: number; aff_quota: number; debt_quota: number }> = {}) {
+function buildDetail(overrides: Partial<{
+  aff_code: string
+  pending_quota: number
+  aff_quota: number
+  debt_quota: number
+}> = {}) {
   return {
     user_id: 1,
     aff_code: 'AFFCODE123',
@@ -270,5 +275,63 @@ describe('AffiliateView', () => {
     expect(wrapper.text()).toContain('#14')
     expect(wrapper.text()).toContain('¥0.06')
     expect(wrapper.text()).toContain('待解冻')
+  })
+
+  it('stacks long values and copy controls on mobile while retaining desktop rows', async () => {
+    const affiliateCode = 'affiliate-code-that-is-long-enough-to-overflow-a-mobile-viewport'
+    copyToClipboard.mockResolvedValue(true)
+    getAffiliateDetail.mockResolvedValue(buildDetail({ aff_code: affiliateCode }))
+
+    const wrapper = mount(AffiliateView, {
+      global: {
+        stubs: {
+          AppLayout: { template: '<main><slot /></main>' },
+          Icon: true,
+          BaseDialog: true,
+        },
+      },
+    })
+
+    await flushPromises()
+
+    const values = wrapper.findAll('code')
+    expect(values).toHaveLength(2)
+    for (const value of values) {
+      expect(value.classes()).toEqual(expect.arrayContaining([
+        'min-w-0',
+        'break-all',
+        'sm:flex-1',
+        'sm:truncate',
+      ]))
+      expect(Array.from(value.element.parentElement?.classList ?? [])).toEqual(expect.arrayContaining([
+        'flex-col',
+        'items-stretch',
+        'sm:flex-row',
+        'sm:items-center',
+      ]))
+    }
+
+    const copyButtons = wrapper.findAll('button').filter((button) =>
+      ['affiliate.copyCode', 'affiliate.copyLink'].includes(button.text()),
+    )
+    expect(copyButtons).toHaveLength(2)
+    for (const button of copyButtons) {
+      expect(button.classes()).toEqual(expect.arrayContaining([
+        'w-full',
+        'sm:w-auto',
+        'sm:shrink-0',
+      ]))
+    }
+
+    await copyButtons[0].trigger('click')
+    await copyButtons[1].trigger('click')
+    await flushPromises()
+
+    expect(copyToClipboard).toHaveBeenNthCalledWith(1, affiliateCode, 'affiliate.codeCopied')
+    expect(copyToClipboard).toHaveBeenNthCalledWith(
+      2,
+      `${window.location.origin}/register?aff=${encodeURIComponent(affiliateCode)}`,
+      'affiliate.linkCopied',
+    )
   })
 })

@@ -35,6 +35,9 @@ func (s *channelMonitorUsageRepoStub) Create(context.Context, *ChannelMonitor) e
 func (s *channelMonitorUsageRepoStub) GetByID(context.Context, int64) (*ChannelMonitor, error) {
 	return s.monitor, nil
 }
+func (s *channelMonitorUsageRepoStub) FindByDuplicateOperationID(context.Context, string) (*ChannelMonitor, error) {
+	return nil, ErrChannelMonitorNotFound
+}
 func (s *channelMonitorUsageRepoStub) Update(context.Context, *ChannelMonitor) error { return nil }
 func (s *channelMonitorUsageRepoStub) Delete(context.Context, int64) error           { return nil }
 func (s *channelMonitorUsageRepoStub) List(context.Context, ChannelMonitorListParams) ([]*ChannelMonitor, int64, error) {

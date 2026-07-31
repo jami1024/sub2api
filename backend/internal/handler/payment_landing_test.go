@@ -39,7 +39,7 @@ func TestGetLandingPackageShowcaseReturnsPublicPackageData(t *testing.T) {
 	require.NoError(t, err)
 
 	configSvc := service.NewPaymentConfigService(client, nil, nil)
-	h := NewPaymentHandler(nil, configSvc, nil)
+	h := NewPaymentHandler(nil, configSvc)
 	r := gin.New()
 	r.GET("/api/v1/payment/public/landing-packages", h.GetLandingPackageShowcase)
 

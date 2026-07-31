@@ -466,7 +466,7 @@ func (s *RedeemService) Redeem(ctx context.Context, userID int64, code string) (
 			}
 		} else {
 			if ensurePackageScopeForPositiveBalanceCredit(user, amount) {
-				if err := s.userRepo.Update(txCtx, user); err != nil {
+				if err := s.userRepo.Update(txCtx, user, UserUpdateFields{PackageScope: true}); err != nil {
 					return nil, fmt.Errorf("update user package scope: %w", err)
 				}
 			}

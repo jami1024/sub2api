@@ -31,7 +31,7 @@ func (s *apiKeyPackageScopeRepoStub) GetByKey(ctx context.Context, key string) (
 func (s *apiKeyPackageScopeRepoStub) GetByKeyForAuth(ctx context.Context, key string) (*APIKey, error) {
 	panic("unexpected GetByKeyForAuth call")
 }
-func (s *apiKeyPackageScopeRepoStub) Update(ctx context.Context, key *APIKey) error {
+func (s *apiKeyPackageScopeRepoStub) Update(ctx context.Context, key *APIKey, fields APIKeyUpdateFields) error {
 	panic("unexpected Update call")
 }
 func (s *apiKeyPackageScopeRepoStub) Delete(ctx context.Context, id int64) error {
