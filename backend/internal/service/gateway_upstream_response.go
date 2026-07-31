@@ -397,7 +397,7 @@ func (s *GatewayService) handleErrorResponse(ctx context.Context, resp *http.Res
 		upstreamDetail = truncateString(string(body), maxBytes)
 	}
 	setOpsUpstreamError(c, resp.StatusCode, upstreamMsg, upstreamDetail)
-	appendOpsUpstreamError(c, OpsUpstreamErrorEvent{
+	appendOpsUpstreamError(c, newOpsUpstreamErrorEventFromResponse(resp, OpsUpstreamErrorEvent{
 		Platform:           account.Platform,
 		AccountID:          account.ID,
 		UpstreamStatusCode: resp.StatusCode,
@@ -405,7 +405,7 @@ func (s *GatewayService) handleErrorResponse(ctx context.Context, resp *http.Res
 		Kind:               "http_error",
 		Message:            upstreamMsg,
 		Detail:             upstreamDetail,
-	})
+	}))
 
 	// 处理上游错误，标记账号状态
 	shouldDisable := false
@@ -577,7 +577,7 @@ func (s *GatewayService) handleRetryExhaustedError(ctx context.Context, resp *ht
 		upstreamDetail = truncateString(string(respBody), maxBytes)
 	}
 	setOpsUpstreamError(c, resp.StatusCode, upstreamMsg, upstreamDetail)
-	appendOpsUpstreamError(c, OpsUpstreamErrorEvent{
+	appendOpsUpstreamError(c, newOpsUpstreamErrorEventFromResponse(resp, OpsUpstreamErrorEvent{
 		Platform:           account.Platform,
 		AccountID:          account.ID,
 		UpstreamStatusCode: resp.StatusCode,
@@ -585,7 +585,7 @@ func (s *GatewayService) handleRetryExhaustedError(ctx context.Context, resp *ht
 		Kind:               "retry_exhausted",
 		Message:            upstreamMsg,
 		Detail:             upstreamDetail,
-	})
+	}))
 
 	if s.cfg != nil && s.cfg.Gateway.LogUpstreamErrorBody {
 		logger.LegacyPrintf("service.gateway",

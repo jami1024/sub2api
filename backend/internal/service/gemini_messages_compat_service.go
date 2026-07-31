@@ -1458,7 +1458,6 @@ func (s *GeminiMessagesCompatService) ForwardNative(ctx context.Context, c *gin.
 				if failoverErr := s.poolModeSkippedFailoverError(c, account, resp.StatusCode, respBody, requestID); failoverErr != nil {
 					return nil, failoverErr
 				}
-				respBody = unwrapIfNeeded(isOAuth, respBody)
 				MarkResponseCommitted(c)
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"type":  "error",

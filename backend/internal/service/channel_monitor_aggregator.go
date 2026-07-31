@@ -88,38 +88,6 @@ func (s *ChannelMonitorService) batchOpenAIUsageHealth(
 	return health
 }
 
-func (s *ChannelMonitorService) batchOpenAIUsageLatest(
-	ctx context.Context,
-	ids []int64,
-	providerByID map[int64]string,
-	primaryByID map[int64]string,
-	extrasByID map[int64][]string,
-	intervalByID map[int64]int,
-) map[string]*ChannelMonitorUsageLogLatest {
-	models := make([]string, 0)
-	longestInterval := 0
-	for _, id := range ids {
-		if providerByID[id] != MonitorProviderOpenAI {
-			continue
-		}
-		models = append(models, primaryByID[id])
-		models = append(models, extrasByID[id]...)
-		interval := intervalByID[id]
-		if interval > longestInterval {
-			longestInterval = interval
-		}
-	}
-	if len(models) == 0 {
-		return map[string]*ChannelMonitorUsageLogLatest{}
-	}
-	latest, err := s.repo.ListLatestSuccessfulOpenAIUsageByModels(ctx, models, channelMonitorUsageLogSince(time.Now(), longestInterval))
-	if err != nil {
-		slog.Warn("channel_monitor: batch load openai usage logs failed", "error", err)
-		return map[string]*ChannelMonitorUsageLogLatest{}
-	}
-	return latest
-}
-
 func openAIUsageModels(
 	ids []int64,
 	providerByID map[int64]string,
@@ -178,43 +146,6 @@ func buildUsageHealthStatusSummary(
 		summary.ExtraModels = append(summary.ExtraModels, entry)
 	}
 	return summary
-}
-
-func buildUsageLogStatusSummary(
-	primary string,
-	extras []string,
-	latest map[string]*ChannelMonitorUsageLogLatest,
-	since time.Time,
-	now time.Time,
-) MonitorStatusSummary {
-	summary := MonitorStatusSummary{ExtraModels: make([]ExtraModelStatus, 0, len(extras))}
-	if l := usageLogLatestWithinWindow(latest[strings.TrimSpace(primary)], since); l != nil {
-		res := usageLogLatestToCheckResult(primary, l, now)
-		summary.PrimaryStatus = res.Status
-		summary.PrimaryLatencyMs = res.LatencyMs
-		summary.Availability7d = 100
-	}
-	for _, model := range extras {
-		model = strings.TrimSpace(model)
-		if model == "" {
-			continue
-		}
-		entry := ExtraModelStatus{Model: model}
-		if l := usageLogLatestWithinWindow(latest[model], since); l != nil {
-			res := usageLogLatestToCheckResult(model, l, now)
-			entry.Status = res.Status
-			entry.LatencyMs = res.LatencyMs
-		}
-		summary.ExtraModels = append(summary.ExtraModels, entry)
-	}
-	return summary
-}
-
-func usageLogLatestWithinWindow(latest *ChannelMonitorUsageLogLatest, since time.Time) *ChannelMonitorUsageLogLatest {
-	if latest == nil || latest.CreatedAt.Before(since) {
-		return nil
-	}
-	return latest
 }
 
 // ListUserView 用户只读视图：列出所有 enabled 监控的概览。
@@ -551,23 +482,6 @@ func cloneUserMonitorViews(in []*UserMonitorView) []*UserMonitorView {
 	return out
 }
 
-func (s *ChannelMonitorService) getOpenAIUsageLogUserDetail(ctx context.Context, m *ChannelMonitor) (*UserMonitorDetail, error) {
-	models := channelMonitorModels(m)
-	now := time.Now()
-	since := channelMonitorUsageLogSince(now, m.IntervalSeconds)
-	latest, err := s.repo.ListLatestSuccessfulOpenAIUsageByModels(ctx, models, since)
-	if err != nil {
-		return nil, fmt.Errorf("list latest openai usage logs: %w", err)
-	}
-	return &UserMonitorDetail{
-		ID:        m.ID,
-		Name:      m.Name,
-		Provider:  m.Provider,
-		GroupName: m.GroupName,
-		Models:    buildOpenAIUsageLogModelDetails(models, latest, since, now),
-	}, nil
-}
-
 func (s *ChannelMonitorService) getOpenAIUsageHealthUserDetail(ctx context.Context, m *ChannelMonitor) (*UserMonitorDetail, error) {
 	models := channelMonitorModels(m)
 	healthMap, err := s.collectOpenAIUsageHealthWindows(ctx, models)
@@ -619,33 +533,6 @@ func buildOpenAIUsageHealthModelDetails(
 		}
 		if h := healthMap[monitorAvailability30Days][model]; h != nil {
 			d.Availability30d = h.AvailabilityPct
-		}
-		out = append(out, d)
-	}
-	return out
-}
-
-func buildOpenAIUsageLogModelDetails(
-	models []string,
-	latest map[string]*ChannelMonitorUsageLogLatest,
-	since time.Time,
-	now time.Time,
-) []ModelDetail {
-	out := make([]ModelDetail, 0, len(models))
-	for _, model := range models {
-		model = strings.TrimSpace(model)
-		if model == "" {
-			continue
-		}
-		d := ModelDetail{Model: model}
-		if l := usageLogLatestWithinWindow(latest[model], since); l != nil {
-			res := usageLogLatestToCheckResult(model, l, now)
-			d.LatestStatus = res.Status
-			d.LatestLatencyMs = res.LatencyMs
-			d.Availability7d = 100
-			d.Availability15d = 100
-			d.Availability30d = 100
-			d.AvgLatency7dMs = res.LatencyMs
 		}
 		out = append(out, d)
 	}

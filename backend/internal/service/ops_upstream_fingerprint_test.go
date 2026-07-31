@@ -45,12 +45,18 @@ func TestAppendOpsUpstreamErrorAddsFingerprintFromHeaders(t *testing.T) {
 	h := http.Header{}
 	h.Set("Server", "nginx")
 	h.Set("Via", "1.1 proxy")
+	h.Set("X-Request-Id", "req_123")
 
-	ev := OpsUpstreamErrorEvent{Message: "boom"}
-	ev.AttachResponseHeaders(h)
+	ev := newOpsUpstreamErrorEventFromResponse(&http.Response{
+		StatusCode: http.StatusBadGateway,
+		Header:     h,
+	}, OpsUpstreamErrorEvent{Message: "boom"})
 
 	if ev.Fingerprint == nil {
 		t.Fatal("expected fingerprint")
+	}
+	if ev.UpstreamStatusCode != http.StatusBadGateway || ev.UpstreamRequestID != "req_123" {
+		t.Fatalf("unexpected response metadata: %#v", ev)
 	}
 	if ev.Fingerprint.Headers["server"] != "nginx" || ev.Fingerprint.Headers["via"] != "1.1 proxy" {
 		t.Fatalf("unexpected fingerprint: %#v", ev.Fingerprint.Headers)

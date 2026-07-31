@@ -384,7 +384,7 @@ func (s *OpenAIGatewayService) handleErrorResponse(
 	}
 
 	if isOpenAIRequestBodyTooLargeError(resp.StatusCode, upstreamMsg, body) {
-		appendOpsUpstreamError(c, OpsUpstreamErrorEvent{
+		appendOpsUpstreamError(c, newOpsUpstreamErrorEventFromResponse(resp, OpsUpstreamErrorEvent{
 			Platform:           account.Platform,
 			AccountID:          account.ID,
 			AccountName:        account.Name,
@@ -393,7 +393,7 @@ func (s *OpenAIGatewayService) handleErrorResponse(
 			Kind:               "failover",
 			Message:            upstreamMsg,
 			Detail:             upstreamDetail,
-		})
+		}))
 		s.handleOpenAIAccountUpstreamError(ctx, account, resp.StatusCode, resp.Header, body, requestedModel...)
 		return nil, newOpenAIUpstreamFailoverError(
 			resp.StatusCode,
@@ -431,7 +431,7 @@ func (s *OpenAIGatewayService) handleErrorResponse(
 
 	// Check custom error codes
 	if !account.ShouldHandleErrorCode(resp.StatusCode) {
-		appendOpsUpstreamError(c, OpsUpstreamErrorEvent{
+		appendOpsUpstreamError(c, newOpsUpstreamErrorEventFromResponse(resp, OpsUpstreamErrorEvent{
 			Platform:           account.Platform,
 			AccountID:          account.ID,
 			AccountName:        account.Name,
@@ -440,7 +440,7 @@ func (s *OpenAIGatewayService) handleErrorResponse(
 			Kind:               "http_error",
 			Message:            upstreamMsg,
 			Detail:             upstreamDetail,
-		})
+		}))
 		MarkResponseCommitted(c)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": gin.H{
@@ -468,7 +468,7 @@ func (s *OpenAIGatewayService) handleErrorResponse(
 	if shouldDisable {
 		kind = "failover"
 	}
-	appendOpsUpstreamError(c, OpsUpstreamErrorEvent{
+	appendOpsUpstreamError(c, newOpsUpstreamErrorEventFromResponse(resp, OpsUpstreamErrorEvent{
 		Platform:           account.Platform,
 		AccountID:          account.ID,
 		AccountName:        account.Name,
@@ -477,7 +477,7 @@ func (s *OpenAIGatewayService) handleErrorResponse(
 		Kind:               kind,
 		Message:            upstreamMsg,
 		Detail:             upstreamDetail,
-	})
+	}))
 	if shouldDisable {
 		return nil, &UpstreamFailoverError{
 			StatusCode:             resp.StatusCode,
@@ -615,7 +615,7 @@ func (s *OpenAIGatewayService) handleCompatErrorResponse(
 	// Check custom error codes — if the account does not handle this status,
 	// return a generic error without exposing upstream details.
 	if !account.ShouldHandleErrorCode(resp.StatusCode) {
-		appendOpsUpstreamError(c, OpsUpstreamErrorEvent{
+		appendOpsUpstreamError(c, newOpsUpstreamErrorEventFromResponse(resp, OpsUpstreamErrorEvent{
 			Platform:           account.Platform,
 			AccountID:          account.ID,
 			AccountName:        account.Name,
@@ -624,7 +624,7 @@ func (s *OpenAIGatewayService) handleCompatErrorResponse(
 			Kind:               "http_error",
 			Message:            upstreamMsg,
 			Detail:             upstreamDetail,
-		})
+		}))
 		MarkResponseCommitted(c)
 		writeError(c, http.StatusInternalServerError, "api_error", "Upstream gateway error")
 		if upstreamMsg == "" {
@@ -645,7 +645,7 @@ func (s *OpenAIGatewayService) handleCompatErrorResponse(
 	if shouldDisable {
 		kind = "failover"
 	}
-	appendOpsUpstreamError(c, OpsUpstreamErrorEvent{
+	appendOpsUpstreamError(c, newOpsUpstreamErrorEventFromResponse(resp, OpsUpstreamErrorEvent{
 		Platform:           account.Platform,
 		AccountID:          account.ID,
 		AccountName:        account.Name,
@@ -654,7 +654,7 @@ func (s *OpenAIGatewayService) handleCompatErrorResponse(
 		Kind:               kind,
 		Message:            upstreamMsg,
 		Detail:             upstreamDetail,
-	})
+	}))
 	if shouldDisable {
 		return nil, &UpstreamFailoverError{
 			StatusCode:             resp.StatusCode,

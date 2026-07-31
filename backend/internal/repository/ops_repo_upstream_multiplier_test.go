@@ -14,7 +14,7 @@ import (
 func TestInsertUpstreamMultiplierSampleStoresAndReturnsRow(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	require.NoError(t, err)
-	defer db.Close()
+	t.Cleanup(func() { _ = db.Close() })
 
 	repo := NewOpsRepository(db)
 	now := time.Date(2026, 6, 19, 10, 0, 0, 0, time.UTC)
@@ -63,7 +63,7 @@ func TestInsertUpstreamMultiplierSampleStoresAndReturnsRow(t *testing.T) {
 func TestListUpstreamMultiplierSamplesFiltersByModelAndAccount(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	require.NoError(t, err)
-	defer db.Close()
+	t.Cleanup(func() { _ = db.Close() })
 
 	repo := NewOpsRepository(db)
 	accountID := int64(12)

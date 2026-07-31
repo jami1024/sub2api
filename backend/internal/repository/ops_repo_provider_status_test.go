@@ -448,13 +448,29 @@ func (m *mockSummaryScanner) Scan(dest ...any) error {
 	for i := range dest {
 		switch d := dest[i].(type) {
 		case *string:
-			*d = m.values[i].(string)
+			value, ok := m.values[i].(string)
+			if !ok {
+				return sql.ErrNoRows
+			}
+			*d = value
 		case *int64:
-			*d = m.values[i].(int64)
+			value, ok := m.values[i].(int64)
+			if !ok {
+				return sql.ErrNoRows
+			}
+			*d = value
 		case *sql.NullFloat64:
-			*d = m.values[i].(sql.NullFloat64)
+			value, ok := m.values[i].(sql.NullFloat64)
+			if !ok {
+				return sql.ErrNoRows
+			}
+			*d = value
 		case *sql.NullTime:
-			*d = m.values[i].(sql.NullTime)
+			value, ok := m.values[i].(sql.NullTime)
+			if !ok {
+				return sql.ErrNoRows
+			}
+			*d = value
 		default:
 			return sql.ErrNoRows
 		}

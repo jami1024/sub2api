@@ -2,6 +2,9 @@ package service
 
 import (
 	"context"
+	"io"
+	"net/http"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -128,6 +131,66 @@ type channelMonitorPassEncryptor struct{}
 
 func (channelMonitorPassEncryptor) Encrypt(s string) (string, error) { return s, nil }
 func (channelMonitorPassEncryptor) Decrypt(s string) (string, error) { return s, nil }
+
+type channelMonitorRoundTripperFunc func(*http.Request) (*http.Response, error)
+
+func (f channelMonitorRoundTripperFunc) RoundTrip(req *http.Request) (*http.Response, error) {
+	return f(req)
+}
+
+func TestChannelMonitorRunCheckActivelyProbesNonOpenAIProviders(t *testing.T) {
+	originalHTTPClient := monitorHTTPClient
+	originalPingHTTPClient := monitorPingHTTPClient
+	t.Cleanup(func() {
+		monitorHTTPClient = originalHTTPClient
+		monitorPingHTTPClient = originalPingHTTPClient
+	})
+
+	probeCalls := 0
+	monitorHTTPClient = &http.Client{Transport: channelMonitorRoundTripperFunc(func(req *http.Request) (*http.Response, error) {
+		probeCalls++
+		return &http.Response{
+			StatusCode: http.StatusBadGateway,
+			Header:     make(http.Header),
+			Body:       io.NopCloser(strings.NewReader(`{"error":"upstream unavailable"}`)),
+			Request:    req,
+		}, nil
+	})}
+	monitorPingHTTPClient = &http.Client{Transport: channelMonitorRoundTripperFunc(func(req *http.Request) (*http.Response, error) {
+		return &http.Response{
+			StatusCode: http.StatusNoContent,
+			Header:     make(http.Header),
+			Body:       io.NopCloser(strings.NewReader("")),
+			Request:    req,
+		}, nil
+	})}
+
+	repo := &channelMonitorUsageRepoStub{monitor: &ChannelMonitor{
+		ID:           10,
+		Provider:     MonitorProviderGrok,
+		Endpoint:     "https://api.x.ai",
+		APIKey:       "encrypted",
+		PrimaryModel: MonitorDefaultGrokModel,
+	}}
+	svc := NewChannelMonitorService(repo, channelMonitorPassEncryptor{})
+
+	results, err := svc.RunCheck(context.Background(), 10)
+	if err != nil {
+		t.Fatalf("RunCheck returned error: %v", err)
+	}
+	if probeCalls != 1 {
+		t.Fatalf("active probe calls = %d, want 1", probeCalls)
+	}
+	if repo.latestUsageN != 0 {
+		t.Fatalf("usage log queries = %d, want 0 for non-OpenAI provider", repo.latestUsageN)
+	}
+	if len(results) != 1 || results[0].Status != MonitorStatusError {
+		t.Fatalf("results = %#v, want one upstream error result", results)
+	}
+	if len(repo.insertedRows) != 1 || len(repo.markedChecked) != 1 {
+		t.Fatalf("persisted rows/check marks = %d/%d, want 1/1", len(repo.insertedRows), len(repo.markedChecked))
+	}
+}
 
 func TestChannelMonitorRunCheckUsesUsageLogs(t *testing.T) {
 	createdAt := time.Date(2026, 6, 4, 10, 0, 0, 0, time.UTC)

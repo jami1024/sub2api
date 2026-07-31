@@ -467,8 +467,16 @@ func (s *ChannelMonitorService) RunCheck(ctx context.Context, id int64) ([]*Chec
 	if err != nil {
 		return nil, err
 	}
-	results := s.runChecksFromUsageLogs(ctx, m)
-	s.persistUsageLogCheckResults(ctx, m, results)
+	if m.Provider == MonitorProviderOpenAI {
+		results := s.runChecksFromUsageLogs(ctx, m)
+		s.persistUsageLogCheckResults(ctx, m, results)
+		return results, nil
+	}
+	if m.APIKeyDecryptFailed {
+		return nil, ErrChannelMonitorAPIKeyDecryptFailed
+	}
+	results := s.runChecksConcurrent(ctx, m)
+	s.persistCheckResults(ctx, m, results)
 	return results, nil
 }
 

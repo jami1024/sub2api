@@ -588,7 +588,7 @@ func (s *OpenAIGatewayService) handleFailoverErrorResponsePassthrough(
 	reqModel, _, _ := extractOpenAIRequestMetaFromBody(requestBody)
 	canonicalModel := canonicalOpenAIAccountSchedulingModel(account, reqModel)
 	shouldDisable := s.handleOpenAIAccountUpstreamError(ctx, account, resp.StatusCode, resp.Header, body, canonicalModel)
-	appendOpsUpstreamError(c, OpsUpstreamErrorEvent{
+	appendOpsUpstreamError(c, newOpsUpstreamErrorEventFromResponse(resp, OpsUpstreamErrorEvent{
 		Platform:             account.Platform,
 		AccountID:            account.ID,
 		AccountName:          account.Name,
@@ -599,7 +599,7 @@ func (s *OpenAIGatewayService) handleFailoverErrorResponsePassthrough(
 		Message:              upstreamMsg,
 		Detail:               upstreamDetail,
 		UpstreamResponseBody: upstreamDetail,
-	})
+	}))
 	return newOpenAIUpstreamFailoverError(
 		resp.StatusCode,
 		resp.Header,
@@ -652,7 +652,7 @@ func (s *OpenAIGatewayService) handleErrorResponsePassthrough(
 		canonicalModel := canonicalOpenAIAccountSchedulingModel(account, reqModel)
 		_ = s.handleOpenAIAccountUpstreamError(ctx, account, resp.StatusCode, resp.Header, body, canonicalModel)
 	}
-	appendOpsUpstreamError(c, OpsUpstreamErrorEvent{
+	appendOpsUpstreamError(c, newOpsUpstreamErrorEventFromResponse(resp, OpsUpstreamErrorEvent{
 		Platform:             account.Platform,
 		AccountID:            account.ID,
 		AccountName:          account.Name,
@@ -663,7 +663,7 @@ func (s *OpenAIGatewayService) handleErrorResponsePassthrough(
 		Message:              upstreamMsg,
 		Detail:               upstreamDetail,
 		UpstreamResponseBody: upstreamDetail,
-	})
+	}))
 	// context-window 超限是确定性请求失败（shouldFailoverOpenAIPassthroughResponse
 	// 已保证不切号），其文案对客户端可操作（如触发自动压缩）；在净化信封内保留
 	// 脱敏后的上游消息，而不是抹成通用文案。
