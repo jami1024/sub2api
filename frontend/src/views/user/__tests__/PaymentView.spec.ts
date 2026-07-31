@@ -336,6 +336,8 @@ async function mountSubscriptionPlanList(planCount: number) {
     name: `Plan ${index + 1}`,
   }))
   getCheckoutInfo.mockReset().mockResolvedValue(checkoutInfoFixture({ plans }))
+  getLandingPackageShowcase.mockReset()
+  mockEmptyLandingPackageShowcase()
   bridgeInvoke.mockReset()
   window.localStorage.clear()
   ;(window as Window & { WeixinJSBridge?: { invoke: typeof bridgeInvoke } }).WeixinJSBridge = undefined
