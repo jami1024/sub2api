@@ -43,6 +43,7 @@ vi.mock('vue-i18n', async (importOriginal) => {
         if (key === 'profile.balanceModeCodex') return 'Codex'
         if (key === 'profile.balanceModeGeneral') return 'General'
         if (key === 'common.balance') return 'Balance'
+        if (key === 'common.userMenu') return 'User Menu'
         return key
       },
     }),
@@ -66,6 +67,11 @@ vi.mock('@/stores/adminSettings', () => ({
   useAdminSettingsStore: () => ({
     customMenuItems: [],
   }),
+}))
+
+vi.mock('@/utils/featureFlags', () => ({
+  FeatureFlags: { modelPlaza: { key: 'model_plaza_enabled', mode: 'opt-in' } },
+  isFeatureFlagEnabled: () => false,
 }))
 
 describe('AppHeader balance mode', () => {
