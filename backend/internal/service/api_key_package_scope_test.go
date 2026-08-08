@@ -213,10 +213,10 @@ func (s *apiKeyPackageScopeSubRepoStub) UpdateStatus(ctx context.Context, subscr
 func (s *apiKeyPackageScopeSubRepoStub) UpdateNotes(ctx context.Context, subscriptionID int64, notes string) error {
 	panic("unexpected UpdateNotes call")
 }
-func (s *apiKeyPackageScopeSubRepoStub) ActivateWindows(ctx context.Context, id int64, start time.Time) error {
+func (s *apiKeyPackageScopeSubRepoStub) ActivateWindows(ctx context.Context, id int64, dailyStart, periodicStart time.Time) error {
 	panic("unexpected ActivateWindows call")
 }
-func (s *apiKeyPackageScopeSubRepoStub) ResetUsageWindows(ctx context.Context, id int64, resetDaily, resetWeekly, resetMonthly bool, newWindowStart time.Time) error {
+func (s *apiKeyPackageScopeSubRepoStub) ResetUsageWindows(ctx context.Context, id int64, resetDaily, resetWeekly, resetMonthly bool, dailyStart, periodicStart time.Time) error {
 	panic("unexpected ResetUsageWindows call")
 }
 func (s *apiKeyPackageScopeSubRepoStub) ResetDailyUsage(ctx context.Context, id int64, expectedWindowStart *time.Time, newWindowStart time.Time) error {
