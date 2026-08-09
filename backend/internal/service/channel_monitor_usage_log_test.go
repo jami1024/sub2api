@@ -132,6 +132,12 @@ type channelMonitorPassEncryptor struct{}
 func (channelMonitorPassEncryptor) Encrypt(s string) (string, error) { return s, nil }
 func (channelMonitorPassEncryptor) Decrypt(s string) (string, error) { return s, nil }
 
+type channelMonitorUsageRuntimeReader struct{}
+
+func (channelMonitorUsageRuntimeReader) GetChannelMonitorRuntime(context.Context) ChannelMonitorRuntime {
+	return ChannelMonitorRuntime{Enabled: true, Mode: ChannelMonitorModeV1}
+}
+
 type channelMonitorRoundTripperFunc func(*http.Request) (*http.Response, error)
 
 func (f channelMonitorRoundTripperFunc) RoundTrip(req *http.Request) (*http.Response, error) {
@@ -173,6 +179,7 @@ func TestChannelMonitorRunCheckActivelyProbesNonOpenAIProviders(t *testing.T) {
 		PrimaryModel: MonitorDefaultGrokModel,
 	}}
 	svc := NewChannelMonitorService(repo, channelMonitorPassEncryptor{})
+	svc.SetRuntimeReader(channelMonitorUsageRuntimeReader{})
 
 	results, err := svc.RunCheck(context.Background(), 10)
 	if err != nil {
@@ -210,6 +217,7 @@ func TestChannelMonitorRunCheckUsesUsageLogs(t *testing.T) {
 		},
 	}
 	svc := NewChannelMonitorService(repo, channelMonitorPassEncryptor{})
+	svc.SetRuntimeReader(channelMonitorUsageRuntimeReader{})
 
 	results, err := svc.RunCheck(context.Background(), 9)
 	if err != nil {
@@ -250,6 +258,7 @@ func TestChannelMonitorRunCheckPersistsHistoryOnlyForUsageBackedStatuses(t *test
 		},
 	}
 	svc := NewChannelMonitorService(repo, channelMonitorPassEncryptor{})
+	svc.SetRuntimeReader(channelMonitorUsageRuntimeReader{})
 
 	_, err := svc.RunCheck(context.Background(), 9)
 	if err != nil {
@@ -287,6 +296,7 @@ func TestChannelMonitorRunCheckSkipsDuplicateUsageHistory(t *testing.T) {
 		},
 	}
 	svc := NewChannelMonitorService(repo, channelMonitorPassEncryptor{})
+	svc.SetRuntimeReader(channelMonitorUsageRuntimeReader{})
 
 	_, err := svc.RunCheck(context.Background(), 9)
 	if err != nil {
@@ -311,6 +321,7 @@ func TestChannelMonitorRunCheckDoesNotPersistWhenNoUsageLog(t *testing.T) {
 		latest: map[string]*ChannelMonitorUsageLogLatest{},
 	}
 	svc := NewChannelMonitorService(repo, channelMonitorPassEncryptor{})
+	svc.SetRuntimeReader(channelMonitorUsageRuntimeReader{})
 
 	_, err := svc.RunCheck(context.Background(), 9)
 	if err != nil {

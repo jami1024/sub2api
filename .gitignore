@@ -148,3 +148,6 @@ output/
 .superpowers/
 backend/.gomodcache/
 backend/.gopath/
+
+# Vitest / Vite cache at repo root
+.vite/

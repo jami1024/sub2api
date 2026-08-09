@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-func floatPtr(v float64) *float64 { return &v }
+func recommendationFloatPtr(v float64) *float64 { return &v }
 
 func TestGetGroupRateRecommendationsUsesCheapestPackageAndMultipleAccounts(t *testing.T) {
 	now := time.Now().UTC()
@@ -40,8 +40,8 @@ func TestGetGroupRateRecommendationsUsesCheapestPackageAndMultipleAccounts(t *te
 					},
 				},
 				Samples: map[int64]*OpsUpstreamMultiplierSample{
-					9:  {AccountID: 9, Status: OpsUpstreamMultiplierStatusSuccess, Multiplier: floatPtr(0.135), MeasuredAt: now},
-					18: {AccountID: 18, Status: OpsUpstreamMultiplierStatusSuccess, Multiplier: floatPtr(0.18), MeasuredAt: now},
+					9:  {AccountID: 9, Status: OpsUpstreamMultiplierStatusSuccess, Multiplier: recommendationFloatPtr(0.135), MeasuredAt: now},
+					18: {AccountID: 18, Status: OpsUpstreamMultiplierStatusSuccess, Multiplier: recommendationFloatPtr(0.18), MeasuredAt: now},
 				},
 			}, nil
 		},
@@ -108,7 +108,7 @@ func TestGetGroupRateRecommendationsSkipsImageGroupsAndSelfHostedByDefault(t *te
 					{GroupID: 2, GroupName: "gpt pro", RateMultiplier: 1, Accounts: []*OpsGroupRateRecommendationSourceAccount{{AccountID: 2, AccountName: "自建线路", Status: StatusActive, Schedulable: true}}},
 				},
 				Usage:   map[int64]map[int64]OpsGroupRateRecommendationUsageShare{},
-				Samples: map[int64]*OpsUpstreamMultiplierSample{2: {AccountID: 2, Status: OpsUpstreamMultiplierStatusSuccess, Multiplier: floatPtr(0.01), MeasuredAt: time.Now().UTC()}},
+				Samples: map[int64]*OpsUpstreamMultiplierSample{2: {AccountID: 2, Status: OpsUpstreamMultiplierStatusSuccess, Multiplier: recommendationFloatPtr(0.01), MeasuredAt: time.Now().UTC()}},
 			}, nil
 		},
 	}
