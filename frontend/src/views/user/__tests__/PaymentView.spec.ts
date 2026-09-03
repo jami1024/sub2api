@@ -5,7 +5,10 @@ import { PAYMENT_RECOVERY_STORAGE_KEY } from '@/components/payment/paymentFlow'
 import zh from '@/i18n/locales/zh'
 import en from '@/i18n/locales/en'
 import { formatPaymentAmount } from '@/components/payment/currency'
+import AmountInput from '@/components/payment/AmountInput.vue'
 import SubscriptionPlanCard from '@/components/payment/SubscriptionPlanCard.vue'
+import en from '@/i18n/locales/en'
+import zh from '@/i18n/locales/zh'
 import type { CheckoutInfoResponse, MethodLimit, SubscriptionPlan } from '@/types/payment'
 
 const routeState = vi.hoisted(() => ({
@@ -30,6 +33,7 @@ const mockUser = vi.hoisted(() => ({
   balance: 0,
   package_scope: null as 'codex' | 'general' | null,
 }))
+const translate = vi.hoisted(() => vi.fn((key: string) => key))
 
 vi.mock('vue-router', async () => {
   const actual = await vi.importActual<typeof import('vue-router')>('vue-router')
@@ -49,7 +53,7 @@ vi.mock('vue-i18n', async () => {
   return {
     ...actual,
     useI18n: () => ({
-      t: (key: string) => key,
+      t: translate,
     }),
   }
 })
@@ -370,6 +374,50 @@ describe('PaymentView subscription plan grid', () => {
       'sm:grid-cols-2',
       'lg:grid-cols-3',
     ]))
+  })
+})
+
+describe('PaymentView recharge rate preview', () => {
+  it('uses the selected payment method currency in both locale templates', async () => {
+    translate.mockClear()
+    routeState.path = '/purchase'
+    routeState.query = {}
+    mockUser.package_scope = null
+    window.localStorage.clear()
+    getCheckoutInfo.mockReset().mockResolvedValue(checkoutInfoFixture({
+      balance_recharge_multiplier: 0.5,
+      methods: {
+        stripe: {
+          ...checkoutInfoFixture().data.methods.wxpay,
+          currency: 'USD',
+        },
+      },
+    }))
+    getLandingPackageShowcase.mockReset()
+    mockEmptyLandingPackageShowcase()
+
+    const wrapper = shallowMount(PaymentView, {
+      global: {
+        stubs: {
+          AppLayout: { template: '<div><slot /></div>' },
+          Teleport: true,
+          Transition: false,
+        },
+      },
+    })
+    await flushPromises()
+    await flushPromises()
+    ;(wrapper.vm as unknown as { activeTab: string }).activeTab = 'recharge'
+    await wrapper.vm.$nextTick()
+    wrapper.getComponent(AmountInput).vm.$emit('update:modelValue', 10)
+    await flushPromises()
+
+    expect(translate).toHaveBeenCalledWith('payment.rechargeRatePreview', {
+      currency: 'USD',
+      usd: '0.50',
+    })
+    expect(en.payment.rechargeRatePreview).toBe('Current rate: 1 {currency} = {usd} USD')
+    expect(zh.payment.rechargeRatePreview).toBe('当前倍率：1 {currency} = {usd} USD')
   })
 })
 

@@ -102,6 +102,27 @@ vi.mock('@/stores', () => ({
   })
 }))
 
+vi.mock('@/stores/app', () => ({
+  useAppStore: () => ({
+    get cachedPublicSettings() {
+      return appState.cachedPublicSettings
+    },
+    get siteName() {
+      return appState.siteName
+    },
+    get siteLogo() {
+      return appState.siteLogo
+    },
+    get docUrl() {
+      return appState.docUrl
+    },
+    get publicSettingsLoaded() {
+      return appState.publicSettingsLoaded
+    },
+    fetchPublicSettings,
+  }),
+}))
+
 
 vi.mock('@/api/publicLanding', () => ({
   getLandingPackageShowcase: landingApiMock.getLandingPackageShowcase

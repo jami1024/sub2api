@@ -429,6 +429,10 @@ func (r *opsUpstreamMultiplierAccountRepo) ResetQuotaUsed(ctx context.Context, i
 	return nil
 }
 
+func (r *opsUpstreamMultiplierAccountRepo) ResetQuotaUsedAndClearRateLimitCooldown(ctx context.Context, id int64) error {
+	return nil
+}
+
 func (r *opsUpstreamMultiplierAccountRepo) RevertProxyFallback(ctx context.Context, accountID int64) error {
 	return nil
 }

@@ -4,16 +4,24 @@ import { mount } from '@vue/test-utils'
 import MonitorCard from '../MonitorCard.vue'
 import type { UserMonitorView } from '@/api/channelMonitor'
 
-vi.mock('vue-i18n', () => ({
-  useI18n: () => ({
-    t: (key: string, params?: Record<string, unknown>) => {
-      if (key === 'monitorCommon.history60pts') return `近 ${params?.n} 次记录`
-      if (key === 'monitorCommon.realtimeWindow30m') return '近 30 分钟'
-      if (key === 'monitorCommon.nextUpdateIn') return `${params?.n}s 后刷新`
-      if (key === 'monitorCommon.latencyEmpty') return '-'
-      return key
-    },
-  }),
+vi.mock('vue-i18n', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('vue-i18n')>()
+  return {
+    ...actual,
+    useI18n: () => ({
+      t: (key: string, params?: Record<string, unknown>) => {
+        if (key === 'monitorCommon.history60pts') return `近 ${params?.n} 次记录`
+        if (key === 'monitorCommon.realtimeWindow30m') return '近 30 分钟'
+        if (key === 'monitorCommon.nextUpdateIn') return `${params?.n}s 后刷新`
+        if (key === 'monitorCommon.latencyEmpty') return '-'
+        return key
+      },
+    }),
+  }
+})
+
+vi.mock('@/utils/featureFlags', () => ({
+  isChannelMonitorQuotaVisible: () => false,
 }))
 
 const baseItem = (overrides: Partial<UserMonitorView> = {}): UserMonitorView => ({
